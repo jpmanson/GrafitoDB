@@ -197,20 +197,50 @@ class GraphvizBackend:
     def export(self, graph, path: str, **kwargs: Any) -> str:
         dot_kwargs = dict(kwargs)
         dot_kwargs.pop("render", None)
+        engine = dot_kwargs.pop("engine", "dot")
         dot_text = graph_to_dot(graph, **dot_kwargs)
         with open(path, "w", encoding="utf-8") as handle:
             handle.write(dot_text)
         render = kwargs.get("render")
         if render:
-            render_dot(path, render=render)
+            render_dot(path, render=render, engine=engine)
         return path
 
+class D3Backend:
+    """D3 backend adapter (self-contained HTML export)."""
+
+    name = "d3"
+
+    def render(self, graph, **kwargs: Any) -> str:
+        return graph_to_d3_html(graph, **kwargs)
+
+    def export(self, graph, path: str, **kwargs: Any) -> str:
+        html = graph_to_d3_html(graph, **kwargs)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(html)
+        return path
+
+class CytoscapeBackend:
+    """Cytoscape.js backend adapter (self-contained HTML export)."""
+
+    name = "cytoscape"
+
+    def render(self, graph, **kwargs: Any) -> str:
+        return graph_to_cytoscape_html(graph, **kwargs)
+
+    def export(self, graph, path: str, **kwargs: Any) -> str:
+        html = graph_to_cytoscape_html(graph, **kwargs)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(html)
+        return path
 
 _VIZ_BACKENDS: dict[str, VizBackend] = {
     "pyvis": PyVisBackend(),
     "d2": D2Backend(),
     "mermaid": MermaidBackend(),
     "graphviz": GraphvizBackend(),
+    "d3": D3Backend(),
+    "cytoscape": CytoscapeBackend(),
 }
 
 
@@ -391,11 +421,41 @@ def graph_to_dot(
     label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
     include_properties: bool = False,
     directed: bool = True,
+    graph_attrs: dict[str, Any] | None = None,
+    node_attrs: dict[str, Any] | None = None,
+    edge_attrs: dict[str, Any] | None = None,
 ) -> str:
     """Serialize a NetworkX graph to Graphviz DOT text."""
     graph_type = "digraph" if directed else "graph"
     edge_op = "->" if directed else "--"
     lines: list[str] = [f"{graph_type} grafito {{"]
+
+    graph_attrs = graph_attrs or {"overlap": "false", "splines": "true"}
+    node_attrs = node_attrs or {
+        "shape": "ellipse",
+        "fontsize": "10",
+        "fontname": "Helvetica",
+        "fontcolor": "#1b1f23",
+    }
+    edge_attrs = edge_attrs or {
+        "fontsize": "9",
+        "fontname": "Helvetica",
+        "fontcolor": "#556",
+    }
+
+    def _attrs_to_dot(attrs: dict[str, Any]) -> str:
+        parts = []
+        for key, value in attrs.items():
+            escaped = str(value).replace('"', '\\"')
+            parts.append(f'{key}="{escaped}"')
+        return ", ".join(parts)
+
+    if graph_attrs:
+        lines.append(f"  graph [{_attrs_to_dot(graph_attrs)}];")
+    if node_attrs:
+        lines.append(f"  node [{_attrs_to_dot(node_attrs)}];")
+    if edge_attrs:
+        lines.append(f"  edge [{_attrs_to_dot(edge_attrs)}];")
 
     def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
         if label_fn:
@@ -435,17 +495,357 @@ def graph_to_dot(
     return "\n".join(lines) + "\n"
 
 
-def render_dot(path: str, render: str = "svg") -> str:
-    """Render a .dot file using the Graphviz dot CLI."""
-    binary = shutil.which("dot")
+def render_dot(path: str, render: str = "svg", engine: str = "dot") -> str:
+    """Render a .dot file using the Graphviz CLI."""
+    binary = shutil.which(engine)
     if not binary:
         raise RuntimeError(
-            "Graphviz 'dot' not found. Install with `brew install graphviz`."
+            f"Graphviz '{engine}' not found. Install with `brew install graphviz`."
         )
     output = path.rsplit(".", 1)[0] + f".{render}"
     cmd = [binary, f"-T{render}", path, "-o", output]
     subprocess.run(cmd, check=True)
     return output
+
+
+def graph_to_d3_html(
+    graph,
+    width: int = 960,
+    height: int = 600,
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+    color_by_label: bool = True,
+    palette: list[str] | None = None,
+) -> str:
+    """Serialize a NetworkX graph into a self-contained D3 HTML document."""
+    palette = palette or _DEFAULT_COLORS
+
+    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
+        if label_fn:
+            return str(label_fn(node_id, attrs))
+        properties = attrs.get("properties", {})
+        if label_attr:
+            if label_attr in attrs:
+                return str(attrs[label_attr])
+            if label_attr in properties:
+                return str(properties[label_attr])
+        if node_label == "name":
+            return str(properties.get("name", node_id))
+        if node_label == "labels":
+            labels = attrs.get("labels", [])
+            return ":".join(labels) if labels else str(node_id)
+        if node_label == "label_and_name":
+            labels = attrs.get("labels", [])
+            label_prefix = ":".join(labels) + " " if labels else ""
+            return f"{label_prefix}{properties.get('name', node_id)}"
+        return str(node_id)
+
+    label_colors: dict[str, str] = {}
+
+    def pick_label_color(labels: list[str]) -> str:
+        if not color_by_label or not labels:
+            return _DEFAULT_COLORS[0]
+        label = labels[0]
+        if label not in label_colors:
+            label_colors[label] = palette[len(label_colors) % len(palette)]
+        return label_colors[label]
+
+    nodes = []
+    for node_id, attrs in graph.nodes(data=True):
+        labels = attrs.get("labels", [])
+        nodes.append(
+            {
+                "id": str(node_id),
+                "label": resolve_label(node_id, attrs),
+                "group": labels[0] if labels else "Node",
+                "color": pick_label_color(labels),
+                "title": attrs.get("properties", {}).get("name", str(node_id)),
+            }
+        )
+
+    links = []
+    for source, target, key, attrs in graph.edges(keys=True, data=True):
+        links.append(
+            {
+                "source": str(source),
+                "target": str(target),
+                "label": attrs.get("type", "RELATED_TO"),
+            }
+        )
+
+    data = {"nodes": nodes, "links": links}
+    data_json = json.dumps(data)
+
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Grafito D3 Graph</title>
+  <style>
+    body {{ margin: 0; font-family: system-ui, sans-serif; }}
+    svg {{ width: 100vw; height: 100vh; background: #f8f9fb; }}
+    .link {{ stroke: #9aa4b2; stroke-width: 1.2px; }}
+    .node text {{ font-size: 12px; fill: #1b1f23; pointer-events: none; }}
+    .edge-label {{ font-size: 10px; fill: #556; }}
+    .tooltip {{
+      position: absolute;
+      background: rgba(15, 23, 42, 0.95);
+      color: #f8fafc;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }}
+  </style>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<svg width="{width}" height="{height}"></svg>
+<script>
+const data = {data_json};
+
+const svg = d3.select("svg");
+const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+
+const simulation = d3.forceSimulation(data.nodes)
+  .force("link", d3.forceLink(data.links).id(d => d.id).distance(120))
+  .force("charge", d3.forceManyBody().strength(-250))
+  .force("center", d3.forceCenter(width / 2, height / 2));
+
+const container = svg.append("g");
+
+const link = container.append("g")
+  .selectAll("line")
+  .data(data.links)
+  .join("line")
+  .attr("class", "link");
+
+const node = container.append("g")
+  .selectAll("circle")
+  .data(data.nodes)
+  .join("circle")
+  .attr("r", 12)
+  .attr("fill", d => d.color)
+  .on("mouseover", (event, d) => {{
+    tooltip.style("opacity", 1).html(d.title || d.label);
+  }})
+  .on("mousemove", (event) => {{
+    tooltip
+      .style("left", (event.pageX + 12) + "px")
+      .style("top", (event.pageY + 12) + "px");
+  }})
+  .on("mouseout", () => {{
+    tooltip.style("opacity", 0);
+  }})
+  .call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended));
+
+const labels = container.append("g")
+  .selectAll("text")
+  .data(data.nodes)
+  .join("text")
+  .text(d => d.label)
+  .attr("dx", 16)
+  .attr("dy", 4)
+  .attr("class", "node");
+
+const edgeLabels = container.append("g")
+  .selectAll("text")
+  .data(data.links)
+  .join("text")
+  .text(d => d.label)
+  .attr("class", "edge-label");
+
+svg.call(d3.zoom().on("zoom", (event) => {{
+  container.attr("transform", event.transform);
+}}));
+
+simulation.on("tick", () => {{
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+
+  node
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y);
+
+  labels
+    .attr("x", d => d.x)
+    .attr("y", d => d.y);
+
+  edgeLabels
+    .attr("x", d => (d.source.x + d.target.x) / 2)
+    .attr("y", d => (d.source.y + d.target.y) / 2);
+}});
+
+function dragstarted(event, d) {{
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}}
+
+function dragged(event, d) {{
+  d.fx = event.x;
+  d.fy = event.y;
+}}
+
+function dragended(event, d) {{
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}}
+</script>
+</body>
+</html>
+"""
+
+
+def graph_to_cytoscape_html(
+    graph,
+    width: int = 960,
+    height: int = 600,
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+    color_by_label: bool = True,
+    palette: list[str] | None = None,
+    layout: str = "cose",
+    layout_options: dict[str, Any] | None = None,
+    node_size: int = 22,
+    font_size: int = 9,
+    edge_font_size: int = 8,
+    show_edge_labels: bool = True,
+    max_label_width: int = 80,
+) -> str:
+    """Serialize a NetworkX graph into a Cytoscape.js HTML document."""
+    palette = palette or _DEFAULT_COLORS
+
+    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
+        if label_fn:
+            return str(label_fn(node_id, attrs))
+        properties = attrs.get("properties", {})
+        if label_attr:
+            if label_attr in attrs:
+                return str(attrs[label_attr])
+            if label_attr in properties:
+                return str(properties[label_attr])
+        if node_label == "name":
+            return str(properties.get("name", node_id))
+        if node_label == "labels":
+            labels = attrs.get("labels", [])
+            return ":".join(labels) if labels else str(node_id)
+        if node_label == "label_and_name":
+            labels = attrs.get("labels", [])
+            label_prefix = ":".join(labels) + " " if labels else ""
+            return f"{label_prefix}{properties.get('name', node_id)}"
+        return str(node_id)
+
+    label_colors: dict[str, str] = {}
+
+    def pick_label_color(labels: list[str]) -> str:
+        if not color_by_label or not labels:
+            return _DEFAULT_COLORS[0]
+        label = labels[0]
+        if label not in label_colors:
+            label_colors[label] = palette[len(label_colors) % len(palette)]
+        return label_colors[label]
+
+    elements = []
+    for node_id, attrs in graph.nodes(data=True):
+        labels = attrs.get("labels", [])
+        elements.append(
+            {
+                "data": {
+                    "id": str(node_id),
+                    "label": resolve_label(node_id, attrs),
+                    "group": labels[0] if labels else "Node",
+                    "color": pick_label_color(labels),
+                    "title": attrs.get("properties", {}).get("name", str(node_id)),
+                }
+            }
+        )
+
+    for source, target, key, attrs in graph.edges(keys=True, data=True):
+        elements.append(
+            {
+                "data": {
+                    "id": f"{source}-{target}-{key}",
+                    "source": str(source),
+                    "target": str(target),
+                    "label": attrs.get("type", "RELATED_TO"),
+                }
+            }
+        )
+
+    data_json = json.dumps(elements)
+    layout_defaults = {"name": layout, "padding": 30}
+    if layout_options:
+        layout_defaults.update(layout_options)
+    layout_json = json.dumps(layout_defaults)
+
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Grafito Cytoscape Graph</title>
+  <style>
+    body {{ margin: 0; font-family: system-ui, sans-serif; }}
+    #cy {{ width: 100vw; height: 100vh; background: #f8f9fb; }}
+  </style>
+  <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+</head>
+<body>
+<div id="cy"></div>
+<script>
+const elements = {data_json};
+
+const cy = cytoscape({{
+  container: document.getElementById('cy'),
+  elements: elements,
+  style: [
+    {{
+      selector: 'node',
+      style: {{
+        'label': 'data(label)',
+        'background-color': 'data(color)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'color': '#1b1f23',
+        'font-size': {font_size},
+        'width': {node_size},
+        'height': {node_size},
+        'text-wrap': 'wrap',
+        'text-max-width': {max_label_width}
+      }}
+    }},
+    {{
+      selector: 'edge',
+      style: {{
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'triangle',
+        'line-color': '#9aa4b2',
+        'target-arrow-color': '#9aa4b2',
+        'label': {("'data(label)'" if show_edge_labels else "''")},
+        'font-size': {edge_font_size},
+        'color': '#556'
+      }}
+    }}
+  ],
+  layout: {layout_json}
+}});
+</script>
+</body>
+</html>
+"""
 
 
 def save_pyvis_html(

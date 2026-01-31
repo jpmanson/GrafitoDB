@@ -125,10 +125,36 @@ from grafito.integrations import export_graph
 graph = db.to_networkx()
 export_graph(graph, "graph.dot", backend="graphviz", node_label="label_and_name")
 # If you have Graphviz installed:
-export_graph(graph, "graph.dot", backend="graphviz", render="svg")
+export_graph(graph, "graph.dot", backend="graphviz", render="svg", engine="dot")
+export_graph(graph, "graph.dot", backend="graphviz", render="svg", engine="neato")
+export_graph(graph, "graph.dot", backend="graphviz", render="svg", engine="sfdp")
+```
+
+Example script:
+
+```bash
+python examples/graphviz_visualize.py
 ```
 
 Note: Graphviz rendering requires `dot` (`brew install graphviz`).
+
+D3 HTML export (self-contained, no build step):
+
+```python
+from grafito.integrations import export_graph
+
+graph = db.to_networkx()
+export_graph(graph, "graph.html", backend="d3", node_label="label_and_name")
+```
+
+Cytoscape.js HTML export (self-contained, no build step):
+
+```python
+from grafito.integrations import export_graph
+
+graph = db.to_networkx()
+export_graph(graph, "graph.html", backend="cytoscape", node_label="label_and_name", layout="cose")
+```
 
 ## Quick Start
 

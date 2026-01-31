@@ -68,6 +68,64 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - API Reference:
+
+  - Getting Started:
+      - Introduction: getting-started/introduction.md
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Core Concepts: getting-started/concepts.md
+
+  - Core API:
       - Database: api/database.md
-      - Cypher: api/cypher.md
+      - Nodes: api/nodes.md
+      - Relationships: api/relationships.md
+      - Transactions: api/transactions.md
+      - Graph Traversal: api/traversal.md
+
+  - Cypher Query Language:
+      - Overview: cypher/overview.md
+      - CREATE and MATCH: cypher/create-match.md
+      - Filtering with WHERE: cypher/filtering.md
+      - Return and Aggregation: cypher/return-aggregation.md
+      - Data Modification: cypher/modification.md
+      - Complex Patterns: cypher/patterns.md
+      - Lists and Maps: cypher/collections.md
+      - Temporal and Spatial Types: cypher/temporal-spatial.md
+      - String Functions: cypher/string-functions.md
+      - Indexes and Constraints: cypher/indexes-constraints.md
+      - Vector Search: cypher/vector-search.md
+
+  - Search Capabilities:
+      - Full-Text Search (FTS5): search/fulltext.md
+      - Semantic/Vector Search: search/vector.md
+      - ANN Backends: search/ann-backends.md
+      - Hybrid Workflows: search/hybrid.md
+
+  - Integrations:
+      - NetworkX: integrations/networkx.md
+      - RDF/Turtle: integrations/rdf.md
+      - Neo4j Dump Import: integrations/neo4j-import.md
+      - Visualization: integrations/visualization.md
+
+  - Embeddings & LLMs:
+      - Overview: embeddings/overview.md
+      - OpenAI: embeddings/openai.md
+      - Hugging Face: embeddings/huggingface.md
+      - Cloud Providers: embeddings/cloud-providers.md
+      - Local (Ollama): embeddings/ollama.md
+
+  - APOC Procedures:
+      - Loading XML/HTML: apoc/xml-html.md
+      - Loading JSON: apoc/json.md
+      - Collections & Maps: apoc/collections.md
+      - Import/Export: apoc/import-export.md
+
+  - Examples:
+      - Social Network: examples/social-network.md
+      - Company Structure: examples/company-structure.md
+      - Northwind: examples/northwind.md
+
+  - Advanced Topics:
+      - Architecture: advanced/architecture.md
+      - SQLite Schema: advanced/schema.md
+      - Performance Tips: advanced/performance.md
