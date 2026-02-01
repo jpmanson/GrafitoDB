@@ -2,6 +2,8 @@
 
 A fast, embeddable graph database for Python — no server required, SQLite-backed, Cypher-powered, and optional semantic search.
 
+![alt text](images/grafito_logo.png)
+
 Grafito implements the Property Graph Model (Neo4j-like) with:
 
 - **Cypher queries** and pattern matching
