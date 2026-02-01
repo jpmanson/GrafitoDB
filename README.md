@@ -56,19 +56,12 @@ uv pip install -e ".[dev]"
 Optional extras:
 
 ```bash
-pip install grafito[all]
 uv pip install grafito[all]
-pip install grafito[rdf]
 uv pip install grafito[rdf]
-pip install grafito[viz]
 uv pip install grafito[viz]
-pip install grafito[faiss]
 uv pip install grafito[faiss]
-pip install grafito[hnswlib]
 uv pip install grafito[hnswlib]
-pip install grafito[annoy]
 uv pip install grafito[annoy]
-pip install grafito[leann]
 uv pip install grafito[leann]
 ```
 
@@ -91,6 +84,7 @@ save_pyvis_html(
     physics="compact",  # or "spread"
 )
 ```
+![alt text](images/pyvis.png)
 
 D2 export (text) and optional render via CLI:
 
@@ -102,6 +96,7 @@ export_graph(graph, "graph.d2", backend="d2", node_label="label_and_name")
 # If you have the `d2` CLI installed:
 export_graph(graph, "graph.d2", backend="d2", render="svg")
 ```
+![alt text](images/grafito_d2_example.png)
 
 Note: the D2 renderer is a separate CLI (`brew install d2` on macOS). The Python
 package does not bundle it.
@@ -116,6 +111,7 @@ export_graph(graph, "graph.mmd", backend="mermaid", node_label="label_and_name")
 # If you have mermaid-cli installed:
 export_graph(graph, "graph.mmd", backend="mermaid", render="svg")
 ```
+![alt text](images/grafito_mermaid_example.png)
 
 Note: Mermaid rendering requires `mmdc` (`npm i -g @mermaid-js/mermaid-cli`).
 
@@ -157,6 +153,7 @@ from grafito.integrations import export_graph
 graph = db.to_networkx()
 export_graph(graph, "graph.html", backend="cytoscape", node_label="label_and_name", layout="cose")
 ```
+![alt text](images/cytoscape.png)
 
 ## Quick Start
 
