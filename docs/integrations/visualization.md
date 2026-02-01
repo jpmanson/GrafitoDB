@@ -63,6 +63,74 @@ save_pyvis_html(
 )
 ```
 
+## Advanced PyVis Customization
+
+If you need deeper control over node/edge styling, use PyVis directly after
+exporting to NetworkX.
+
+### Per-Type Node Styling
+
+```python
+from pyvis.network import Network
+
+graph = db.to_networkx()
+net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="black")
+
+node_colors = {"ACTION": "#ffcc80", "OBSERVATION": "#e3f2fd"}
+
+for node_id, attrs in graph.nodes(data=True):
+    props = attrs.get("properties", attrs)
+    ntype = props.get("type", "OBSERVATION")
+    label = props.get("content", "")[:20] + "..."
+    color = node_colors.get(ntype, "#e3f2fd")
+    shape = "box" if ntype == "ACTION" else "ellipse"
+    net.add_node(node_id, label=label, color=color, shape=shape)
+```
+
+### Per-Relationship Styling
+
+```python
+edge_colors = {"TEMPORAL_NEXT": "#2962ff", "SEMANTIC": "#00c853", "ENTITY": "#d50000"}
+
+for source, target, attrs in graph.edges(data=True):
+    rel_type = attrs.get("type")
+    color = edge_colors.get(rel_type, "#aaaaaa")
+    net.add_edge(source, target, color=color, label=rel_type, width=2)
+```
+
+### Physics Tuning
+
+```python
+net.barnes_hut(
+    gravity=-4000,
+    central_gravity=0.3,
+    spring_length=250,
+    spring_strength=0.05,
+    damping=0.09,
+)
+```
+
+### Add a Legend (Optional)
+
+```python
+from IPython.display import HTML, display
+
+legend_html = """
+<div style="font-family: sans-serif; margin-bottom: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f9f9f9;">
+  <strong>Legend:</strong><br>
+  <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 5px;">
+    <div><span style="display:inline-block; width:12px; height:12px; background-color:#ffcc80; border:1px solid #333; margin-right:5px;"></span> Action (Box)</div>
+    <div><span style="display:inline-block; width:12px; height:12px; background-color:#e3f2fd; border:1px solid #333; margin-right:5px; border-radius:50%;"></span> Observation (Ellipse)</div>
+    <div><span style="color:#2962ff; font-weight:bold; margin-right:5px;">───</span> Temporal</div>
+    <div><span style="color:#00c853; font-weight:bold; margin-right:5px;">───</span> Semantic</div>
+    <div><span style="color:#d50000; font-weight:bold; margin-right:5px;">───</span> Entity</div>
+  </div>
+</div>
+"""
+
+display(HTML(legend_html))
+```
+
 ## D2 (Declarative Diagramming)
 
 D2 generates text-based diagrams that can be rendered to SVG/PNG.

@@ -22,12 +22,15 @@ htmlcov/
 .vscode/
 .idea/
 
-# Claude
+# Agents
 .claude
 CLAUDE.md
 AGENTS.md
-.grafito/indexes/*
 tmpclaude-*
+GEMINI.md
+
+# Other files and directories
+.grafito/indexes/*
 .ipynb_checkpoints/*
 .grafito
 context
@@ -41,8 +44,9 @@ tmp_pyvis_test.html
 TODO.md
 debug_neo4j
 tmp_neo4j_extract
-GEMINI.md
 tmp*
 todo
 site
 playground
+.DS_Store
+.env
