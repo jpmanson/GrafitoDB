@@ -7,6 +7,48 @@ import json
 import shutil
 import subprocess
 
+# Default color palette for visualizations
+_DEFAULT_COLORS = [
+    "#8ecae6",
+    "#219ebc",
+    "#023047",
+    "#ffb703",
+    "#fb8500",
+    "#90be6d",
+    "#f94144",
+    "#577590",
+    "#43aa8b",
+    "#f3722c",
+]
+
+
+def _resolve_node_label(
+    node_id: Any,
+    attrs: dict[str, Any],
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+) -> str:
+    """Resolve the display label for a node."""
+    if label_fn:
+        return str(label_fn(node_id, attrs))
+    properties = attrs.get("properties", {})
+    if label_attr:
+        if label_attr in attrs:
+            return str(attrs[label_attr])
+        if label_attr in properties:
+            return str(properties[label_attr])
+    if node_label == "name":
+        return str(properties.get("name", node_id))
+    if node_label == "labels":
+        labels = attrs.get("labels", [])
+        return ":".join(labels) if labels else str(node_id)
+    if node_label == "label_and_name":
+        labels = attrs.get("labels", [])
+        label_prefix = ":".join(labels) + " " if labels else ""
+        return f"{label_prefix}{properties.get('name', node_id)}"
+    return str(node_id)
+
 _DEFAULT_COLORS = [
     "#8ecae6",
     "#219ebc",
@@ -124,6 +166,371 @@ _PHYSICS_PRESETS = {
 }
 
 
+def plot_matplotlib(
+    graph,
+    figsize: tuple[int, int] = (10, 8),
+    dpi: int = 100,
+    layout: str | Callable = "spring",
+    layout_kwargs: dict[str, Any] | None = None,
+    # Node styling
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+    node_color: str | list[str] | None = None,
+    color_by_label: bool = True,
+    color_attr: str | None = None,
+    color_map: dict[str, str] | None = None,
+    node_size: int | list[int] = 600,
+    node_size_attr: str | None = None,
+    node_alpha: float = 0.9,
+    node_shape: str = "o",
+    node_edge_color: str = "#333333",
+    node_linewidth: float = 1.5,
+    # Edge styling
+    edge_color: str = "#666666",
+    edge_alpha: float = 0.6,
+    edge_width: float = 1.5,
+    edge_style: str = "solid",
+    edge_arrow_size: int = 15,
+    # Label styling
+    font_size: int = 10,
+    font_color: str = "#1b1f23",
+    font_weight: str = "normal",
+    show_labels: bool = True,
+    label_offset: tuple[float, float] = (0, 0.05),
+    # Legend
+    show_legend: bool = True,
+    legend_loc: str = "upper left",
+    legend_bbox_to_anchor: tuple[float, float] | None = None,
+    # Title
+    title: str | None = None,
+    title_fontsize: int = 14,
+    title_fontweight: str = "bold",
+    # Background
+    bgcolor: str = "#ffffff",
+    # Axes
+    show_axes: bool = False,
+    # Margins
+    margins: tuple[float, float] = (0.1, 0.1),
+    # Return mode
+    return_fig: bool = False,
+    palette: list[str] | None = None,
+    **kwargs: Any,
+):
+    """Plot a NetworkX graph using Matplotlib.
+
+    This function provides extensive customization options for creating
+    static graph visualizations. It uses NetworkX for layout calculation
+    and Matplotlib for rendering.
+
+    Args:
+        graph: NetworkX graph to plot
+        figsize: Figure size as (width, height) in inches
+        dpi: Dots per inch for the figure
+        layout: Layout algorithm name ('spring', 'circular', 'random',
+            'shell', 'spectral', 'kamada_kawai') or callable
+        layout_kwargs: Additional arguments passed to the layout function
+        node_label: Property to use for node labels ('id', 'name', 'labels',
+            'label_and_name')
+        label_attr: Specific attribute to use for labels (overrides node_label)
+        label_fn: Custom function (node_id, attrs) -> str for labels
+        node_color: Single color, list of colors, or None for auto-coloring
+        color_by_label: Whether to color nodes by their labels
+        color_attr: Property attribute to use for coloring groups
+        color_map: Dictionary mapping label values to colors
+        node_size: Size of nodes (single value or list)
+        node_size_attr: Property to use for sizing nodes
+        node_alpha: Node transparency (0-1)
+        node_shape: Node shape marker (Matplotlib style, e.g., 'o', 's', '^')
+        node_edge_color: Color of node borders
+        node_linewidth: Width of node border lines
+        edge_color: Color of edges
+        edge_alpha: Edge transparency (0-1)
+        edge_width: Width of edges
+        edge_style: Edge line style ('solid', 'dashed', 'dotted', etc.)
+        edge_arrow_size: Size of arrow heads for directed graphs
+        font_size: Font size for node labels
+        font_color: Color of node labels
+        font_weight: Font weight for labels ('normal', 'bold', etc.)
+        show_labels: Whether to display node labels
+        label_offset: Offset for labels as (x, y) fraction
+        show_legend: Whether to show a legend for node colors
+        legend_loc: Legend location (Matplotlib style)
+        legend_bbox_to_anchor: Legend anchor position
+        title: Figure title
+        title_fontsize: Title font size
+        title_fontweight: Title font weight
+        bgcolor: Background color
+        show_axes: Whether to show axis lines
+        margins: Margins around the graph as (x, y)
+        return_fig: If True, return the figure object instead of displaying
+        palette: Custom color palette for auto-coloring
+        **kwargs: Additional arguments passed to nx.draw_networkx
+
+    Returns:
+        matplotlib.figure.Figure if return_fig=True, None otherwise
+
+    Raises:
+        ImportError: If matplotlib or networkx is not installed
+
+    Example:
+        >>> from grafito import GrafitoDatabase
+        >>> from grafito.integrations import plot_matplotlib
+        >>> db = GrafitoDatabase(':memory:')
+        >>> alice = db.create_node(labels=['Person'], properties={'name': 'Alice'})
+        >>> bob = db.create_node(labels=['Person'], properties={'name': 'Bob'})
+        >>> db.create_relationship(alice.id, bob.id, 'KNOWS')
+        >>> graph = db.to_networkx()
+        >>> plot_matplotlib(
+        ...     graph,
+        ...     figsize=(12, 10),
+        ...     color_by_label=True,
+        ...     node_size=800,
+        ...     title="My Social Network"
+        ... )
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import networkx as nx
+    except ImportError as exc:
+        raise ImportError(
+            "matplotlib and networkx are required. "
+            "Install with `pip install matplotlib networkx`"
+        ) from exc
+
+    # Resolve layout
+    layout_kwargs = layout_kwargs or {}
+    if isinstance(layout, str):
+        layout_map = {
+            "spring": nx.spring_layout,
+            "circular": nx.circular_layout,
+            "random": nx.random_layout,
+            "shell": nx.shell_layout,
+            "spectral": nx.spectral_layout,
+            "kamada_kawai": nx.kamada_kawai_layout,
+            "planar": nx.planar_layout,
+            "fruchterman_reingold": nx.fruchterman_reingold_layout,
+        }
+        if layout not in layout_map:
+            raise ValueError(f"Unknown layout '{layout}'. Available: {list(layout_map.keys())}")
+        pos = layout_map[layout](graph, **layout_kwargs)
+    else:
+        pos = layout(graph, **layout_kwargs)
+
+    # Resolve node colors
+    palette = palette or _DEFAULT_COLORS
+    label_colors: dict[str, str] = {}
+
+    def pick_label_color(labels: list[str]) -> str:
+        if not labels:
+            return palette[0]
+        label = labels[0]
+        if label not in label_colors:
+            label_colors[label] = palette[len(label_colors) % len(palette)]
+        return label_colors[label]
+
+    if node_color is None:
+        if color_attr:
+            # Color by a specific attribute
+            unique_values: set[str] = set()
+            for _, attrs in graph.nodes(data=True):
+                props = attrs.get("properties", {})
+                val = props.get(color_attr) or attrs.get(color_attr, "")
+                if val:
+                    unique_values.add(str(val))
+            value_colors = {v: palette[i % len(palette)] for i, v in enumerate(sorted(unique_values))}
+            node_color = []
+            for _, attrs in graph.nodes(data=True):
+                props = attrs.get("properties", {})
+                val = props.get(color_attr) or attrs.get(color_attr, "")
+                mapped = color_map.get(str(val), value_colors.get(str(val), palette[0])) if color_map else value_colors.get(str(val), palette[0])
+                node_color.append(mapped)
+        elif color_by_label:
+            node_color = []
+            for _, attrs in graph.nodes(data=True):
+                labels = attrs.get("labels", [])
+                if color_map and labels:
+                    color = color_map.get(labels[0], pick_label_color(labels))
+                else:
+                    color = pick_label_color(labels)
+                node_color.append(color)
+        else:
+            node_color = palette[0]
+
+    # Resolve node sizes
+    if node_size_attr:
+        sizes = []
+        for _, attrs in graph.nodes(data=True):
+            props = attrs.get("properties", {})
+            val = props.get(node_size_attr) or attrs.get(node_size_attr, 1)
+            try:
+                sizes.append(float(val) * 100)
+            except (ValueError, TypeError):
+                sizes.append(600)
+        node_size = sizes
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi, facecolor=bgcolor)
+    ax.set_facecolor(bgcolor)
+
+    # Draw edges
+    is_directed = graph.is_directed() if hasattr(graph, "is_directed") else False
+    if is_directed:
+        nx.draw_networkx_edges(
+            graph,
+            pos,
+            ax=ax,
+            edge_color=edge_color,
+            alpha=edge_alpha,
+            width=edge_width,
+            style=edge_style,
+            arrows=True,
+            arrowsize=edge_arrow_size,
+            **{k: v for k, v in kwargs.items() if k.startswith("edge_")},
+        )
+    else:
+        nx.draw_networkx_edges(
+            graph,
+            pos,
+            ax=ax,
+            edge_color=edge_color,
+            alpha=edge_alpha,
+            width=edge_width,
+            style=edge_style,
+            **{k: v for k, v in kwargs.items() if k.startswith("edge_")},
+        )
+
+    # Draw nodes
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        ax=ax,
+        node_color=node_color,
+        node_size=node_size,
+        alpha=node_alpha,
+        node_shape=node_shape,
+        edgecolors=node_edge_color,
+        linewidths=node_linewidth,
+        **{k: v for k, v in kwargs.items() if k.startswith("node_") and k not in [
+            "node_color", "node_size", "node_shape", "node_edge_color"
+        ]},
+    )
+
+    # Draw labels
+    if show_labels:
+        labels = {}
+        for node_id, attrs in graph.nodes(data=True):
+            labels[node_id] = _resolve_node_label(node_id, attrs, node_label, label_attr, label_fn)
+
+        # Apply label offset
+        if label_offset != (0, 0):
+            offset_pos = {
+                node: (x + label_offset[0], y + label_offset[1])
+                for node, (x, y) in pos.items()
+            }
+        else:
+            offset_pos = pos
+
+        nx.draw_networkx_labels(
+            graph,
+            offset_pos,
+            labels,
+            ax=ax,
+            font_size=font_size,
+            font_color=font_color,
+            font_weight=font_weight,
+        )
+
+    # Add legend
+    if show_legend and label_colors:
+        from matplotlib.patches import Patch
+
+        legend_elements = [
+            Patch(facecolor=color, edgecolor=node_edge_color, label=label)
+            for label, color in sorted(label_colors.items())
+        ]
+        if legend_bbox_to_anchor:
+            ax.legend(
+                handles=legend_elements,
+                loc=legend_loc,
+                bbox_to_anchor=legend_bbox_to_anchor,
+                framealpha=0.9,
+            )
+        else:
+            ax.legend(handles=legend_elements, loc=legend_loc, framealpha=0.9)
+
+    # Set title
+    if title:
+        ax.set_title(title, fontsize=title_fontsize, fontweight=title_fontweight)
+
+    # Configure axes
+    if not show_axes:
+        ax.axis("off")
+    ax.set_xlim([min(x for x, y in pos.values()) - margins[0],
+                 max(x for x, y in pos.values()) + margins[0]])
+    ax.set_ylim([min(y for x, y in pos.values()) - margins[1],
+                 max(y for x, y in pos.values()) + margins[1]])
+
+    plt.tight_layout()
+
+    if return_fig:
+        return fig
+    plt.show()
+    return None
+
+
+def save_matplotlib(
+    graph,
+    path: str,
+    format: str | None = None,
+    bbox_inches: str = "tight",
+    pad_inches: float = 0.1,
+    **kwargs: Any,
+) -> str:
+    """Save a NetworkX graph visualization to a file using Matplotlib.
+
+    Args:
+        graph: NetworkX graph to plot
+        path: Output file path
+        format: File format ('png', 'svg', 'pdf', etc.). Auto-detected from path if None
+        bbox_inches: Bounding box setting ('tight' to remove extra whitespace)
+        pad_inches: Padding around the figure when bbox_inches='tight'
+        **kwargs: Additional arguments passed to plot_matplotlib
+
+    Returns:
+        The output file path
+
+    Example:
+        >>> save_matplotlib(graph, 'network.png', figsize=(10, 8), color_by_label=True)
+        >>> save_matplotlib(graph, 'network.svg', format='svg', title="My Graph")
+    """
+    fig = plot_matplotlib(graph, return_fig=True, **kwargs)
+    if fig is None:
+        raise RuntimeError("Failed to create figure")
+
+    try:
+        fig.savefig(path, format=format, bbox_inches=bbox_inches, pad_inches=pad_inches)
+    finally:
+        import matplotlib.pyplot as plt
+        plt.close(fig)
+
+    return path
+
+
+class MatplotlibBackend:
+    """Matplotlib backend adapter for static visualizations."""
+
+    name = "matplotlib"
+
+    def render(self, graph, **kwargs: Any):
+        """Render graph and return the matplotlib figure."""
+        return plot_matplotlib(graph, return_fig=True, **kwargs)
+
+    def export(self, graph, path: str, **kwargs: Any) -> str:
+        """Render graph and save to a file path."""
+        return save_matplotlib(graph, path=path, **kwargs)
+
+
 class VizBackend(Protocol):
     """Visualization backend interface."""
 
@@ -236,6 +643,7 @@ class CytoscapeBackend:
 
 _VIZ_BACKENDS: dict[str, VizBackend] = {
     "pyvis": PyVisBackend(),
+    "matplotlib": MatplotlibBackend(),
     "d2": D2Backend(),
     "mermaid": MermaidBackend(),
     "graphviz": GraphvizBackend(),

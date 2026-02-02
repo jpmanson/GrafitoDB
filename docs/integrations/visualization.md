@@ -292,11 +292,217 @@ export_graph(
 )
 ```
 
+## Matplotlib
+
+Matplotlib provides static, publication-quality graph visualizations with extensive customization options.
+
+### Installation
+
+```bash
+pip install matplotlib
+```
+
+### Basic Usage
+
+```python
+from grafito import GrafitoDatabase
+from grafito.integrations import plot_matplotlib
+
+# Create sample data
+db = GrafitoDatabase(':memory:')
+alice = db.create_node(labels=['Person'], properties={'name': 'Alice', 'group': 'A'})
+bob = db.create_node(labels=['Person'], properties={'name': 'Bob', 'group': 'B'})
+charlie = db.create_node(labels=['Person'], properties={'name': 'Charlie', 'group': 'A'})
+db.create_relationship(alice.id, bob.id, 'KNOWS')
+db.create_relationship(bob.id, charlie.id, 'KNOWS')
+
+# Export to NetworkX
+graph = db.to_networkx()
+
+# Basic plot
+plot_matplotlib(graph, title="Social Network")
+```
+
+### Save to File
+
+```python
+from grafito.integrations import save_matplotlib
+
+# Save as PNG
+save_matplotlib(graph, 'network.png', title="Social Network")
+
+# Save as SVG for vector graphics
+save_matplotlib(graph, 'network.svg', format='svg', figsize=(12, 10))
+```
+
+### Using the Generic Export API
+
+```python
+from grafito.integrations import export_graph
+
+# Export using matplotlib backend
+export_graph(graph, 'network.png', backend='matplotlib', title="My Graph")
+```
+
+### Custom Styling
+
+#### Color by Labels
+
+```python
+plot_matplotlib(
+    graph,
+    color_by_label=True,           # Color nodes by their label
+    palette=['#ff6b6b', '#4ecdc4'], # Custom color palette
+    node_size=800,                 # Larger nodes
+    title="Colored by Label"
+)
+```
+
+#### Color by Property
+
+```python
+plot_matplotlib(
+    graph,
+    color_by=False,                # Disable auto-coloring
+    color_attr='group',            # Color by 'group' property
+    color_map={'A': '#ff6b6b', 'B': '#4ecdc4'},
+    title="Colored by Group"
+)
+```
+
+#### Node Sizes
+
+```python
+plot_matplotlib(
+    graph,
+    node_size=1000,                # Fixed size for all nodes
+    # Or use a property for variable sizes:
+    # node_size_attr='importance',
+    node_shape='s',                # Square nodes
+    node_alpha=0.8,
+    title="Custom Node Styles"
+)
+```
+
+#### Edge Styling
+
+```python
+plot_matplotlib(
+    graph,
+    edge_color='#888888',
+    edge_width=2.0,
+    edge_alpha=0.5,
+    edge_style='dashed',
+    title="Styled Edges"
+)
+```
+
+### Layout Options
+
+```python
+# Available layouts: 'spring', 'circular', 'random', 'shell',
+#                    'spectral', 'kamada_kawai', 'planar', 'fruchterman_reingold'
+
+plot_matplotlib(graph, layout='circular', title="Circular Layout")
+
+plot_matplotlib(
+    graph,
+    layout='spring',
+    layout_kwargs={'k': 2, 'iterations': 50},  # Spring layout parameters
+    title="Spring Layout (Customized)"
+)
+
+plot_matplotlib(graph, layout='kamada_kawai', title="Kamada-Kawai Layout")
+```
+
+### Labels and Fonts
+
+```python
+plot_matplotlib(
+    graph,
+    node_label='name',             # Use 'name' property as label
+    font_size=12,
+    font_color='#333333',
+    font_weight='bold',
+    label_offset=(0, 0.08),        # Move labels above nodes
+    title="Custom Labels"
+)
+```
+
+### Complete Customization Example
+
+```python
+from grafito.integrations import plot_matplotlib
+
+fig = plot_matplotlib(
+    graph,
+    # Figure
+    figsize=(14, 12),
+    dpi=150,
+    bgcolor='#f8f9fa',
+    # Layout
+    layout='spring',
+    layout_kwargs={'k': 1.5, 'seed': 42},
+    # Nodes
+    color_by_label=True,
+    palette=['#e74c3c', '#3498db', '#2ecc71', '#f39c12'],
+    node_size=1200,
+    node_shape='o',
+    node_alpha=0.9,
+    node_edge_color='#2c3e50',
+    node_linewidth=2.0,
+    # Edges
+    edge_color='#7f8c8d',
+    edge_width=2.0,
+    edge_alpha=0.6,
+    edge_arrow_size=20,
+    # Labels
+    node_label='name',
+    font_size=11,
+    font_color='#2c3e50',
+    font_weight='bold',
+    label_offset=(0, 0.06),
+    # Legend
+    show_legend=True,
+    legend_loc='upper right',
+    # Title
+    title="Complete Customization Example",
+    title_fontsize=18,
+    title_fontweight='bold',
+    # Return figure for further customization
+    return_fig=True
+)
+
+# Further matplotlib customization
+fig.axes[0].annotate(
+    'Central Node',
+    xy=(0.5, 0.5), xytext=(0.7, 0.8),
+    arrowprops=dict(arrowstyle='->', color='red'),
+    fontsize=10, color='red'
+)
+
+fig.savefig('custom_network.png', dpi=200, bbox_inches='tight')
+```
+
+### Advanced: Using the Backend System
+
+```python
+from grafito.integrations import render_graph, export_graph
+
+# Render returns the matplotlib Figure
+fig = render_graph(graph, backend='matplotlib', title="Rendered")
+
+# Modify the figure before saving
+fig.axes[0].set_xlabel("Custom X Label")
+fig.savefig('modified.png')
+```
+
 ## Comparison
 
 | Backend | Output | Interactive | Best For |
 |---------|--------|-------------|----------|
 | **PyVis** | HTML | ✅ Yes | Exploration, dashboards |
+| **Matplotlib** | PNG/SVG/PDF | ❌ No | Publications, static analysis |
 | **D2** | Text/SVG | ❌ No | Documentation, version control |
 | **Mermaid** | Markdown/SVG | ⚠️ Partial | READMEs, docs integration |
 | **Graphviz** | PNG/SVG/PDF | ❌ No | Publications, static diagrams |
@@ -309,7 +515,7 @@ export_graph(
 from grafito.integrations import available_viz_backends
 
 print(available_viz_backends())
-# ['cytoscape', 'd2', 'd3', 'graphviz', 'mermaid', 'pyvis']
+# ['cytoscape', 'd2', 'd3', 'graphviz', 'matplotlib', 'mermaid', 'pyvis']
 ```
 
 ## Large Graph Handling
