@@ -2,7 +2,7 @@
 
 A fast, embeddable graph database for Python — no server required, SQLite-backed, Cypher-powered, and optional semantic search.
 
-![alt text](images/grafito_logo.png)
+![GrafitoDB Logo](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/grafito_logo.png)
 
 GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 
@@ -89,7 +89,7 @@ save_pyvis_html(
     physics="compact",  # or "spread"
 )
 ```
-![alt text](images/pyvis.png)
+![PyVis Visualization](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/pyvis.png)
 
 D2 export (text) and optional render via CLI:
 
@@ -101,7 +101,7 @@ export_graph(graph, "graph.d2", backend="d2", node_label="label_and_name")
 # If you have the `d2` CLI installed:
 export_graph(graph, "graph.d2", backend="d2", render="svg")
 ```
-![alt text](images/grafito_d2_example.png)
+![D2 Export Example](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/grafito_d2_example.png)
 
 Note: the D2 renderer is a separate CLI (`brew install d2` on macOS). The Python
 package does not bundle it.
@@ -116,7 +116,7 @@ export_graph(graph, "graph.mmd", backend="mermaid", node_label="label_and_name")
 # If you have mermaid-cli installed:
 export_graph(graph, "graph.mmd", backend="mermaid", render="svg")
 ```
-![alt text](images/grafito_mermaid_example.png)
+![Mermaid Export Example](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/grafito_mermaid_example.png)
 
 Note: Mermaid rendering requires `mmdc` (`npm i -g @mermaid-js/mermaid-cli`).
 
@@ -158,7 +158,7 @@ from grafito.integrations import export_graph
 graph = db.to_networkx()
 export_graph(graph, "graph.html", backend="cytoscape", node_label="label_and_name", layout="cose")
 ```
-![alt text](images/cytoscape.png)
+![Cytoscape Visualization](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/cytoscape.png)
 
 Netgraph export (publication-quality PNG/SVG/PDF via matplotlib):
 
@@ -181,7 +181,7 @@ export_graph(
     node_label_fontdict={"size": 12, "fontweight": "bold"},
 )
 ```
-![alt text](images/netgraph.png)
+![Netgraph Visualization](https://raw.githubusercontent.com/jpmanson/GrafitoDB/main/images/netgraph.png)
 
 ## Quick Start
 
