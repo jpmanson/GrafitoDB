@@ -1,17 +1,17 @@
 # ANN Backends
 
-Grafito supports multiple Approximate Nearest Neighbor (ANN) backends for vector search.
+GrafitoDB supports multiple Approximate Nearest Neighbor (ANN) backends for vector search.
 
 ## Available Backends
 
 | Backend | Install | Best For | Persistence |
 |---------|---------|----------|-------------|
-| **FAISS** | `pip install grafito[faiss]` | Production, most features | ✅ Yes |
-| **Annoy** | `pip install grafito[annoy]` | Large datasets, memory-mapped | ✅ Yes |
-| **LEANN** | `pip install grafito[leann]` | Fast builds, small datasets | ✅ Yes |
-| **HNSWlib** | `pip install grafito[hnswlib]` | High recall | ⚠️ Soft delete |
-| **USearch** | `pip install grafito[usearch]` | Modern, fast | ✅ Yes |
-| **Voyager** | `pip install grafito[voyager]` | Spotify's library | ✅ Yes |
+| **FAISS** | `pip install grafitodb[faiss]` | Production, most features | ✅ Yes |
+| **Annoy** | `pip install grafitodb[annoy]` | Large datasets, memory-mapped | ✅ Yes |
+| **LEANN** | `pip install grafitodb[leann]` | Fast builds, small datasets | ✅ Yes |
+| **HNSWlib** | `pip install grafitodb[hnswlib]` | High recall | ⚠️ Soft delete |
+| **USearch** | `pip install grafitodb[usearch]` | Modern, fast | ✅ Yes |
+| **Voyager** | `pip install grafitodb[voyager]` | Spotify's library | ✅ Yes |
 | **Brute Force** | Built-in | Small datasets, exact search | ❌ No |
 
 ## FAISS

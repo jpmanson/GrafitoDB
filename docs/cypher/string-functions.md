@@ -2,6 +2,69 @@
 
 String manipulation functions in Cypher.
 
+## Type Conversion (Casting)
+
+### toInteger()
+
+Converts a value to an integer.
+
+```cypher
+// From string
+RETURN toInteger('42')        // 42
+RETURN toInteger('3.14')      // 3 (truncates)
+
+// From float
+RETURN toInteger(3.9)         // 3 (truncates)
+
+// From boolean
+RETURN toInteger(true)        // 1
+RETURN toInteger(false)       // 0
+
+// Null handling
+RETURN toInteger(null)        // null
+```
+
+### toFloat()
+
+Converts a value to a float.
+
+```cypher
+// From string
+RETURN toFloat('3.14')        // 3.14
+RETURN toFloat('2')           // 2.0
+
+// From integer
+RETURN toFloat(42)            // 42.0
+
+// From boolean
+RETURN toFloat(true)          // 1.0
+RETURN toFloat(false)         // 0.0
+
+// Null handling
+RETURN toFloat(null)          // null
+```
+
+### toString()
+
+Converts any value to a string.
+
+```cypher
+// From number
+RETURN toString(42)           // '42'
+RETURN toString(3.14)         // '3.14'
+
+// From boolean
+RETURN toString(true)         // 'true'
+RETURN toString(false)        // 'false'
+
+// From temporal types
+RETURN toString(date())       // '2024-01-15'
+RETURN toString(datetime())   // '2024-01-15T14:30:00.123456'
+
+// Null handling
+RETURN toString(null)         // 'null'
+```
+
 ## Case Conversion
 
 ### toUpper()

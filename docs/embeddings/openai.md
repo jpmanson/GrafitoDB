@@ -1,6 +1,6 @@
 # OpenAI Embeddings
 
-Grafito integrates with OpenAI's embedding API to generate high-quality vector representations of text.
+GrafitoDB integrates with OpenAI's embedding API to generate high-quality vector representations of text.
 
 ## Overview
 

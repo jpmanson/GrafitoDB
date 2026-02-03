@@ -229,6 +229,45 @@ MATCH p = (a:Person)-[:KNOWS]->(b:Person)
 RETURN nodes(p) AS pathNodes, relationships(p) AS pathRels
 ```
 
+### Path Functions
+
+#### nodes()
+
+Returns a list of all nodes in a path.
+
+```cypher
+MATCH p = (a:Person {name: 'Alice'})-[:KNOWS*1..3]->(b:Person)
+RETURN nodes(p) as pathNodes
+// [(:Person {name: 'Alice'}), (:Person {...}), ...]
+
+// Count nodes in path
+MATCH p = shortestPath((a)-[:KNOWS*]-(b))
+RETURN size(nodes(p)) as nodeCount
+```
+
+#### relationships()
+
+Returns a list of all relationships in a path.
+
+```cypher
+MATCH p = (a:Person {name: 'Alice'})-[:KNOWS*1..3]->(b:Person)
+RETURN relationships(p) as pathRels
+// [(:KNOWS {...}), (:KNOWS {...}), ...]
+
+// Get relationship types
+MATCH p = (a)-[*1..3]-(b)
+RETURN [r IN relationships(p) | type(r)] as relTypes
+```
+
+#### length()
+
+Returns the number of relationships in a path.
+
+```cypher
+MATCH p = (a)-[:KNOWS*]->(b)
+RETURN length(p) as hops
+```
+
 ## Common Use Cases
 
 ### Dashboard Metrics

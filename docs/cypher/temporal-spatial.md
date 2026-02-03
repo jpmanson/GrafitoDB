@@ -24,6 +24,25 @@ RETURN date() as today
 RETURN time('14:30:00') as t
 RETURN time('14:30:00.123') as t
 RETURN time('14:30:00+01:00') as t  // with timezone
+
+// Current time
+RETURN time() as now
+```
+
+### LocalTime
+
+Time without timezone information.
+
+```cypher
+// Create local time
+RETURN localtime('14:30:00') as t
+RETURN localtime('14:30:00.123') as t
+
+// Current local time
+RETURN localtime() as now
+
+// From string with timezone (timezone is discarded)
+RETURN localtime('14:30:00+05:00')  // 14:30:00
 ```
 
 ### DateTime
@@ -42,10 +61,21 @@ RETURN datetime() as now
 
 ### LocalDateTime
 
+DateTime without timezone information.
+
 ```cypher
-// Without timezone
+// From ISO string (without timezone)
 RETURN localdatetime('2024-01-15T14:30:00') as ldt
+
+// Current local datetime
+RETURN localdatetime() as now
+
+// From string with timezone (timezone is discarded)
+RETURN localdatetime('2024-01-15T14:30:00+05:00')  // 2024-01-15T14:30:00
 ```
+
+!!! note "Timezone handling"
+    When parsing a string with timezone using `localdatetime()`, the timezone offset is discarded and the local time is preserved. Use `datetime()` if you need to preserve timezone information.
 
 ### Duration
 

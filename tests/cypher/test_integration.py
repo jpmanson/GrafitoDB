@@ -8,6 +8,11 @@ from grafito.cypher.exceptions import CypherExecutionError, CypherSyntaxError
 from grafito.exceptions import ConstraintError
 
 
+def _tests_res_uri(filename: str) -> str:
+    base = pathlib.Path(__file__).resolve().parents[1] / "res"
+    return (base / filename).as_uri()
+
+
 class TestCypherCreate:
     """Test end-to-end CREATE queries."""
 
@@ -649,8 +654,7 @@ class TestCypherReturn:
 
     def test_return_apoc_load_jsonarray_local(self):
         db = GrafitoDatabase(':memory:')
-        file_path = os.path.join(os.getcwd(), "tests", "res", "apoc_sample.json")
-        file_uri = pathlib.Path(file_path).as_uri()
+        file_uri = _tests_res_uri("apoc_sample.json")
         results = db.execute(f"""
             CALL apoc.load.jsonArray('{file_uri}') YIELD value
             RETURN value.name AS name
@@ -661,8 +665,7 @@ class TestCypherReturn:
 
     def test_return_apoc_load_json_array_local(self):
         db = GrafitoDatabase(':memory:')
-        file_path = os.path.join(os.getcwd(), "tests", "res", "apoc_sample.json")
-        file_uri = pathlib.Path(file_path).as_uri()
+        file_uri = _tests_res_uri("apoc_sample.json")
         results = db.execute(f"""
             CALL apoc.load.json('{file_uri}') YIELD value
             RETURN value.name AS name
@@ -673,8 +676,7 @@ class TestCypherReturn:
 
     def test_return_apoc_load_json_object_local(self):
         db = GrafitoDatabase(':memory:')
-        file_path = os.path.join(os.getcwd(), "tests", "res", "apoc_object.json")
-        file_uri = pathlib.Path(file_path).as_uri()
+        file_uri = _tests_res_uri("apoc_object.json")
         results = db.execute(f"""
             CALL apoc.load.json('{file_uri}') YIELD value
             RETURN value.name AS name, value.house AS house

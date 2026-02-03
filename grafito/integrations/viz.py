@@ -64,6 +64,80 @@ _DEFAULT_COLORS = [
 ]
 
 
+def _resolve_label(
+    node_id: Any,
+    attrs: dict[str, Any],
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+) -> str:
+    """Resolve the label to display for a node."""
+    if label_fn:
+        return str(label_fn(node_id, attrs))
+    properties = attrs.get("properties", {})
+    if label_attr:
+        if label_attr in attrs:
+            return str(attrs[label_attr])
+        if label_attr in properties:
+            return str(properties[label_attr])
+    if node_label == "name":
+        return str(properties.get("name", node_id))
+    if node_label == "labels":
+        labels = attrs.get("labels", [])
+        return ":".join(labels) if labels else str(node_id)
+    if node_label == "label_and_name":
+        labels = attrs.get("labels", [])
+        label_prefix = ":".join(labels) + " " if labels else ""
+        return f"{label_prefix}{properties.get('name', node_id)}"
+    return str(node_id)
+
+
+def _multidigraph_to_digraph(
+    graph,
+    edge_separator: str = " | ",
+    merge_strategy: str = "concat",
+):
+    """Convert MultiDiGraph to DiGraph for netgraph compatibility.
+
+    Args:
+        graph: A NetworkX MultiDiGraph.
+        edge_separator: Separator for concatenating edge types.
+        merge_strategy: How to merge multiple edges:
+            - "concat": Concatenate edge types with separator
+            - "first": Keep only the first edge's attributes
+            - "count": Keep first edge attrs and add _edge_count
+
+    Returns:
+        A NetworkX DiGraph with merged edges.
+    """
+    import networkx as nx
+
+    simple = nx.DiGraph()
+    for node_id, attrs in graph.nodes(data=True):
+        simple.add_node(node_id, **attrs)
+
+    edge_data: dict[tuple, list[dict]] = {}
+    for source, target, key, attrs in graph.edges(keys=True, data=True):
+        edge_key = (source, target)
+        if edge_key not in edge_data:
+            edge_data[edge_key] = []
+        edge_data[edge_key].append(attrs)
+
+    for (source, target), attrs_list in edge_data.items():
+        if merge_strategy == "first":
+            merged = attrs_list[0].copy()
+        elif merge_strategy == "count":
+            merged = attrs_list[0].copy()
+            merged["_edge_count"] = len(attrs_list)
+        else:  # concat
+            types = [a.get("type", "RELATED_TO") for a in attrs_list]
+            merged = attrs_list[0].copy()
+            merged["type"] = edge_separator.join(types)
+        simple.add_edge(source, target, **merged)
+
+    return simple
+
+
 def to_pyvis(
     graph,
     notebook: bool = True,
@@ -103,26 +177,6 @@ def to_pyvis(
             label_colors[label] = palette[len(label_colors) % len(palette)]
         return label_colors[label]
 
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     for node_id, attrs in graph.nodes(data=True):
         labels = attrs.get("labels", [])
         title = attrs.get("properties", {}).get("name", str(node_id))
@@ -134,7 +188,7 @@ def to_pyvis(
             color = pick_label_color(labels)
         net.add_node(
             node_id,
-            label=resolve_label(node_id, attrs),
+            label=_resolve_label(node_id, attrs, node_label, label_attr, label_fn),
             title=f"{labels} {title}",
             color=color,
         )
@@ -754,6 +808,34 @@ class CytoscapeBackend:
             handle.write(html)
         return path
 
+
+class NetgraphBackend:
+    """Netgraph backend adapter (matplotlib-based publication quality graphs)."""
+
+    name = "netgraph"
+
+    def render(self, graph, **kwargs: Any):
+        return graph_to_netgraph(graph, **kwargs)
+
+    def export(self, graph, path: str, **kwargs: Any) -> str:
+        # Extract matplotlib savefig options
+        export_kwargs = dict(kwargs)
+        dpi = export_kwargs.pop("dpi", 150)
+        bbox_inches = export_kwargs.pop("bbox_inches", "tight")
+        # Force non-interactive for export
+        export_kwargs["interactive"] = False
+
+        result = graph_to_netgraph(graph, **export_kwargs)
+        if isinstance(result, tuple):
+            fig, ax, ng = result
+        else:
+            # ax was provided, get figure from the netgraph instance
+            fig = result.ax.figure
+
+        fig.savefig(path, dpi=dpi, bbox_inches=bbox_inches)
+        return path
+
+
 _VIZ_BACKENDS: dict[str, VizBackend] = {
     "pyvis": PyVisBackend(),
     "matplotlib": MatplotlibBackend(),
@@ -762,6 +844,7 @@ _VIZ_BACKENDS: dict[str, VizBackend] = {
     "graphviz": GraphvizBackend(),
     "d3": D3Backend(),
     "cytoscape": CytoscapeBackend(),
+    "netgraph": NetgraphBackend(),
 }
 
 
@@ -815,29 +898,9 @@ def graph_to_d2(
     """Serialize a NetworkX graph to D2 text."""
     lines: list[str] = ["direction: right"]
 
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     for node_id, attrs in graph.nodes(data=True):
         node_key = _safe_d2_id(node_id)
-        label = resolve_label(node_id, attrs)
+        label = _resolve_label(node_id, attrs, node_label, label_attr, label_fn)
         lines.append(f"{node_key}: { _safe_d2_id(label) }")
         if include_properties:
             props = attrs.get("properties", {})
@@ -877,26 +940,6 @@ def graph_to_mermaid(
     """Serialize a NetworkX graph to Mermaid flowchart text."""
     lines: list[str] = [f"flowchart {direction}"]
 
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     def mermaid_id(value: Any) -> str:
         text = str(value)
         safe = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in text)
@@ -906,7 +949,7 @@ def graph_to_mermaid(
     for node_id, attrs in graph.nodes(data=True):
         m_id = mermaid_id(node_id)
         node_ids[node_id] = m_id
-        label = resolve_label(node_id, attrs)
+        label = _resolve_label(node_id, attrs, node_label, label_attr, label_fn)
         lines.append(f'{m_id}["{label}"]')
         if include_properties:
             props = attrs.get("properties", {})
@@ -978,28 +1021,8 @@ def graph_to_dot(
     if edge_attrs:
         lines.append(f"  edge [{_attrs_to_dot(edge_attrs)}];")
 
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     for node_id, attrs in graph.nodes(data=True):
-        label = resolve_label(node_id, attrs).replace("\"", "\\\"")
+        label = _resolve_label(node_id, attrs, node_label, label_attr, label_fn).replace("\"", "\\\"")
         lines.append(f'  "{node_id}" [label="{label}"];')
         if include_properties:
             props = attrs.get("properties", {})
@@ -1041,27 +1064,6 @@ def graph_to_d3_html(
 ) -> str:
     """Serialize a NetworkX graph into a self-contained D3 HTML document."""
     palette = palette or _DEFAULT_COLORS
-
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     label_colors: dict[str, str] = {}
 
     def pick_label_color(labels: list[str]) -> str:
@@ -1078,7 +1080,7 @@ def graph_to_d3_html(
         nodes.append(
             {
                 "id": str(node_id),
-                "label": resolve_label(node_id, attrs),
+                "label": _resolve_label(node_id, attrs, node_label, label_attr, label_fn),
                 "group": labels[0] if labels else "Node",
                 "color": pick_label_color(labels),
                 "title": attrs.get("properties", {}).get("name", str(node_id)),
@@ -1249,27 +1251,6 @@ def graph_to_cytoscape_html(
 ) -> str:
     """Serialize a NetworkX graph into a Cytoscape.js HTML document."""
     palette = palette or _DEFAULT_COLORS
-
-    def resolve_label(node_id: Any, attrs: dict[str, Any]) -> str:
-        if label_fn:
-            return str(label_fn(node_id, attrs))
-        properties = attrs.get("properties", {})
-        if label_attr:
-            if label_attr in attrs:
-                return str(attrs[label_attr])
-            if label_attr in properties:
-                return str(properties[label_attr])
-        if node_label == "name":
-            return str(properties.get("name", node_id))
-        if node_label == "labels":
-            labels = attrs.get("labels", [])
-            return ":".join(labels) if labels else str(node_id)
-        if node_label == "label_and_name":
-            labels = attrs.get("labels", [])
-            label_prefix = ":".join(labels) + " " if labels else ""
-            return f"{label_prefix}{properties.get('name', node_id)}"
-        return str(node_id)
-
     label_colors: dict[str, str] = {}
 
     def pick_label_color(labels: list[str]) -> str:
@@ -1287,7 +1268,7 @@ def graph_to_cytoscape_html(
             {
                 "data": {
                     "id": str(node_id),
-                    "label": resolve_label(node_id, attrs),
+                    "label": _resolve_label(node_id, attrs, node_label, label_attr, label_fn),
                     "group": labels[0] if labels else "Node",
                     "color": pick_label_color(labels),
                     "title": attrs.get("properties", {}).get("name", str(node_id)),
@@ -1367,6 +1348,167 @@ const cy = cytoscape({{
 </body>
 </html>
 """
+
+
+def graph_to_netgraph(
+    graph,
+    # Labels (consistent with other backends)
+    node_label: str = "id",
+    label_attr: str | None = None,
+    label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
+    # Colors
+    color_by_label: bool = True,
+    palette: list[str] | None = None,
+    default_color: str = "#8ecae6",
+    node_color_attr: str | None = None,
+    color_map: dict[str, str] | None = None,
+    # Netgraph specifics
+    interactive: bool = False,
+    node_layout: str = "spring",
+    edge_layout: str = "straight",
+    node_size: float = 3.0,
+    edge_width: float = 1.0,
+    arrows: bool = True,
+    # Conversion
+    edge_merge_strategy: str = "concat",
+    # Matplotlib
+    ax: Any = None,
+    figsize: tuple[float, float] = (12, 8),
+    **kwargs: Any,
+):
+    """Convert a NetworkX graph into a netgraph visualization.
+
+    Args:
+        graph: A NetworkX graph (MultiDiGraph will be converted to DiGraph).
+        node_label: How to label nodes: "id", "name", "labels", or "label_and_name".
+        label_attr: Specific attribute to use as label.
+        label_fn: Custom function to compute labels.
+        color_by_label: Assign colors based on node labels.
+        palette: List of colors for color_by_label.
+        default_color: Default node color.
+        node_color_attr: Node property to use for color.
+        color_map: Map from label names to colors.
+        interactive: Enable interactive mode (drag nodes).
+        node_layout: Layout algorithm: "spring", "circular", "random", etc.
+        edge_layout: Edge routing: "straight", "curved", "arc", "bundled".
+        node_size: Size of nodes.
+        edge_width: Width of edges.
+        arrows: Show directional arrows.
+        edge_merge_strategy: How to merge multi-edges: "concat", "first", "count".
+        ax: Matplotlib axes to draw on.
+        figsize: Figure size if creating new figure.
+        **kwargs: Additional arguments passed to netgraph.
+
+    Returns:
+        If ax is provided: netgraph instance.
+        If ax is None: tuple of (fig, ax, netgraph_instance).
+    """
+    try:
+        import netgraph
+    except ImportError as exc:
+        raise ImportError(
+            "netgraph is not installed. Install with `pip install grafito[netgraph]` "
+            "or `uv pip install grafito[netgraph]`."
+        ) from exc
+
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    # Convert MultiDiGraph to DiGraph if needed
+    if isinstance(graph, nx.MultiDiGraph):
+        graph = _multidigraph_to_digraph(graph, merge_strategy=edge_merge_strategy)
+    elif isinstance(graph, nx.MultiGraph):
+        simple = nx.Graph()
+        for node_id, attrs in graph.nodes(data=True):
+            simple.add_node(node_id, **attrs)
+        edge_data: dict[tuple, list[dict]] = {}
+        for u, v, key, attrs in graph.edges(keys=True, data=True):
+            edge_key = tuple(sorted([u, v]))
+            if edge_key not in edge_data:
+                edge_data[edge_key] = []
+            edge_data[edge_key].append(attrs)
+        for (u, v), attrs_list in edge_data.items():
+            if edge_merge_strategy == "first":
+                merged = attrs_list[0].copy()
+            elif edge_merge_strategy == "count":
+                merged = attrs_list[0].copy()
+                merged["_edge_count"] = len(attrs_list)
+            else:
+                types = [a.get("type", "RELATED_TO") for a in attrs_list]
+                merged = attrs_list[0].copy()
+                merged["type"] = " | ".join(types)
+            simple.add_edge(u, v, **merged)
+        graph = simple
+
+    palette = palette or _DEFAULT_COLORS
+    label_colors: dict[str, str] = {}
+
+    def pick_label_color(labels: list[str]) -> str:
+        if not labels:
+            return default_color
+        for lbl in labels:
+            if color_map and lbl in color_map:
+                return color_map[lbl]
+        if not color_by_label:
+            return default_color
+        lbl = labels[0]
+        if lbl not in label_colors:
+            label_colors[lbl] = palette[len(label_colors) % len(palette)]
+        return label_colors[lbl]
+
+    # Build node labels and colors
+    node_labels = {}
+    node_colors = {}
+    for node_id, attrs in graph.nodes(data=True):
+        node_labels[node_id] = _resolve_label(node_id, attrs, node_label, label_attr, label_fn)
+        labels = attrs.get("labels", [])
+        if node_color_attr:
+            props = attrs.get("properties", {})
+            node_colors[node_id] = props.get(node_color_attr) or attrs.get(node_color_attr) or default_color
+        else:
+            node_colors[node_id] = pick_label_color(labels)
+
+    # Build edge labels
+    edge_labels = {}
+    if isinstance(graph, nx.DiGraph):
+        for source, target, attrs in graph.edges(data=True):
+            edge_labels[(source, target)] = attrs.get("type", "RELATED_TO")
+    else:
+        for u, v, attrs in graph.edges(data=True):
+            edge_labels[(u, v)] = attrs.get("type", "RELATED_TO")
+
+    # Create figure if not provided
+    created_fig = False
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+        created_fig = True
+    else:
+        fig = ax.figure
+
+    # Choose netgraph class
+    if interactive:
+        NetgraphClass = netgraph.EditableGraph
+    else:
+        NetgraphClass = netgraph.Graph
+
+    # Create netgraph instance
+    ng = NetgraphClass(
+        graph,
+        node_labels=node_labels,
+        node_color=node_colors,
+        edge_labels=edge_labels,
+        node_layout=node_layout,
+        edge_layout=edge_layout,
+        node_size=node_size,
+        edge_width=edge_width,
+        arrows=arrows,
+        ax=ax,
+        **kwargs,
+    )
+
+    if created_fig:
+        return fig, ax, ng
+    return ng
 
 
 def save_pyvis_html(

@@ -11,6 +11,7 @@ __all__ = [
     "export_graph",
     "available_viz_backends",
     "register_viz_backend",
+    "graph_to_netgraph",
 ]
 
 
@@ -19,7 +20,7 @@ def __getattr__(name: str):
         from .rdf import export_rdf, export_turtle
 
         return export_rdf if name == "export_rdf" else export_turtle
-    if name in ("to_pyvis", "save_pyvis_html", "plot_matplotlib", "save_matplotlib", "render_graph", "export_graph", "available_viz_backends", "register_viz_backend"):
+    if name in ("to_pyvis", "save_pyvis_html", "plot_matplotlib", "save_matplotlib", "render_graph", "export_graph", "available_viz_backends", "register_viz_backend", "graph_to_netgraph"):
         from .viz import (
             to_pyvis,
             save_pyvis_html,
@@ -29,6 +30,7 @@ def __getattr__(name: str):
             export_graph,
             available_viz_backends,
             register_viz_backend,
+            graph_to_netgraph,
         )
 
         return {
@@ -40,5 +42,6 @@ def __getattr__(name: str):
             "export_graph": export_graph,
             "available_viz_backends": available_viz_backends,
             "register_viz_backend": register_viz_backend,
+            "graph_to_netgraph": graph_to_netgraph,
         }[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name}")

@@ -129,6 +129,67 @@ WHERE p.age IS NULL
 RETURN p
 ```
 
+### Three-Valued Logic (True/False/Null)
+
+Cypher uses three-valued logic for boolean operations involving `null`:
+
+#### AND Operator
+
+| Left | Right | Result |
+|------|-------|--------|
+| `true` | `true` | `true` |
+| `true` | `false` | `false` |
+| `true` | `null` | `null` |
+| `false` | *any* | `false` |
+| `null` | `false` | `false` |
+| `null` | `true` | `null` |
+| `null` | `null` | `null` |
+
+```cypher
+// Examples
+RETURN true AND true      // true
+RETURN true AND null      // null
+RETURN false AND null     // false
+RETURN null AND null      // null
+```
+
+#### OR Operator
+
+| Left | Right | Result |
+|------|-------|--------|
+| `true` | *any* | `true` |
+| `false` | `false` | `false` |
+| `false` | `true` | `true` |
+| `false` | `null` | `null` |
+| `null` | `true` | `true` |
+| `null` | `false` | `null` |
+| `null` | `null` | `null` |
+
+```cypher
+// Examples
+RETURN true OR null       // true
+RETURN false OR null      // null
+RETURN null OR false      // null
+RETURN null OR true       // true
+```
+
+#### IN Operator with NULL
+
+```cypher
+// Value exists in list
+RETURN 2 IN [1, 2, 3]           // true
+
+// Value doesn't exist
+RETURN 5 IN [1, 2, 3]           // false
+
+// List contains NULL
+RETURN 5 IN [1, 2, null]        // null (might exist, unknown)
+RETURN 2 IN [1, 2, null]        // true (definitely exists)
+
+// NULL value
+RETURN null IN [1, 2, 3]        // null
+```
+
 ## String Matching
 
 ### STARTS WITH
@@ -173,6 +234,31 @@ RETURN p.name
 ```
 
 ## List Operations
+
+### List-Scalar Comparisons
+
+When comparing a list with a scalar value using `=` or `!=`, Cypher checks if the value exists in the list:
+
+```cypher
+// Check if scalar equals any element in list
+WITH [1, 2, 3] as nums
+WHERE nums = 2
+RETURN 'found'      // 'found' - 2 is in the list
+
+// Check if scalar is not in list
+WITH [1, 2, 3] as nums
+WHERE nums != 5
+RETURN 'not found'  // 'not found' - 5 is not in the list
+
+// Works with nodes too
+MATCH (p:Person)
+WITH collect(p) as persons
+WHERE persons = 'Alice'    // true if any person is named Alice
+RETURN persons
+```
+
+!!! note "Only = and !="
+    This shorthand only works with equality (`=`) and inequality (`!=`) operators, not with `<`, `>`, etc.
 
 ### IN Operator
 

@@ -1,6 +1,6 @@
 # Semantic/Vector Search
 
-Grafito supports semantic search using vector embeddings and approximate nearest neighbor (ANN) search.
+GrafitoDB supports semantic search using vector embeddings and approximate nearest neighbor (ANN) search.
 
 ## Overview
 

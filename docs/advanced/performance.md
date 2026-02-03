@@ -1,6 +1,6 @@
 # Advanced: Performance
 
-Grafito performance depends on SQLite configuration, index usage, and query
+GrafitoDB performance depends on SQLite configuration, index usage, and query
 patterns. This page summarizes practical tips.
 
 ## General Tips

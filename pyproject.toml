@@ -1,11 +1,12 @@
 [project]
 name = "grafito"
-version = "0.1.2"
+version = "0.1.3"
 description = "SQLite-based Property Graph Database"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "networkx>=3.6.1",
+    "numpy>=1.26.4",
     "orjson>=3.11.5",
     "zstandard>=0.23.0",
 ]
@@ -40,6 +41,10 @@ bm25s = [
 ]
 d2 = [
 ]
+netgraph = [
+    "netgraph>=4.13.0",
+    "matplotlib>=3.8.0",
+]
 all = [
     "faiss-cpu>=1.13.2",
     "annoy>=1.17.3",
@@ -50,6 +55,8 @@ all = [
     "rdflib>=7.0.0",
     "pyvis>=0.3.2",
     "bm25s>=0.2.2",
+    "netgraph>=4.13.0",
+    "matplotlib>=3.8.0",
 ]
 dev = [
     "pytest>=8.0.0",

@@ -36,6 +36,9 @@ GEMINI.md
 context
 chroma
 tmp_coverage/*
+res
+!tests/res/
+!tests/res/*.json
 .venv_linux
 examples/Grafito Demo.ipynb
 lib

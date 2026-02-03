@@ -214,6 +214,9 @@ def test_save_matplotlib():
 
 
 def test_export_graph_matplotlib():
+    pytest.importorskip("matplotlib")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
     from grafito.integrations import export_graph
     import os
 
@@ -233,43 +236,178 @@ def test_export_graph_matplotlib():
                 pass
 
 
-def test_plot_matplotlib_custom_styling():
+def test_graph_to_netgraph_requires_netgraph():
+    pytest.importorskip("netgraph")
     pytest.importorskip("matplotlib")
-    from grafito.integrations import plot_matplotlib
+    from grafito.integrations import graph_to_netgraph
 
-    db = GrafitoDatabase(":memory:")
-    alice = db.create_node(labels=["Person"], properties={"name": "Alice", "group": "A"})
-    bob = db.create_node(labels=["Person"], properties={"name": "Bob", "group": "B"})
-    company = db.create_node(labels=["Company"], properties={"name": "TechCorp", "group": "C"})
-    db.create_relationship(alice.id, bob.id, "KNOWS")
-    db.create_relationship(alice.id, company.id, "WORKS_AT")
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    fig, ax, ng = graph_to_netgraph(graph, node_label="name")
+    assert fig is not None
+    assert ax is not None
+    assert ng is not None
 
+
+def test_graph_to_netgraph_interactive():
+    pytest.importorskip("netgraph")
+    pytest.importorskip("matplotlib")
+    from grafito.integrations import graph_to_netgraph
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    fig, ax, ng = graph_to_netgraph(graph, interactive=True)
+    assert fig is not None
+    assert ng is not None
+
+
+def test_graph_to_netgraph_with_ax():
+    pytest.importorskip("netgraph")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from grafito.integrations import graph_to_netgraph
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    fig, ax = plt.subplots()
+    ng = graph_to_netgraph(graph, ax=ax)
+    # When ax is provided, only ng is returned
+    assert ng is not None
+    plt.close(fig)
+
+
+def test_graph_to_netgraph_layouts():
+    pytest.importorskip("netgraph")
+    pytest.importorskip("matplotlib")
+    from grafito.integrations import graph_to_netgraph
+
+    db = _make_sample_db()
     graph = db.to_networkx()
 
-    # Test with various styling options
-    fig = plot_matplotlib(
-        graph,
-        return_fig=True,
-        node_label="name",
-        color_by_label=True,
-        palette=["#e74c3c", "#3498db", "#2ecc71"],
-        node_size=1000,
-        font_size=12,
-        layout="circular",
-        title="Custom Styled Graph"
-    )
-    assert fig is not None
+    # Test spring layout
+    fig1, ax1, ng1 = graph_to_netgraph(graph, node_layout="spring")
+    assert ng1 is not None
 
-    # Test coloring by attribute
-    fig2 = plot_matplotlib(
+    # Test circular layout
+    fig2, ax2, ng2 = graph_to_netgraph(graph, node_layout="circular")
+    assert ng2 is not None
+
+
+def test_export_graph_netgraph_png():
+    pytest.importorskip("netgraph")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from grafito.integrations import export_graph
+    import os
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    output_path = os.path.join(os.getcwd(), "tmp_netgraph_test.png")
+    try:
+        result = export_graph(graph, output_path, backend="netgraph", node_label="name")
+        assert result == output_path
+        assert os.path.exists(output_path)
+    finally:
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+
+
+def test_export_graph_netgraph_svg():
+    pytest.importorskip("netgraph")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from grafito.integrations import export_graph
+    import os
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    output_path = os.path.join(os.getcwd(), "tmp_netgraph_test.svg")
+    try:
+        result = export_graph(graph, output_path, backend="netgraph", node_label="name")
+        assert result == output_path
+        assert os.path.exists(output_path)
+    finally:
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+
+
+def test_export_graph_netgraph_pdf():
+    pytest.importorskip("netgraph")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from grafito.integrations import export_graph
+    import os
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    output_path = os.path.join(os.getcwd(), "tmp_netgraph_test.pdf")
+    try:
+        result = export_graph(graph, output_path, backend="netgraph", node_label="name")
+        assert result == output_path
+        assert os.path.exists(output_path)
+    finally:
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+
+
+def test_netgraph_multidigraph_conversion():
+    pytest.importorskip("netgraph")
+    pytest.importorskip("matplotlib")
+    from grafito.integrations import graph_to_netgraph
+
+    # Create a graph with multiple edges between same nodes
+    db = GrafitoDatabase(":memory:")
+    alice = db.create_node(labels=["Person"], properties={"name": "Alice"})
+    bob = db.create_node(labels=["Person"], properties={"name": "Bob"})
+    db.create_relationship(alice.id, bob.id, "KNOWS")
+    db.create_relationship(alice.id, bob.id, "WORKS_WITH")
+    graph = db.to_networkx()
+
+    # Should handle multi-edges without error
+    fig, ax, ng = graph_to_netgraph(graph, edge_merge_strategy="concat")
+    assert ng is not None
+
+    # Test count strategy
+    fig2, ax2, ng2 = graph_to_netgraph(graph, edge_merge_strategy="count")
+    assert ng2 is not None
+
+    # Test first strategy
+    fig3, ax3, ng3 = graph_to_netgraph(graph, edge_merge_strategy="first")
+    assert ng3 is not None
+
+
+def test_netgraph_color_options():
+    pytest.importorskip("netgraph")
+    pytest.importorskip("matplotlib")
+    from grafito.integrations import graph_to_netgraph
+
+    db = GrafitoDatabase(":memory:")
+    alice = db.create_node(labels=["Person"], properties={"name": "Alice", "color": "#ff0000"})
+    bob = db.create_node(labels=["Company"], properties={"name": "Acme"})
+    db.create_relationship(alice.id, bob.id, "WORKS_AT")
+    graph = db.to_networkx()
+
+    # Test color_by_label
+    fig1, ax1, ng1 = graph_to_netgraph(graph, color_by_label=True)
+    assert ng1 is not None
+
+    # Test color_map
+    fig2, ax2, ng2 = graph_to_netgraph(
         graph,
-        return_fig=True,
-        node_label="name",
-        color_by_label=False,
-        color_attr="group",
-        color_map={"A": "#ff6b6b", "B": "#4ecdc4", "C": "#ffe66d"},
-        layout="spring",
-        layout_kwargs={"seed": 42},
-        title="Colored by Group"
+        color_map={"Person": "#00ff00", "Company": "#0000ff"}
     )
-    assert fig2 is not None
+    assert ng2 is not None
+
+    # Test node_color_attr
+    fig3, ax3, ng3 = graph_to_netgraph(graph, node_color_attr="color")
+    assert ng3 is not None

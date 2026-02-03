@@ -1,10 +1,10 @@
-# Grafito
+# GrafitoDB
 
 A fast, embeddable graph database for Python — no server required, SQLite-backed, Cypher-powered, and optional semantic search.
 
 ![alt text](images/grafito_logo.png)
 
-Grafito implements the Property Graph Model (Neo4j-like) with:
+GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 
 - **Cypher queries** and pattern matching
 - **Vector/semantic search** (optional ANN backends)
@@ -14,7 +14,7 @@ Grafito implements the Property Graph Model (Neo4j-like) with:
 
 ## Documentation
 
-Read the full documentation at: https://jpmanson.github.io/grafito/
+Read the full documentation at: https://jpmanson.github.io/GrafitoDB/
 
 ## Features
 
@@ -63,6 +63,7 @@ Optional extras:
 uv pip install grafito[all]
 uv pip install grafito[rdf]
 uv pip install grafito[viz]
+uv pip install grafito[netgraph]
 uv pip install grafito[faiss]
 uv pip install grafito[hnswlib]
 uv pip install grafito[annoy]
@@ -159,6 +160,29 @@ export_graph(graph, "graph.html", backend="cytoscape", node_label="label_and_nam
 ```
 ![alt text](images/cytoscape.png)
 
+Netgraph export (publication-quality PNG/SVG/PDF via matplotlib):
+
+```python
+from grafito.integrations import export_graph
+
+def label_with_wrap(node_id, attrs):
+    labels = attrs.get("labels", [])
+    name = attrs.get("properties", {}).get("name", str(node_id))
+    return f"{labels[0]}\n{name}" if labels else name
+
+graph = db.to_networkx()
+export_graph(
+    graph,
+    "graph.png",
+    backend="netgraph",
+    label_fn=label_with_wrap,
+    color_map={"Person": "#4ecdc4", "Company": "#ff6b6b", "City": "#ffe66d"},
+    node_size=8,
+    node_label_fontdict={"size": 12, "fontweight": "bold"},
+)
+```
+![alt text](images/netgraph.png)
+
 ## Quick Start
 
 ```python
@@ -220,7 +244,7 @@ db.close()
 
 ## Cypher Query Language
 
-Grafito includes a complete Cypher query language parser and executor, allowing you to use Neo4j-style declarative queries alongside the programmatic API.
+GrafitoDB includes a complete Cypher query language parser and executor, allowing you to use Neo4j-style declarative queries alongside the programmatic API.
 
 
 ### Basic Usage
@@ -478,7 +502,8 @@ Optional backends (for `backend="faiss"`, `backend="annoy"`, `backend="leann"`):
 
 Optional integrations:
 - `pip install grafito[rdf]` (RDF/Turtle import/export)
-- `pip install grafito[viz]` (visualization helpers)
+- `pip install grafito[viz]` (PyVis visualization)
+- `pip install grafito[netgraph]` (publication-quality matplotlib graphs)
 
 NetworkX export example:
 
@@ -570,8 +595,8 @@ results = db.semantic_search(vector, k=10, index="people_vec")
 ```
 
 Default `k` behavior:
-- If `k` is omitted, Grafito uses `options.default_k` for the index.
-- Otherwise it falls back to `default_top_k` from `GrafitoDatabase`.
+- If `k` is omitted, GrafitoDB uses `options.default_k` for the index.
+- Otherwise it falls back to `default_top_k` from `GrafitoDB`.
 
 Example:
 
@@ -1441,7 +1466,7 @@ with db:
 
 ### Database Schema
 
-Grafito uses a normalized SQLite schema (simplified excerpt; see `grafito/schema.py` for the full schema):
+GrafitoDB uses a normalized SQLite schema (simplified excerpt; see `grafito/schema.py` for the full schema):
 
 ```sql
 -- Nodes: store node data
@@ -1490,7 +1515,7 @@ CREATE TABLE relationships (
 
 ## Testing
 
-Grafito has comprehensive test coverage
+GrafitoDB has comprehensive test coverage
 
 ```bash
 # Run all tests
@@ -1531,7 +1556,7 @@ pytest tests/cypher/test_integration.py
 
 ## Use Cases
 
-Grafito is ideal for:
+GrafitoDB is ideal for:
 
 - **Prototyping** graph-based applications
 - **Educational** purposes (learning graph databases)
@@ -1553,4 +1578,4 @@ Apache License 2.0
 
 ---
 
-**Grafito** - Graph + SQLite = Simple, Powerful Graph Database
+**GrafitoDB** - Graph + SQLite = Simple, Powerful Graph Database

@@ -1,6 +1,6 @@
 # Full-Text Search (FTS5)
 
-Grafito provides full-text search capabilities using SQLite's FTS5 extension.
+GrafitoDB provides full-text search capabilities using SQLite's FTS5 extension.
 
 ## Prerequisites
 
@@ -251,7 +251,7 @@ db.rebuild_text_index()
 
 ```python
 # BM25 scores can be negative (lower is better in FTS5)
-# Grafito normalizes to positive scores
+# GrafitoDB normalizes to positive scores
 # Check raw scores to debug
 results = db.text_search('term', k=10)
 for r in results:

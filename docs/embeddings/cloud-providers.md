@@ -1,6 +1,6 @@
 # Cloud Provider Embeddings
 
-Grafito supports multiple managed embedding APIs. Each provider has its own
+GrafitoDB supports multiple managed embedding APIs. Each provider has its own
 SDK or HTTP requirements, but all integrate via `EmbeddingFunction`.
 
 ## AWS Bedrock
@@ -227,7 +227,7 @@ embed_fn = TensorFlowHubEmbeddingFunction(
 )
 ```
 
-## Using Any Provider with Grafito
+## Using Any Provider with GrafitoDB
 
 ```python
 from grafito import GrafitoDatabase

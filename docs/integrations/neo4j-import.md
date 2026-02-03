@@ -1,6 +1,6 @@
 # Neo4j Dump Import
 
-Grafito can import data from Neo4j database dumps without requiring a running Neo4j instance.
+GrafitoDB can import data from Neo4j database dumps without requiring a running Neo4j instance.
 
 ## Prerequisites
 
@@ -109,7 +109,7 @@ import_dump(
 
 ```python
 def migrate_neo4j_to_grafito(neo4j_dump, grafito_db_path):
-    """Complete Neo4j to Grafito migration."""
+    """Complete Neo4j to GrafitoDB migration."""
     from grafito import GrafitoDatabase
 
     # Create fresh Grafito database
@@ -173,4 +173,4 @@ def import_only_users(neo4j_dump, db):
 - Neo4j constraints must be manually recreated
 - Full-text indexes require separate configuration
 - Spatial/temporal types converted to strings
-- Neo4j's `id()` function differs from Grafito's IDs
+- Neo4j's `id()` function differs from GrafitoDB's IDs

@@ -1,6 +1,6 @@
 # Core Concepts
 
-Understanding the Property Graph Model used by Grafito.
+Understanding the Property Graph Model used by GrafitoDB.
 
 ## What is a Property Graph?
 
@@ -204,7 +204,7 @@ db.execute("CREATE CONSTRAINT FOR (n:Person) REQUIRE n.name IS NOT NULL")
 
 ## Storage Model
 
-Grafito uses a normalized SQLite schema:
+GrafitoDB uses a normalized SQLite schema:
 
 ```sql
 -- Nodes table

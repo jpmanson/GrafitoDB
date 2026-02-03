@@ -1,11 +1,11 @@
 # Introduction
 
-**Grafito** is a fast, embeddable property graph database for Python — no server required,
+**GrafitoDB** is a fast, embeddable property graph database for Python — no server required,
 SQLite-backed, Cypher-powered, with optional semantic search capabilities.
 
-## What is Grafito?
+## What is GrafitoDB?
 
-Grafito implements the **Property Graph Model** (Neo4j-compatible concepts) on top of SQLite,
+GrafitoDB implements the **Property Graph Model** (Neo4j-compatible concepts) on top of SQLite,
 providing a lightweight yet powerful graph database that runs directly in your Python application.
 
 ### Key Features
@@ -23,9 +23,9 @@ providing a lightweight yet powerful graph database that runs directly in your P
 | **RDF/Turtle Support** | Import and export RDF data |
 | **Visualization** | Export to PyVis, D2, Mermaid, and Graphviz |
 
-## When to Use Grafito
+## When to Use GrafitoDB
 
-Grafito is ideal for:
+GrafitoDB is ideal for:
 
 - **Prototyping** graph-based applications without infrastructure overhead
 - **Educational** purposes — learning graph databases and Cypher
@@ -36,7 +36,7 @@ Grafito is ideal for:
 
 ## Quick Comparison
 
-| Feature | Grafito | Neo4j | NetworkX |
+| Feature | GrafitoDB | Neo4j | NetworkX |
 |---------|---------|-------|----------|
 | Embeddable | ✅ Yes | ❌ No | ✅ Yes |
 | Persistent | ✅ Yes | ✅ Yes | ❌ No |
@@ -47,7 +47,7 @@ Grafito is ideal for:
 
 ## Philosophy
 
-Grafito follows these design principles:
+GrafitoDB follows these design principles:
 
 1. **Simplicity First**: Simple installation, simple API, simple mental model
 2. **Python-Native**: First-class Python integration with familiar patterns
@@ -57,6 +57,6 @@ Grafito follows these design principles:
 
 ## Next Steps
 
-- **[Installation](installation.md)** — Get Grafito up and running
+- **[Installation](installation.md)** — Get GrafitoDB up and running
 - **[Quick Start](quickstart.md)** — Your first graph in 5 minutes
 - **[Core Concepts](concepts.md)** — Understanding the property graph model

@@ -1,6 +1,6 @@
 # Ollama Embeddings (Local)
 
-Grafito can generate embeddings locally using the Ollama embeddings API.
+GrafitoDB can generate embeddings locally using the Ollama embeddings API.
 This is ideal for offline or privacy-sensitive workloads.
 
 ## Requirements

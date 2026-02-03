@@ -1,6 +1,6 @@
 # APOC: JSON / JSONL
 
-Grafito provides JSON loading and import procedures inspired by APOC.
+GrafitoDB provides JSON loading and import procedures inspired by APOC.
 
 ## apoc.load.json
 
@@ -80,7 +80,7 @@ RETURN value
 ## Caching (HTTP GET only)
 
 If `GRAFITO_APOC_CACHE_DIR` is set and the request is a simple GET (no payload,
-headers, or auth), Grafito caches the response body on disk and reuses it.
+headers, or auth), GrafitoDB caches the response body on disk and reuses it.
 
 ```bash
 export GRAFITO_APOC_CACHE_DIR="/tmp/grafito-apoc-cache"
@@ -112,7 +112,7 @@ CALL apoc.import.json(source [, options]) YIELD nodes, relationships
 
 **Input Formats**
 
-Grafito accepts:
+GrafitoDB accepts:
 
 1) JSON array of entries
 2) JSON object with `{nodes: [...], relationships: [...]}`

@@ -1,6 +1,6 @@
 # Visualization
 
-Grafito supports multiple visualization backends for exploring your graphs.
+GrafitoDB supports multiple visualization backends for exploring your graphs.
 
 ## PyVis (Interactive HTML)
 
@@ -292,6 +292,11 @@ export_graph(
 )
 ```
 
+## Netgraph (Publication Quality)
+
+Netgraph produces publication-quality static visualizations via matplotlib, with optional
+interactive mode for dragging nodes.
+
 ## Matplotlib
 
 Matplotlib provides static, publication-quality graph visualizations with extensive customization options.
@@ -340,6 +345,174 @@ save_matplotlib(graph, 'network.svg', format='svg', figsize=(12, 10))
 ```python
 from grafito.integrations import export_graph
 
+# Basic export
+graph = db.to_networkx()
+
+# Export to PNG
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    node_label='name',
+    color_by_label=True
+)
+```
+
+### Vector Formats (SVG/PDF)
+
+Netgraph excels at producing vector graphics for publications:
+
+```python
+# SVG for web/docs
+export_graph(graph, 'graph.svg', backend='netgraph', node_label='name')
+
+# PDF for papers
+export_graph(graph, 'graph.pdf', backend='netgraph', node_label='name', dpi=300)
+```
+
+### Custom Colors
+
+```python
+# Color map by label type
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    node_label='name',
+    color_map={
+        'Person': '#4ecdc4',
+        'Company': '#ff6b6b',
+        'City': '#ffe66d'
+    }
+)
+
+# Custom palette for color_by_label
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    color_by_label=True,
+    palette=['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
+)
+```
+
+### Font Customization
+
+```python
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    node_label='name',
+    node_size=6,
+    node_label_fontdict={'size': 14, 'fontweight': 'bold'},
+    edge_label_fontdict={'size': 10}
+)
+```
+
+### Custom Label Function with Word Wrap
+
+```python
+def label_with_wrap(node_id, attrs):
+    """Two-line label: type on top, name below."""
+    labels = attrs.get("labels", [])
+    props = attrs.get("properties", {})
+    name = props.get("name", str(node_id))
+    label_type = labels[0] if labels else ""
+    return f"{label_type}\n{name}" if label_type else name
+
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    label_fn=label_with_wrap,
+    node_size=8
+)
+```
+
+### Matplotlib Composition
+
+Netgraph integrates with matplotlib for complex figures:
+
+```python
+import matplotlib.pyplot as plt
+from grafito.integrations import graph_to_netgraph
+
+fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+
+# Different layouts side by side
+graph_to_netgraph(graph, ax=axes[0], node_layout='spring', node_label='name')
+axes[0].set_title('Spring Layout')
+
+graph_to_netgraph(graph, ax=axes[1], node_layout='shell', node_label='name')
+axes[1].set_title('Shell Layout')
+
+plt.tight_layout()
+plt.savefig('comparison.png', dpi=150)
+```
+
+### Interactive Mode
+
+Enable interactive mode to drag nodes (requires a display):
+
+```python
+from grafito.integrations import graph_to_netgraph
+
+fig, ax, ng = graph_to_netgraph(
+    graph,
+    interactive=True,
+    node_label='name'
+)
+```
+
+---
+
+## Matplotlib Backend
+
+Matplotlib provides static, publication-quality graph visualizations with extensive customization options.
+
+### Installation
+
+```bash
+pip install matplotlib
+```
+
+### Basic Usage
+
+```python
+from grafito import GrafitoDatabase
+from grafito.integrations import plot_matplotlib
+
+# Create sample data
+db = GrafitoDatabase(':memory:')
+alice = db.create_node(labels=['Person'], properties={'name': 'Alice', 'group': 'A'})
+bob = db.create_node(labels=['Person'], properties={'name': 'Bob', 'group': 'B'})
+charlie = db.create_node(labels=['Person'], properties={'name': 'Charlie', 'group': 'A'})
+db.create_relationship(alice.id, bob.id, 'KNOWS')
+db.create_relationship(bob.id, charlie.id, 'KNOWS')
+
+# Export to NetworkX
+graph = db.to_networkx()
+
+# Basic plot
+plot_matplotlib(graph, title="Social Network")
+```
+
+### Save to File
+
+```python
+from grafito.integrations import save_matplotlib
+
+# Save as PNG
+save_matplotlib(graph, 'network.png', title="Social Network")
+
+# Save as SVG for vector graphics
+save_matplotlib(graph, 'network.svg', format='svg', figsize=(12, 10))
+```
+
+### Using the Generic Export API
+
+```python
 # Export using matplotlib backend
 export_graph(graph, 'network.png', backend='matplotlib', title="My Graph")
 ```
@@ -497,6 +670,7 @@ fig.axes[0].set_xlabel("Custom X Label")
 fig.savefig('modified.png')
 ```
 
+
 ## Comparison
 
 | Backend | Output | Interactive | Best For |
@@ -505,9 +679,10 @@ fig.savefig('modified.png')
 | **Matplotlib** | PNG/SVG/PDF | ❌ No | Publications, static analysis |
 | **D2** | Text/SVG | ❌ No | Documentation, version control |
 | **Mermaid** | Markdown/SVG | ⚠️ Partial | READMEs, docs integration |
-| **Graphviz** | PNG/SVG/PDF | ❌ No | Publications, static diagrams |
+| **Graphviz** | PNG/SVG/PDF | ❌ No | Static diagrams |
 | **D3** | HTML | ✅ Yes | Custom web views |
 | **Cytoscape** | HTML | ✅ Yes | Large graphs, rich UI |
+| **Netgraph** | PNG/SVG/PDF | ⚠️ Optional | Publications, matplotlib integration |
 
 ## Backend Availability
 
@@ -515,7 +690,7 @@ fig.savefig('modified.png')
 from grafito.integrations import available_viz_backends
 
 print(available_viz_backends())
-# ['cytoscape', 'd2', 'd3', 'graphviz', 'matplotlib', 'mermaid', 'pyvis']
+# ['cytoscape', 'd2', 'd3', 'graphviz', 'matplotlib', 'mermaid', 'netgraph', 'pyvis']
 ```
 
 ## Large Graph Handling

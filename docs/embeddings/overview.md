@@ -1,6 +1,6 @@
 # Embeddings Overview
 
-Grafito provides seamless integration with multiple embedding providers, allowing you to convert text into vector representations for semantic search, clustering, and similarity analysis.
+GrafitoDB provides seamless integration with multiple embedding providers, allowing you to convert text into vector representations for semantic search, clustering, and similarity analysis.
 
 ## What are Embeddings?
 
@@ -13,7 +13,7 @@ Embeddings are dense vector representations of text (or other data) that capture
 
 ## Supported Providers
 
-Grafito includes built-in support for 12+ embedding providers:
+GrafitoDB includes built-in support for 12+ embedding providers:
 
 ### Cloud APIs
 | Provider | Description | Best For |

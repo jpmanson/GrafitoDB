@@ -1,6 +1,6 @@
 # RDF/Turtle Integration
 
-Grafito can export to and import from RDF (Resource Description Framework) format.
+GrafitoDB can export to and import from RDF (Resource Description Framework) format.
 
 ## Prerequisites
 
@@ -82,7 +82,7 @@ turtle = export_turtle(
 )
 ```
 
-## RDF to Grafito
+## RDF to GrafitoDB
 
 ### Basic Import
 
@@ -103,7 +103,7 @@ db = GrafitoDatabase(':memory:')
 
 RDF export handles common vocabularies:
 
-| Grafito Concept | RDF Mapping |
+| GrafitoDB Concept | RDF Mapping |
 |----------------|-------------|
 | Node | `rdfs:Resource` |
 | Label | `rdf:type` |
