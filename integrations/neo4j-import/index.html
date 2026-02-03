@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/grafito/integrations/neo4j-import/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/integrations/neo4j-import/">
       
       
         <link rel="prev" href="../rdf/">
@@ -196,7 +196,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/jpmanson/grafito" title="Go to repository" class="md-source" data-md-component="source">
+        <a href="https://github.com/jpmanson/GrafitoDB" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -454,7 +454,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/jpmanson/grafito" title="Go to repository" class="md-source" data-md-component="source">
+      <a href="https://github.com/jpmanson/GrafitoDB" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
@@ -2716,7 +2716,7 @@
 
 
 <h1 id="neo4j-dump-import">Neo4j Dump Import</h1>
-<p>Grafito can import data from Neo4j database dumps without requiring a running Neo4j instance.</p>
+<p>GrafitoDB can import data from Neo4j database dumps without requiring a running Neo4j instance.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># zstandard is included by default</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>grafito
@@ -2813,7 +2813,7 @@
 <h2 id="migration-workflows">Migration Workflows</h2>
 <h3 id="full-migration">Full Migration</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">migrate_neo4j_to_grafito</span><span class="p">(</span><span class="n">neo4j_dump</span><span class="p">,</span> <span class="n">grafito_db_path</span><span class="p">):</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Complete Neo4j to Grafito migration.&quot;&quot;&quot;</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Complete Neo4j to GrafitoDB migration.&quot;&quot;&quot;</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="c1"># Create fresh Grafito database</span>
@@ -2894,7 +2894,7 @@
 <li>Neo4j constraints must be manually recreated</li>
 <li>Full-text indexes require separate configuration</li>
 <li>Spatial/temporal types converted to strings</li>
-<li>Neo4j's <code>id()</code> function differs from Grafito's IDs</li>
+<li>Neo4j's <code>id()</code> function differs from GrafitoDB's IDs</li>
 </ul>
 
 
