@@ -2,182 +2,182 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://github.com/jpmanson/grafito/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/advanced/architecture/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/advanced/performance/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/advanced/schema/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/cypher/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/database/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/nodes/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/relationships/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/transactions/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/api/traversal/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/apoc/collections/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/apoc/import-export/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/apoc/json/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/apoc/xml-html/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/collections/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/create-match/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/filtering/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/indexes-constraints/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/modification/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/overview/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/patterns/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/return-aggregation/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/string-functions/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/temporal-spatial/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/cypher/vector-search/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/embeddings/cloud-providers/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/embeddings/huggingface/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/embeddings/ollama/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/embeddings/openai/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/embeddings/overview/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/examples/company-structure/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/examples/northwind/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/examples/social-network/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/getting-started/concepts/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/getting-started/installation/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/getting-started/introduction/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/getting-started/quickstart/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/integrations/neo4j-import/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/integrations/networkx/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/integrations/rdf/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/integrations/visualization/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/search/ann-backends/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/search/fulltext/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/search/hybrid/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/grafito/search/vector/</loc>
-         <lastmod>2026-02-01</lastmod>
+         <lastmod>2026-02-03</lastmod>
     </url>
 </urlset>

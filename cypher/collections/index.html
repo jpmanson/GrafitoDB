@@ -1241,6 +1241,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="List Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        size()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#head-tail-last" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        head(), tail(), last()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#range" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        range()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1278,6 +1328,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#property-access-on-lists-of-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Property Access on Lists of Nodes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1323,6 +1384,45 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Map Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keys()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        values()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-key-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Key Access
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -2599,6 +2699,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="List Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        size()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#head-tail-last" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        head(), tail(), last()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#range" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        range()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2636,6 +2786,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#property-access-on-lists-of-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Property Access on Lists of Nodes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2681,6 +2842,45 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Map Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keys()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        values()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-key-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Key Access
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -2792,112 +2992,193 @@
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">nums</span><span class="o">[</span><span class="p">..</span><span class="m">3</span><span class="o">]</span><span class="w">   </span><span class="c1">// [1, 2, 3] (from start)</span>
 </span></code></pre></div>
 <h3 id="list-functions">List Functions</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// Size</span>
+<h4 id="size">size()</h4>
+<p>Returns the number of elements in a list.</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// Size of list</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="p">)</span><span class="w">  </span><span class="c1">// 3</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1">// Head, tail, last</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">list</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">head</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// 1</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">last</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// 4</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">tail</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// [2, 3, 4]</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1">// Reverse</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reverse</span><span class="p">(</span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="p">)</span><span class="w">  </span><span class="c1">// [3, 2, 1]</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="o">[]</span><span class="p">)</span><span class="w">         </span><span class="c1">// 0</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1">// Size of string (number of characters)</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="s">&#39;Hello&#39;</span><span class="p">)</span><span class="w">    </span><span class="c1">// 5</span>
+</span></code></pre></div>
+<h4 id="head-tail-last">head(), tail(), last()</h4>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">list</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">head</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// 1  (first element)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">last</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// 4  (last element)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">tail</span><span class="p">(</span><span class="n">list</span><span class="p">)</span><span class="w">  </span><span class="c1">// [2, 3, 4]  (all except first)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1">// With empty list</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">head</span><span class="p">(</span><span class="o">[]</span><span class="p">)</span><span class="w">    </span><span class="c1">// null</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">last</span><span class="p">(</span><span class="o">[]</span><span class="p">)</span><span class="w">    </span><span class="c1">// null</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">tail</span><span class="p">(</span><span class="o">[]</span><span class="p">)</span><span class="w">    </span><span class="c1">// []</span>
+</span></code></pre></div>
+<h4 id="reverse">reverse()</h4>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reverse</span><span class="p">(</span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="p">)</span><span class="w">     </span><span class="c1">// [3, 2, 1]</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reverse</span><span class="p">(</span><span class="o">[</span><span class="s">&#39;a&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;b&#39;</span><span class="o">]</span><span class="p">)</span><span class="w">    </span><span class="c1">// [&#39;b&#39;, &#39;a&#39;]</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reverse</span><span class="p">(</span><span class="o">[]</span><span class="p">)</span><span class="w">            </span><span class="c1">// []</span>
+</span></code></pre></div>
+<h4 id="range">range()</h4>
+<p>Generates a list of integers within a range.</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Basic range (inclusive)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span><span class="w">            </span><span class="c1">// [1, 2, 3, 4, 5]</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">)</span><span class="w">            </span><span class="c1">// [0, 1, 2, 3]</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// With step</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">)</span><span class="w">        </span><span class="c1">// [0, 2, 4, 6, 8, 10]</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="m">9</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">)</span><span class="w">         </span><span class="c1">// [0, 3, 6, 9]</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1">// Negative step (descending)</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">5</span><span class="p">,</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="err">-</span><span class="m">1</span><span class="p">)</span><span class="w">        </span><span class="c1">// [5, 4, 3, 2, 1, 0]</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="err">-</span><span class="m">2</span><span class="p">)</span><span class="w">       </span><span class="c1">// [10, 8, 6, 4, 2, 0]</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1">// Single element</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">range</span><span class="p">(</span><span class="m">5</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span><span class="w">            </span><span class="c1">// [5]</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1">// Step cannot be zero</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1">// RETURN range(1, 5, 0)      // ERROR</span>
 </span></code></pre></div>
 <h3 id="list-comprehensions">List Comprehensions</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Filter and transform</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">*</span><span class="w"> </span><span class="m">10</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">result</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">// [30, 40, 50]</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1">// Extract only</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">*</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w">  </span><span class="c1">// [2, 4, 6]</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1">// Filter only</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w">  </span><span class="c1">// [3, 4, 5]</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Filter and transform</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">*</span><span class="w"> </span><span class="m">10</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">result</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">// [30, 40, 50]</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1">// Extract only</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">*</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w">  </span><span class="c1">// [2, 4, 6]</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1">// Filter only</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="k">RETURN</span><span class="w"> </span><span class="o">[</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w">  </span><span class="c1">// [3, 4, 5]</span>
 </span></code></pre></div>
 <h3 id="list-predicates">List Predicates</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// ALL</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">ALL</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1">// ANY</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="err">-</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">ANY</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1">// NONE</span>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">NONE</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1">// SINGLE</span>
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">SINGLE</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="m">2</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// ALL</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">ALL</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1">// ANY</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="err">-</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">ANY</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">// NONE</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">NONE</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="m">0</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1">// SINGLE</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">SINGLE</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="m">2</span><span class="p">)</span><span class="w">  </span><span class="c1">// true</span>
 </span></code></pre></div>
 <h3 id="reducing-lists">Reducing Lists</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Sum all elements</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reduce</span><span class="p">(</span><span class="n">sum</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w">  </span><span class="c1">// 15</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1">// Build string</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Charlie&#39;</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">names</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reduce</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">names</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="s">&#39;, &#39;</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w">  </span><span class="c1">// &#39;, Alice, Bob, Charlie&#39;</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Sum all elements</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">nums</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reduce</span><span class="p">(</span><span class="n">sum</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">nums</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w">  </span><span class="c1">// 15</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">// Build string</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Charlie&#39;</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">names</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">reduce</span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">names</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="s">&#39;, &#39;</span><span class="w"> </span><span class="err">+</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w">  </span><span class="c1">// &#39;, Alice, Bob, Charlie&#39;</span>
 </span></code></pre></div>
+<h2 id="property-access-on-lists-of-nodes">Property Access on Lists of Nodes</h2>
+<p>When you have a list of nodes or relationships, you can access a property directly on the list to get a list of property values:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Get names of all friends in one expression</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">WITH</span><span class="w"> </span><span class="o">[</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">f</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">friends</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">friends</span><span class="p">.</span><span class="n">name</span><span class="w">    </span><span class="c1">// [&#39;Bob&#39;, &#39;Charlie&#39;, &#39;David&#39;]</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1">// Works with any property</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="k">WITH</span><span class="w"> </span><span class="k">collect</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">persons</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">persons</span><span class="p">.</span><span class="n">age</span><span class="w">     </span><span class="c1">// [25, 30, 35, ...]</span>
+</span></code></pre></div>
+<p>This is equivalent to using a list comprehension:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// These are equivalent:</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">WITH</span><span class="w"> </span><span class="n">friends</span><span class="p">,</span><span class="w"> </span><span class="n">friends</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">names1</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">WITH</span><span class="w"> </span><span class="n">friends</span><span class="p">,</span><span class="w"> </span><span class="o">[</span><span class="n">f</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">friends</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">f</span><span class="p">.</span><span class="n">name</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">names2</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1">// names1 == names2</span>
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Null handling</p>
+<p>If any node in the list doesn't have the property, <code>null</code> is included in the result list.</p>
+</div>
 <h2 id="maps">Maps</h2>
 <h3 id="creating-maps">Creating Maps</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Literal map</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">person</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1">// Nested maps</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">RETURN</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="n">address</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="n">city</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;NYC&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">zip</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;10001&#39;</span><span class="p">}</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">data</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Literal map</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">person</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">// Nested maps</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="k">RETURN</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">  </span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span><span class="n">address</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="n">city</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;NYC&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">zip</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;10001&#39;</span><span class="p">}</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">data</span>
 </span></code></pre></div>
 <h3 id="map-access">Map Access</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">person</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">person</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">person</span><span class="p">.</span><span class="n">age</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">// Can also use: person[&#39;name&#39;]</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">person</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">person</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">person</span><span class="p">.</span><span class="n">age</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1">// Can also use: person[&#39;name&#39;]</span>
 </span></code></pre></div>
 <h3 id="map-functions">Map Functions</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// keys() and values()</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">a</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">m</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="w">    </span><span class="c1">// [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">values</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="w">  </span><span class="c1">// [1, 2, 3]</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// Dynamic key access</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;name&#39;</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">key</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]</span><span class="w">  </span><span class="c1">// &#39;Alice&#39;</span>
+<h4 id="keys">keys()</h4>
+<p>Returns a list of all keys in a map, or all property names of a node/relationship.</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// Map keys</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">a</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">m</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="w">    </span><span class="c1">// [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1">// Node property keys</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w">    </span><span class="c1">// [&#39;name&#39;, &#39;age&#39;, &#39;email&#39;, ...]</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1">// Relationship property keys</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">()</span><span class="o">-[</span><span class="n">r</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">()</span>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="w">    </span><span class="c1">// [&#39;since&#39;, ...]</span>
+</span></code></pre></div>
+<h4 id="values">values()</h4>
+<p>Returns a list of all values in a map, or all property values of a node/relationship.</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1">// Map values</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">a</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">m</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">values</span><span class="p">(</span><span class="n">m</span><span class="p">)</span><span class="w">  </span><span class="c1">// [1, 2, 3]</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1">// Node property values</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">values</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w">  </span><span class="c1">// [&#39;Alice&#39;, 30, &#39;alice@example.com&#39;, ...]</span>
+</span></code></pre></div>
+<h4 id="dynamic-key-access">Dynamic Key Access</h4>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1">// Using variable as key</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="k">WITH</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">}</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;name&#39;</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">key</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]</span><span class="w">  </span><span class="c1">// &#39;Alice&#39;</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">// Iterate over all properties</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="k">WITH</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">props</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="k">UNWIND</span><span class="w"> </span><span class="n">props</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">key</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">value</span>
 </span></code></pre></div>
 <h2 id="working-with-properties">Working with Properties</h2>
 <h3 id="dynamic-property-access">Dynamic Property Access</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Get all property values</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="o">[</span><span class="n">key</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">allValues</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1">// Get all property values</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="o">[</span><span class="n">key</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">allValues</span>
 </span></code></pre></div>
 <h3 id="converting-to-map">Converting to Map</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Node to map</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">map</span><span class="p">.</span><span class="n">fromPairs</span><span class="p">(</span><span class="o">[</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="n">key</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="o">[</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]]</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">personMap</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1">// Node to map</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">map</span><span class="p">.</span><span class="n">fromPairs</span><span class="p">(</span><span class="o">[</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span><span class="n">key</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="n">keys</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="o">[</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="o">[</span><span class="n">key</span><span class="o">]]</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">personMap</span>
 </span></code></pre></div>
 <h2 id="unwind">UNWIND</h2>
 <p>Expands lists into rows.</p>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// Create nodes from list</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">UNWIND</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Charlie&#39;</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">name</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="k">CREATE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="n">name</span><span class="p">})</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1">// Create nodes from list</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="k">UNWIND</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;Alice&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;Charlie&#39;</span><span class="o">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">name</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">CREATE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="n">name</span><span class="p">})</span>
 </span></code></pre></div>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1">// Process list property</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="k">UNWIND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">tags</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">tag</span>
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">tag</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1">// Process list property</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">UNWIND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">tags</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">tag</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">tag</span>
 </span></code></pre></div>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1">// With multiple properties</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="k">UNWIND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">interests</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">interest</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">WITH</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">interest</span>
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">interest</span><span class="p">.</span><span class="n">category</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#39;tech&#39;</span>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">interest</span><span class="p">.</span><span class="n">name</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1">// With multiple properties</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="k">UNWIND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">interests</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">interest</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="k">WITH</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">interest</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">interest</span><span class="p">.</span><span class="n">category</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&#39;tech&#39;</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">interest</span><span class="p">.</span><span class="n">name</span>
 </span></code></pre></div>
 
 
