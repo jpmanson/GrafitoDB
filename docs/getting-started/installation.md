@@ -7,10 +7,10 @@
 
 ## Basic Installation
 
-Install Grafito from PyPI:
+Install GrafitoDB from PyPI:
 
 ```bash
-pip install grafito
+pip install grafitodb
 ```
 
 Or using `uv`:
@@ -21,7 +21,7 @@ uv pip install grafito
 
 ## Development Installation
 
-To install Grafito in development mode with all test dependencies:
+To install GrafitoDB in development mode with all test dependencies:
 
 ```bash
 git clone <repository-url>
@@ -37,7 +37,7 @@ uv pip install -e ".[dev]"
 
 ## Optional Dependencies
 
-Grafito has a modular design with optional extras for specific features:
+GrafitoDB has a modular design with optional extras for specific features:
 
 ### All Extras
 
@@ -55,24 +55,24 @@ Choose one or more ANN (Approximate Nearest Neighbors) backends:
 
 | Backend | Installation | Best For |
 |---------|-------------|----------|
-| FAISS | `pip install grafito[faiss]` | CPU-optimized, most features |
-| Annoy | `pip install grafito[annoy]` | Memory-mapped large indexes |
-| LEANN | `pip install grafito[leann]` | Lightweight, fast builds |
-| HNSWlib | `pip install grafito[hnswlib]` | High-recall search |
-| USearch | `pip install grafito[usearch]` | Modern alternative to FAISS |
-| Voyager | `pip install grafito[voyager]` | Spotify's ANN library |
+| FAISS | `pip install grafitodb[faiss]` | CPU-optimized, most features |
+| Annoy | `pip install grafitodb[annoy]` | Memory-mapped large indexes |
+| LEANN | `pip install grafitodb[leann]` | Lightweight, fast builds |
+| HNSWlib | `pip install grafitodb[hnswlib]` | High-recall search |
+| USearch | `pip install grafitodb[usearch]` | Modern alternative to FAISS |
+| Voyager | `pip install grafitodb[voyager]` | Spotify's ANN library |
 
 ### Other Integrations
 
 ```bash
 # RDF/Turtle support
-pip install grafito[rdf]
+pip install grafitodb[rdf]
 
 # Visualization with PyVis
-pip install grafito[viz]
+pip install grafitodb[viz]
 
 # BM25 text search enhancements
-pip install grafito[bm25s]
+pip install grafitodb[bm25s]
 ```
 
 ## Verifying Installation
@@ -86,7 +86,7 @@ from grafito import GrafitoDatabase
 db = GrafitoDatabase(':memory:')
 
 # Create a test node
-node = db.create_node(labels=['Test'], properties={'message': 'Hello, Grafito!'})
+node = db.create_node(labels=['Test'], properties={'message': 'Hello, GrafitoDB!'})
 print(f"Created node: {node.id}")
 
 # Check FTS5 availability
@@ -124,7 +124,7 @@ FAISS requires native compilation. If installation fails:
 # Use conda instead
 conda install -c pytorch faiss-cpu
 
-# Then install grafito without the faiss extra
+# Then install grafitodb without the faiss extra
 pip install grafito
 ```
 

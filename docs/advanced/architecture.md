@@ -1,6 +1,6 @@
 # Advanced: Architecture
 
-Grafito is a SQLite-backed property graph database with a Cypher-like query
+GrafitoDB is a SQLite-backed property graph database with a Cypher-like query
 engine and pluggable indexes.
 
 ## High-Level Components

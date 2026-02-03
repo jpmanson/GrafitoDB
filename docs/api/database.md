@@ -239,9 +239,9 @@ db.from_networkx(graph)
 db.import_neo4j_dump('path/to/dump.db')
 ```
 
-### Dump and Restore (Grafito Cypher)
+### Dump and Restore (GrafitoDB Cypher)
 
-Grafito can dump the entire database to a **Cypher script** and restore it later.
+GrafitoDB can dump the entire database to a **Cypher script** and restore it later.
 This is **not** a Neo4j `.dump` file.
 
 ```python

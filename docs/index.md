@@ -1,6 +1,6 @@
-# Grafito
+# GrafitoDB
 
-Grafito is a SQLite-based property graph database with a Cypher-like query
+GrafitoDB is a SQLite-based property graph database with a Cypher-like query
 language, vector search, and full-text search.
 
 ## Highlights

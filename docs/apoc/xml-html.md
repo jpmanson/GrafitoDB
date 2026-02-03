@@ -1,6 +1,6 @@
 # APOC: XML / HTML
 
-Grafito provides a subset of APOC loading procedures for XML and HTML.
+GrafitoDB provides a subset of APOC loading procedures for XML and HTML.
 They accept local file paths or HTTP(S) URLs and return rows with a `value` field.
 
 ## apoc.load.xml
@@ -95,7 +95,7 @@ CALL apoc.load.html(source, selectors) YIELD value
 
 **Selector syntax**
 
-Grafito implements a **minimal** descendant selector:
+GrafitoDB implements a **minimal** descendant selector:
 
 - Tag + optional classes: `div.card`, `a.link`
 - Descendant chains: `div.card h2`

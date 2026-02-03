@@ -1,6 +1,6 @@
 # APOC: Collections, Maps, Text, Utilities
 
-Grafito implements a small, useful subset of APOC functions for text, maps,
+GrafitoDB implements a small, useful subset of APOC functions for text, maps,
 and collections. These functions can be used in any Cypher query.
 
 ## Text
@@ -293,7 +293,7 @@ Supported algorithms: `DEFLATE` (default), `GZIP`, `BZ2`, `XZ` (or `LZMA`).
 
 ### List Comprehensions vs filter()/extract()
 
-Some APOC functions like `filter()` and `extract()` are **not available** as function calls because Grafito implements them as native list comprehensions:
+Some APOC functions like `filter()` and `extract()` are **not available** as function calls because GrafitoDB implements them as native list comprehensions:
 
 ```cypher
 // Instead of filter(list, condition):

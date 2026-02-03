@@ -1,6 +1,6 @@
-"""Grafito: SQLite-based Property Graph Database.
+"""GrafitoDB: SQLite-based Property Graph Database.
 
-Grafito implements the Property Graph Model (used by Neo4j and Cypher) using SQLite
+GrafitoDB implements the Property Graph Model (used by Neo4j and Cypher) using SQLite
 as the storage backend. It provides a Pythonic API for creating and querying graphs
 with nodes, relationships, labels, and properties.
 

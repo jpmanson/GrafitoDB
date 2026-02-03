@@ -1,11 +1,11 @@
 # Hugging Face Embeddings
 
-Grafito supports Hugging Face embeddings through two paths:
+GrafitoDB supports Hugging Face embeddings through two paths:
 
 - **Hugging Face Inference API**: hosted models via HTTP.
 - **Sentence Transformers (Local)**: run models locally with `sentence-transformers`.
 
-Both integrate with Grafito's vector indexes in the same way.
+Both integrate with GrafitoDB's vector indexes in the same way.
 
 ## Hugging Face Inference API
 

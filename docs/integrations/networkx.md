@@ -1,10 +1,10 @@
 # NetworkX Integration
 
-Grafito provides bidirectional integration with NetworkX for graph algorithms and analysis.
+GrafitoDB provides bidirectional integration with NetworkX for graph algorithms and analysis.
 
 ## Export to NetworkX
 
-Convert a Grafito database to a NetworkX `MultiDiGraph`.
+Convert a GrafitoDB database to a NetworkX `MultiDiGraph`.
 
 ### Basic Export
 
@@ -55,7 +55,7 @@ for u, v, key, attrs in graph.edges(data=True, keys=True):
 
 ## Import from NetworkX
 
-Import a NetworkX graph into Grafito.
+Import a NetworkX graph into GrafitoDB.
 
 ### Basic Import
 

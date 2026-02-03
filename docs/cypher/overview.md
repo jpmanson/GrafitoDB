@@ -1,6 +1,6 @@
 # Cypher Query Language
 
-Grafito includes a complete Cypher parser and executor, allowing you to use Neo4j-style declarative queries.
+GrafitoDB includes a complete Cypher parser and executor, allowing you to use Neo4j-style declarative queries.
 
 ## What is Cypher?
 

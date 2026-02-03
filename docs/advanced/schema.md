@@ -1,6 +1,6 @@
 # Advanced: SQLite Schema
 
-Grafito stores the property graph in SQLite using a normalized schema.
+GrafitoDB stores the property graph in SQLite using a normalized schema.
 See `grafito/schema.py` for the source of truth.
 
 ## Core Tables

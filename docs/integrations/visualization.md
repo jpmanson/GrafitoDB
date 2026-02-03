@@ -1,6 +1,6 @@
 # Visualization
 
-Grafito supports multiple visualization backends for exploring your graphs.
+GrafitoDB supports multiple visualization backends for exploring your graphs.
 
 ## PyVis (Interactive HTML)
 

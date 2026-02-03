@@ -1,7 +1,7 @@
 site_name: Grafito
 site_description: A lightweight, SQLite-based property graph database implementation in Python.
-site_url: https://github.com/jpmanson/grafito
-repo_url: https://github.com/jpmanson/grafito
+site_url: https://github.com/jpmanson/GrafitoDB
+repo_url: https://github.com/jpmanson/GrafitoDB
 repo_name: jpmanson/grafito
 edit_uri: edit/main/docs/
 

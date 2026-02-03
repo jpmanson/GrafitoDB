@@ -1,6 +1,6 @@
 # Transactions
 
-Grafito provides full ACID transaction support through SQLite.
+GrafitoDB provides full ACID transaction support through SQLite.
 
 ## What are Transactions?
 

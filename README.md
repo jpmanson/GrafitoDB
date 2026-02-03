@@ -1,10 +1,10 @@
-# Grafito
+# GrafitoDB
 
 A fast, embeddable graph database for Python — no server required, SQLite-backed, Cypher-powered, and optional semantic search.
 
 ![alt text](images/grafito_logo.png)
 
-Grafito implements the Property Graph Model (Neo4j-like) with:
+GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 
 - **Cypher queries** and pattern matching
 - **Vector/semantic search** (optional ANN backends)
@@ -14,7 +14,7 @@ Grafito implements the Property Graph Model (Neo4j-like) with:
 
 ## Documentation
 
-Read the full documentation at: https://jpmanson.github.io/grafito/
+Read the full documentation at: https://jpmanson.github.io/GrafitoDB/
 
 ## Features
 
@@ -244,7 +244,7 @@ db.close()
 
 ## Cypher Query Language
 
-Grafito includes a complete Cypher query language parser and executor, allowing you to use Neo4j-style declarative queries alongside the programmatic API.
+GrafitoDB includes a complete Cypher query language parser and executor, allowing you to use Neo4j-style declarative queries alongside the programmatic API.
 
 
 ### Basic Usage
@@ -595,8 +595,8 @@ results = db.semantic_search(vector, k=10, index="people_vec")
 ```
 
 Default `k` behavior:
-- If `k` is omitted, Grafito uses `options.default_k` for the index.
-- Otherwise it falls back to `default_top_k` from `GrafitoDatabase`.
+- If `k` is omitted, GrafitoDB uses `options.default_k` for the index.
+- Otherwise it falls back to `default_top_k` from `GrafitoDB`.
 
 Example:
 
@@ -1466,7 +1466,7 @@ with db:
 
 ### Database Schema
 
-Grafito uses a normalized SQLite schema (simplified excerpt; see `grafito/schema.py` for the full schema):
+GrafitoDB uses a normalized SQLite schema (simplified excerpt; see `grafito/schema.py` for the full schema):
 
 ```sql
 -- Nodes: store node data
@@ -1515,7 +1515,7 @@ CREATE TABLE relationships (
 
 ## Testing
 
-Grafito has comprehensive test coverage
+GrafitoDB has comprehensive test coverage
 
 ```bash
 # Run all tests
@@ -1556,7 +1556,7 @@ pytest tests/cypher/test_integration.py
 
 ## Use Cases
 
-Grafito is ideal for:
+GrafitoDB is ideal for:
 
 - **Prototyping** graph-based applications
 - **Educational** purposes (learning graph databases)
@@ -1578,4 +1578,4 @@ Apache License 2.0
 
 ---
 
-**Grafito** - Graph + SQLite = Simple, Powerful Graph Database
+**GrafitoDB** - Graph + SQLite = Simple, Powerful Graph Database

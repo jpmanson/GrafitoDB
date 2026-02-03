@@ -1,6 +1,6 @@
 # APOC: Import / Export
 
-Grafito currently supports JSON-based import via APOC-style procedures.
+GrafitoDB currently supports JSON-based import via APOC-style procedures.
 Export procedures are not implemented yet.
 
 ## Import

@@ -1,6 +1,6 @@
 # Quick Start
 
-Get up and running with Grafito in 5 minutes.
+Get up and running with GrafitoDB in 5 minutes.
 
 ## Create Your First Graph
 
