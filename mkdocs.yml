@@ -97,10 +97,12 @@ nav:
       - Vector Search: cypher/vector-search.md
 
   - Search Capabilities:
+      - Overview: search/overview.md
       - Full-Text Search (FTS5): search/fulltext.md
       - Semantic/Vector Search: search/vector.md
       - ANN Backends: search/ann-backends.md
       - Hybrid Workflows: search/hybrid.md
+      - Examples: search/examples.md
 
   - Integrations:
       - NetworkX: integrations/networkx.md
