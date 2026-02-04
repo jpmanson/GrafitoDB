@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/embeddings/huggingface/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/search/overview/">
       
       
-        <link rel="prev" href="../openai/">
+        <link rel="prev" href="../../cypher/vector-search/">
       
       
-        <link rel="next" href="../cloud-providers/">
+        <link rel="next" href="../fulltext/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Hugging Face - GrafitoDB</title>
+        <title>Overview - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hugging-face-embeddings" class="md-skip">
+        <a href="#semantic-search-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Hugging Face
+              Overview
             
           </span>
         </div>
@@ -304,11 +304,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../search/overview/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -344,13 +346,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../overview/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../embeddings/overview/" class="md-tabs__link">
           
   
   
@@ -1269,28 +1269,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1308,7 +1311,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1323,10 +1326,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../search/overview/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1342,6 +1372,170 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-combine-semantic-search-with-knowledge-graphs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Combine Semantic Search with Knowledge Graphs?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Combine Semantic Search with Knowledge Graphs?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-semantic-discovery-with-structural-navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Semantic Discovery with Structural Navigation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-context-aware-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Context-Aware Retrieval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-multi-hop-semantic-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Multi-Hop Semantic Queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-hybrid-ranking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Hybrid Ranking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-question-answering-with-graph-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Question Answering with Graph Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-world-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-World Applications
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1354,7 +1548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/fulltext/" class="md-nav__link">
+      <a href="../fulltext/" class="md-nav__link">
         
   
   
@@ -1382,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/vector/" class="md-nav__link">
+      <a href="../vector/" class="md-nav__link">
         
   
   
@@ -1410,7 +1604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/ann-backends/" class="md-nav__link">
+      <a href="../ann-backends/" class="md-nav__link">
         
   
   
@@ -1438,7 +1632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/hybrid/" class="md-nav__link">
+      <a href="../hybrid/" class="md-nav__link">
         
   
   
@@ -1466,7 +1660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -1671,31 +1865,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1713,7 +1904,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1731,7 +1922,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../embeddings/overview/" class="md-nav__link">
         
   
   
@@ -1759,7 +1950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../openai/" class="md-nav__link">
+      <a href="../../embeddings/openai/" class="md-nav__link">
         
   
   
@@ -1784,37 +1975,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Hugging Face
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../embeddings/huggingface/" class="md-nav__link">
         
   
   
@@ -1830,159 +1994,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#hugging-face-inference-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hugging Face Inference API
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Hugging Face Inference API">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Installation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#api-token" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        API Token
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#sentence-transformers-local" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Sentence Transformers (Local)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Sentence Transformers (Local)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#installation_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Installation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#basic-usage_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1995,7 +2006,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cloud-providers/" class="md-nav__link">
+      <a href="../../embeddings/cloud-providers/" class="md-nav__link">
         
   
   
@@ -2023,7 +2034,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ollama/" class="md-nav__link">
+      <a href="../../embeddings/ollama/" class="md-nav__link">
         
   
   
@@ -2541,22 +2552,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#hugging-face-inference-api" class="md-nav__link">
+  <a href="#why-combine-semantic-search-with-knowledge-graphs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hugging Face Inference API
+        Why Combine Semantic Search with Knowledge Graphs?
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hugging Face Inference API">
+    <nav class="md-nav" aria-label="Why Combine Semantic Search with Knowledge Graphs?">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
+  <a href="#1-semantic-discovery-with-structural-navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installation
+        1. Semantic Discovery with Structural Navigation
       
     </span>
   </a>
@@ -2564,10 +2575,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#api-token" class="md-nav__link">
+  <a href="#2-context-aware-retrieval" class="md-nav__link">
     <span class="md-ellipsis">
       
-        API Token
+        2. Context-Aware Retrieval
       
     </span>
   </a>
@@ -2575,10 +2586,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
+  <a href="#3-multi-hop-semantic-queries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
+        3. Multi-Hop Semantic Queries
       
     </span>
   </a>
@@ -2586,10 +2597,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#4-hybrid-ranking" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        4. Hybrid Ranking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-question-answering-with-graph-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Question Answering with Graph Context
       
     </span>
   </a>
@@ -2602,22 +2624,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sentence-transformers-local" class="md-nav__link">
+  <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sentence Transformers (Local)
+        Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Sentence Transformers (Local)">
+    <nav class="md-nav" aria-label="Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#installation_1" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installation
+        How It Works
       
     </span>
   </a>
@@ -2625,32 +2647,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#basic-usage_1" class="md-nav__link">
+  <a href="#data-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes
+        Data Flow
       
     </span>
   </a>
@@ -2659,6 +2659,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Capabilities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-world-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-World Applications
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2693,93 +2715,207 @@
   
 
 
-<h1 id="hugging-face-embeddings">Hugging Face Embeddings</h1>
-<p>GrafitoDB supports Hugging Face embeddings through two paths:</p>
-<ul>
-<li><strong>Hugging Face Inference API</strong>: hosted models via HTTP.</li>
-<li><strong>Sentence Transformers (Local)</strong>: run models locally with <code>sentence-transformers</code>.</li>
-</ul>
-<p>Both integrate with GrafitoDB's vector indexes in the same way.</p>
-<h2 id="hugging-face-inference-api">Hugging Face Inference API</h2>
-<h3 id="installation">Installation</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>httpx
+<h1 id="semantic-search-overview">Semantic Search Overview</h1>
+<p>GrafitoDB combines the structural power of <strong>property graph databases</strong> with the semantic understanding of <strong>vector embeddings</strong>, enabling a new class of intelligent graph applications.</p>
+<h2 id="why-combine-semantic-search-with-knowledge-graphs">Why Combine Semantic Search with Knowledge Graphs?</h2>
+<p>Traditional knowledge graphs excel at <strong>structural reasoning</strong> (finding paths, relationships, patterns), while semantic search excels at <strong>understanding meaning</strong>. Together, they create a powerful synergy:</p>
+<h3 id="1-semantic-discovery-with-structural-navigation">1. Semantic Discovery with Structural Navigation</h3>
+<p>Find nodes by meaning, then traverse their relationships:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Find documents about &quot;machine learning&quot; semantically</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="s2">&quot;machine learning techniques&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Then navigate to related entities</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">doc_node</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># Find authors of these documents</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">authors</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">doc_node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;outgoing&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;AUTHORED_BY&quot;</span><span class="p">)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="c1"># Find cited papers</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">citations</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">doc_node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;outgoing&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;CITES&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="api-token">API Token</h3>
-<p>Grafito will read the API token from any of the following environment variables (in order):</p>
-<ul>
-<li><code>HF_TOKEN</code></li>
-<li><code>HUGGINGFACE_HUB_TOKEN</code></li>
-<li><code>HUGGINGFACEHUB_API_TOKEN</code></li>
-<li><code>HUGGINGFACE_API_KEY</code></li>
-</ul>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">HF_TOKEN</span><span class="o">=</span><span class="s2">&quot;hf_...&quot;</span>
+<h3 id="2-context-aware-retrieval">2. Context-Aware Retrieval</h3>
+<p>Use graph structure to inform semantic search:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Find papers semantically similar to &quot;neural networks&quot;</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">papers</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="s2">&quot;neural networks&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">filter_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Paper&quot;</span><span class="p">])</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># For each paper, get its citation network</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">for</span> <span class="n">paper_result</span> <span class="ow">in</span> <span class="n">papers</span><span class="p">:</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">paper</span> <span class="o">=</span> <span class="n">paper_result</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="c1"># Get papers this paper cites (outgoing edges)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">references</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">paper</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;outgoing&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;CITES&quot;</span><span class="p">)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="c1"># Get papers that cite this paper (incoming edges)</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">cited_by</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">paper</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;incoming&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;CITES&quot;</span><span class="p">)</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="c1"># Find common authors</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">authors</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">paper</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;AUTHORED_BY&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="basic-usage">Basic Usage</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HuggingFaceEmbeddingFunction</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">HuggingFaceEmbeddingFunction</span><span class="p">(</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;sentence-transformers/all-MiniLM-L6-v2&quot;</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">)</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;docs_vec&quot;</span><span class="p">,</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">embedding_function</span><span class="o">=</span><span class="n">embed_fn</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="n">node</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Doc&quot;</span><span class="p">],</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;Graph search&quot;</span><span class="p">})</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="n">db</span><span class="o">.</span><span class="n">upsert_embedding</span><span class="p">(</span><span class="n">node_id</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Graph search&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">&quot;docs_vec&quot;</span><span class="p">)</span>
+<h3 id="3-multi-hop-semantic-queries">3. Multi-Hop Semantic Queries</h3>
+<p>Combine semantic similarity with graph traversal:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Find papers semantically similar to a query</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">CALL</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">vector</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;papers_vec&#39;</span><span class="p">,</span><span class="w"> </span><span class="err">$</span><span class="n">query_vector</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">YIELD</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">paper</span><span class="p">,</span><span class="w"> </span><span class="n">score</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// Then find co-authors of those papers</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">paper</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">AUTHORED_BY</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">author</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">AUTHORED_BY</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">other_paper</span><span class="p">)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">other_paper</span><span class="w"> </span><span class="p">&lt;&gt;</span><span class="w"> </span><span class="n">paper</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">paper</span><span class="p">.</span><span class="n">title</span><span class="p">,</span><span class="w"> </span><span class="n">author</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">collect</span><span class="p">(</span><span class="n">other_paper</span><span class="p">.</span><span class="n">title</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">coauthor_papers</span>
 </span></code></pre></div>
-<h3 id="configuration">Configuration</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">HuggingFaceEmbeddingFunction</span><span class="p">(</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;sentence-transformers/all-MiniLM-L6-v2&quot;</span><span class="p">,</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">api_key_env_var</span><span class="o">=</span><span class="s2">&quot;MY_HF_TOKEN&quot;</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">)</span>
+<h3 id="4-hybrid-ranking">4. Hybrid Ranking</h3>
+<p>Combine semantic similarity with graph metrics (PageRank, centrality, citation count):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="s2">&quot;deep learning&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">node</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">semantic_score</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;score&quot;</span><span class="p">]</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="c1"># Calculate graph-based importance</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">citation_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;incoming&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;CITES&quot;</span><span class="p">))</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="c1"># Hybrid score</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">hybrid_score</span> <span class="o">=</span> <span class="mf">0.7</span> <span class="o">*</span> <span class="n">semantic_score</span> <span class="o">+</span> <span class="mf">0.3</span> <span class="o">*</span> <span class="p">(</span><span class="n">citation_count</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;hybrid_score&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hybrid_score</span>
 </span></code></pre></div>
-<h2 id="sentence-transformers-local">Sentence Transformers (Local)</h2>
-<p>Use local inference with the <code>sentence_transformers</code> library.</p>
-<h3 id="installation_1">Installation</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pip<span class="w"> </span>install<span class="w"> </span>sentence_transformers
+<h3 id="5-question-answering-with-graph-context">5. Question Answering with Graph Context</h3>
+<p>Build RAG systems with rich relationship context:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># User question: &quot;Who are the leading researchers in reinforcement learning?&quot;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">query_vector</span> <span class="o">=</span> <span class="n">embedder</span><span class="p">([</span><span class="s2">&quot;reinforcement learning research&quot;</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Find relevant papers semantically</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">papers</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="n">query_vector</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">filter_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Paper&quot;</span><span class="p">])</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Get authors and their collaboration networks</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">for</span> <span class="n">paper</span> <span class="ow">in</span> <span class="n">papers</span><span class="p">:</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="n">authors</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">paper</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;AUTHORED_BY&quot;</span><span class="p">)</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="k">for</span> <span class="n">author</span> <span class="ow">in</span> <span class="n">authors</span><span class="p">:</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="c1"># Get author&#39;s other papers</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="n">other_papers</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">author</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;incoming&quot;</span><span class="p">,</span> <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;AUTHORED_BY&quot;</span><span class="p">)</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="c1"># Get collaboration network</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="n">collaborators</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="s2">            MATCH (a:Author {id: $author_id})-[:AUTHORED_BY]-(p:Paper)-[:AUTHORED_BY]-(coauthor:Author)</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="s2">            WHERE coauthor &lt;&gt; a</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="s2">            RETURN coauthor, count(p) AS num_collaborations</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="s2">            ORDER BY num_collaborations DESC</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="s2">        &quot;&quot;&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;author_id&quot;</span><span class="p">:</span> <span class="n">author</span><span class="o">.</span><span class="n">id</span><span class="p">})</span>
 </span></code></pre></div>
-<h3 id="basic-usage_1">Basic Usage</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformerEmbeddingFunction</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">SentenceTransformerEmbeddingFunction</span><span class="p">(</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;all-MiniLM-L6-v2&quot;</span><span class="p">,</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">normalize_embeddings</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">)</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;docs_vec&quot;</span><span class="p">,</span>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="n">embedding_function</span><span class="o">=</span><span class="n">embed_fn</span>
-</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="p">)</span>
+<h2 id="architecture">Architecture</h2>
+<h3 id="how-it-works">How It Works</h3>
+<p>GrafitoDB's semantic search implementation consists of three main components:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>┌─────────────────────────────────────────────────────────────┐
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>│                       GrafitoDB Database                     │
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>├─────────────────────────────────────────────────────────────┤
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│                                                              │
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│  ┌──────────────┐      ┌──────────────┐     ┌───────────┐  │
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>│  │   Nodes      │      │  Embeddings  │     │  Vector   │  │
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>│  │  (SQLite)    │◄────►│   (SQLite)   │────►│  Index    │  │
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>│  │              │      │              │     │ (Memory)  │  │
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>│  │ id | props   │      │ node_id |    │     │           │  │
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>│  │ 1  | {...}   │      │ vector       │     │  FAISS/   │  │
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>│  │ 2  | {...}   │      │              │     │  HNSW/    │  │
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>│  └──────────────┘      └──────────────┘     │  Annoy    │  │
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>│                                              └───────────┘  │
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>│                                                              │
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>│  ┌──────────────────────────────────────────────────────┐  │
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>│  │            Embedding Function                        │  │
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>│  │  (OpenAI / Cohere / HuggingFace / Ollama / etc.)    │  │
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>│  └──────────────────────────────────────────────────────┘  │
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>│                                                              │
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>└─────────────────────────────────────────────────────────────┘
 </span></code></pre></div>
-<h3 id="advanced-configuration">Advanced Configuration</h3>
-<p><code>SentenceTransformerEmbeddingFunction</code> accepts extra keyword arguments passed to
-<code>SentenceTransformer(...)</code> (only primitive JSON-like types are allowed):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">SentenceTransformerEmbeddingFunction</span><span class="p">(</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;all-MiniLM-L6-v2&quot;</span><span class="p">,</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">normalize_embeddings</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">trust_remote_code</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="notes">Notes</h3>
-<ul>
-<li>The embedding dimension is derived from the model if available.</li>
-<li><code>normalize_embeddings=True</code> is useful when you rely on cosine similarity.</li>
-</ul>
+<h3 id="data-flow">Data Flow</h3>
+<ol>
+<li><strong>Node Creation</strong>: Create nodes with properties (text, metadata)</li>
+<li><strong>Embedding Generation</strong>: Convert text properties to vectors using embedding functions</li>
+<li><strong>Index Insertion</strong>: Store vectors in specialized vector indexes for fast similarity search</li>
+<li><strong>Query</strong>: Convert query text to vector, search index for nearest neighbors</li>
+<li><strong>Retrieval</strong>: Return nodes with their properties and similarity scores</li>
+<li><strong>Graph Traversal</strong>: Navigate relationships from retrieved nodes</li>
+</ol>
+<h2 id="key-capabilities">Key Capabilities</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Multiple Embedding Providers</strong></td>
+<td>OpenAI, Cohere, HuggingFace, Ollama, and more</td>
+</tr>
+<tr>
+<td><strong>Multiple ANN Backends</strong></td>
+<td>FAISS, HNSWlib, Annoy, LEANN, USearch, Voyager</td>
+</tr>
+<tr>
+<td><strong>Similarity Metrics</strong></td>
+<td>Cosine similarity, L2 distance, and inner product</td>
+</tr>
+<tr>
+<td><strong>Property Filtering</strong></td>
+<td>Combine semantic search with graph structure filters</td>
+</tr>
+<tr>
+<td><strong>Reranking</strong></td>
+<td>Improve precision with exact reranking</td>
+</tr>
+<tr>
+<td><strong>Cypher Integration</strong></td>
+<td>Native <code>CALL db.vector.search()</code> procedure</td>
+</tr>
+<tr>
+<td><strong>Persistent Storage</strong></td>
+<td>Save and load vector indexes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="real-world-applications">Real-World Applications</h2>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Academic Research</strong></td>
+<td>Semantic paper discovery + citation networks</td>
+</tr>
+<tr>
+<td><strong>E-commerce</strong></td>
+<td>Product similarity + purchase patterns and user behavior graphs</td>
+</tr>
+<tr>
+<td><strong>Healthcare</strong></td>
+<td>Symptom matching + patient history and treatment pathways</td>
+</tr>
+<tr>
+<td><strong>Enterprise Knowledge Management</strong></td>
+<td>Document similarity + organizational hierarchies</td>
+</tr>
+<tr>
+<td><strong>Recommendation Systems</strong></td>
+<td>Content similarity + social graphs and interaction patterns</td>
+</tr>
+<tr>
+<td><strong>Fraud Detection</strong></td>
+<td>Anomaly detection + transaction networks</td>
+</tr>
+<tr>
+<td><strong>Chatbots/Assistants</strong></td>
+<td>Semantic understanding + knowledge graphs for context</td>
+</tr>
+</tbody>
+</table>
 <h2 id="next-steps">Next Steps</h2>
 <ul>
-<li><a href="../cloud-providers/">Cloud Providers</a> - Managed embedding APIs</li>
-<li><a href="../ollama/">Ollama</a> - Local embeddings via Ollama</li>
-<li><a href="../overview/">Overview</a> - General embedding concepts</li>
+<li>Learn about <a href="../vector/">Vector Search</a> - Core functionality</li>
+<li>Explore <a href="../ann-backends/">ANN Backends</a> - Choose the right backend</li>
+<li>Understand <a href="../hybrid/">Hybrid Search</a> - Combine text and vector search</li>
+<li>Set up <a href="../../embeddings/overview/">Embeddings</a> - Configure embedding providers</li>
 </ul>
 
 

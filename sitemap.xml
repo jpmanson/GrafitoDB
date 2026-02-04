@@ -2,182 +2,190 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/advanced/architecture/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/advanced/performance/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/advanced/schema/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/cypher/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/database/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/nodes/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/relationships/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/transactions/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/api/traversal/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/apoc/collections/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/apoc/import-export/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/apoc/json/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/apoc/xml-html/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/collections/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/create-match/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/filtering/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/indexes-constraints/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/modification/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/overview/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/patterns/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/return-aggregation/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/string-functions/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/temporal-spatial/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/cypher/vector-search/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/embeddings/cloud-providers/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/embeddings/huggingface/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/embeddings/ollama/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/embeddings/openai/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/embeddings/overview/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/examples/company-structure/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/examples/northwind/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/examples/social-network/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/getting-started/concepts/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/getting-started/installation/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/getting-started/introduction/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/getting-started/quickstart/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/integrations/neo4j-import/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/integrations/networkx/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/integrations/rdf/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/integrations/visualization/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/search/ann-backends/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/jpmanson/GrafitoDB/search/examples/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/search/fulltext/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/search/hybrid/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
+    </url>
+    <url>
+         <loc>https://github.com/jpmanson/GrafitoDB/search/overview/</loc>
+         <lastmod>2026-02-04</lastmod>
     </url>
     <url>
          <loc>https://github.com/jpmanson/GrafitoDB/search/vector/</loc>
-         <lastmod>2026-02-03</lastmod>
+         <lastmod>2026-02-04</lastmod>
     </url>
 </urlset>
