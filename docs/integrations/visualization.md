@@ -621,8 +621,29 @@ plot_matplotlib(
     font_size=12,
     font_color='#333333',
     font_weight='bold',
-    label_offset=(0, 0.08),        # Move labels above nodes
+    label_offset="auto",           # Automatic positioning above nodes
+    # Or use manual offset: label_offset=(0, 0.08)
     title="Custom Labels"
+)
+```
+
+### Edge Labels with Properties
+
+```python
+def edge_label_with_props(source, target, key, attrs):
+    """Show relationship type and properties."""
+    rel_type = attrs.get("type", "RELATED_TO")
+    props = attrs.get("properties", {})
+    if props:
+        return f"{rel_type}\n({', '.join(f'{k}: {v}' for k, v in props.items())})"
+    return rel_type
+
+plot_matplotlib(
+    graph,
+    show_edge_labels=True,
+    edge_label_fn=edge_label_with_props,
+    edge_font_size=8,
+    title="Graph with Edge Properties"
 )
 ```
 
