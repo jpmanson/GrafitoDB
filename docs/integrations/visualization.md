@@ -430,6 +430,30 @@ export_graph(
 )
 ```
 
+### Custom Edge Labels with Properties
+
+Use `edge_label_fn` to show relationship properties on edges:
+
+```python
+def edge_label_with_props(source, target, attrs):
+    """Show relationship type and properties."""
+    rel_type = attrs.get("type", "RELATED_TO")
+    props = attrs.get("properties", {})
+    if props:
+        props_str = "\n".join(f"{k}: {v}" for k, v in props.items())
+        return f"{rel_type}\n{props_str}"
+    return rel_type
+
+export_graph(
+    graph,
+    'graph.png',
+    backend='netgraph',
+    label_fn=label_with_wrap,
+    edge_label_fn=edge_label_with_props,
+    node_size=8
+)
+```
+
 ### Matplotlib Composition
 
 Netgraph integrates with matplotlib for complex figures:
