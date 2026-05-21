@@ -30,7 +30,28 @@ from .filters import (
 )
 from .models import Node, Relationship, Point
 
-__version__ = '0.1.0'
+def _resolve_version() -> str:
+    """Resolve the package version without hardcoding it (avoids drift).
+
+    Uses installed distribution metadata when available, and falls back to
+    reading pyproject.toml when running from an uninstalled source tree.
+    """
+    from importlib.metadata import version as _pkg_version, PackageNotFoundError
+
+    try:
+        return _pkg_version('grafitodb')
+    except PackageNotFoundError:
+        import tomllib
+        from pathlib import Path
+
+        pyproject = Path(__file__).resolve().parent.parent / 'pyproject.toml'
+        try:
+            return tomllib.loads(pyproject.read_text(encoding='utf-8'))['project']['version']
+        except (OSError, KeyError, tomllib.TOMLDecodeError):
+            return '0.0.0+unknown'
+
+
+__version__ = _resolve_version()
 __all__ = [
     'GrafitoDatabase',
     'Node',
