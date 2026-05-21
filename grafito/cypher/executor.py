@@ -2268,6 +2268,9 @@ class CypherExecutor:
                 # Determine target node id based on direction
                 if rel_pattern.direction == 'incoming':
                     target_id = rel.source_id
+                elif rel_pattern.direction == 'both':
+                    # Undirected: the "other" node is whichever end is not the source node
+                    target_id = rel.target_id if rel.source_id == source_node.id else rel.source_id
                 else:
                     target_id = rel.target_id
 

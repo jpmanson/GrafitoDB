@@ -1624,6 +1624,47 @@ class TestCypherShortestPath:
         assert len(results) == 2
         db.close()
 
+    def test_match_bidirectional_relationship_binds_both_endpoints(self):
+        # Regression test: an undirected match traversed "backwards" must bind
+        # the other variable to the opposite endpoint, not to the start node.
+        # For edge Alice->Bob the result must be {(Alice, Bob), (Bob, Alice)},
+        # never (Bob, Bob).
+        db = GrafitoDatabase(':memory:')
+        alice = db.create_node(labels=['Person'], properties={'name': 'Alice'})
+        bob = db.create_node(labels=['Person'], properties={'name': 'Bob'})
+        db.create_relationship(alice.id, bob.id, 'KNOWS')
+
+        results = db.execute("""
+            MATCH (a:Person)-[r:KNOWS]-(b:Person)
+            RETURN a.name, b.name
+        """)
+        pairs = {(row['a.name'], row['b.name']) for row in results}
+        assert pairs == {('Alice', 'Bob'), ('Bob', 'Alice')}
+        db.close()
+
+    def test_match_bidirectional_relationship_multi_node(self):
+        # Regression test over a chain Alice->Bob->Carol: each undirected
+        # KNOWS edge must yield exactly its two oriented pairs.
+        db = GrafitoDatabase(':memory:')
+        alice = db.create_node(labels=['Person'], properties={'name': 'Alice'})
+        bob = db.create_node(labels=['Person'], properties={'name': 'Bob'})
+        carol = db.create_node(labels=['Person'], properties={'name': 'Carol'})
+        db.create_relationship(alice.id, bob.id, 'KNOWS')
+        db.create_relationship(bob.id, carol.id, 'KNOWS')
+
+        results = db.execute("""
+            MATCH (a:Person)-[r:KNOWS]-(b:Person)
+            RETURN a.name, b.name
+        """)
+        pairs = {(row['a.name'], row['b.name']) for row in results}
+        assert pairs == {
+            ('Alice', 'Bob'), ('Bob', 'Alice'),
+            ('Bob', 'Carol'), ('Carol', 'Bob'),
+        }
+        # No spurious self-pairs
+        assert all(row['a.name'] != row['b.name'] for row in results)
+        db.close()
+
 
 class TestCypherUnion:
     """Test UNION and UNION ALL queries."""
