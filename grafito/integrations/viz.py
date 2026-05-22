@@ -1373,11 +1373,16 @@ def graph_to_netgraph(
     node_size: float = 3.0,
     edge_width: float = 1.0,
     arrows: bool = True,
+    node_zorder: int = 2,
+    edge_zorder: int = 1,
+    edge_label_zorder: float | None = None,
     # Conversion
     edge_merge_strategy: str = "concat",
     # Matplotlib
     ax: Any = None,
-    figsize: tuple[float, float] = (12, 8),
+    figsize: tuple[float, float] | None = None,
+    scale: tuple[float, float] | None = None,
+    spread: float = 1.0,
     **kwargs: Any,
 ):
     """Convert a NetworkX graph into a netgraph visualization.
@@ -1395,13 +1400,40 @@ def graph_to_netgraph(
         color_map: Map from label names to colors.
         interactive: Enable interactive mode (drag nodes).
         node_layout: Layout algorithm: "spring", "circular", "random", etc.
-        edge_layout: Edge routing: "straight", "curved", "arc", "bundled".
+        edge_layout: Edge routing. Use "curved" to route edges around nodes so
+            connections don't cross over unrelated circles; "straight" (default)
+            draws direct lines and is faster. Other options: "arc", "bundled".
         node_size: Size of nodes.
         edge_width: Width of edges.
         arrows: Show directional arrows.
+        node_zorder: Draw order for nodes. Kept above ``edge_zorder`` so node
+            circles always paint on top of edges that pass behind them.
+        edge_zorder: Draw order for edges. Kept below ``node_zorder``.
+        edge_label_zorder: Draw order for edge label text. netgraph normally
+            paints edge labels on top of everything (zorder inf), so the text
+            covers any node it lands on. The default here places labels between
+            edges and nodes, so a label that overlaps a node is hidden behind
+            the circle instead of printed over it. Pass ``float("inf")`` to
+            restore netgraph's always-on-top behaviour, or an explicit number
+            to tune it. Ignored if ``edge_label_fontdict`` already sets
+            ``zorder``.
         edge_merge_strategy: How to merge multi-edges: "concat", "first", "count".
         ax: Matplotlib axes to draw on.
-        figsize: Figure size if creating new figure.
+        figsize: Figure size if creating new figure. When None (default), it is
+            derived from graph size so denser graphs get a proportionally
+            larger canvas (see ``scale``).
+        scale: Width/height of the layout bounding box. When None (default), it
+            grows with the node and edge count so the force-directed layout has
+            room to spread nodes apart instead of packing them into a hairball.
+            Bigger ``scale`` is the real lever for readability on dense graphs;
+            ``figsize`` is grown to match so node and label sizes stay constant.
+            Pass an explicit tuple (e.g. ``(1.0, 1.0)``) to opt out.
+        spread: Taste knob for node separation, applied on top of the automatic
+            sizing. ``1.0`` (default) keeps the calibrated spacing; ``1.3`` puts
+            ~30% more room between nodes; values below ``1.0`` pack them tighter.
+            It scales both ``scale`` and ``figsize``, so node and font sizes
+            stay constant and only the breathing room changes. Has no effect
+            when both ``scale`` and ``figsize`` are passed explicitly.
         **kwargs: Additional arguments passed to netgraph.
 
     Returns:
@@ -1488,6 +1520,24 @@ def graph_to_netgraph(
             else:
                 edge_labels[(u, v)] = attrs.get("type", "RELATED_TO")
 
+    # Density-aware sizing: a fixed canvas turns dense graphs into hairballs
+    # because nodes (whose radius is fixed) get packed into the same box. The
+    # fix is to grow the layout bounding box (``scale``) with the amount of
+    # content, so the force-directed layout spreads nodes apart; ``figsize`` is
+    # grown in step so node and font sizes stay physically constant. Edges
+    # count toward the budget because edge labels are what crowd hub nodes.
+    n_nodes = graph.number_of_nodes()
+    n_edges = graph.number_of_edges()
+    budget = n_nodes + 0.5 * n_edges
+    # Calibrated so a ~12-node / ~18-edge graph yields a factor of 1.0.
+    size_factor = min(5.0, max(1.0, (budget / 21.0) ** 0.55))
+    # `spread` is the user-facing taste knob layered on top of the auto factor.
+    size_factor *= max(0.1, spread)
+    if scale is None and isinstance(node_layout, str):
+        scale = (size_factor, size_factor)
+    if figsize is None:
+        figsize = (13.0 * size_factor, 13.0 * size_factor)
+
     # Create figure if not provided
     created_fig = False
     if ax is None:
@@ -1502,17 +1552,39 @@ def graph_to_netgraph(
     else:
         NetgraphClass = netgraph.Graph
 
-    # Create netgraph instance
+    # Explicit node positions must be numeric arrays for the "curved"/"bundled"
+    # edge routers, which do vector arithmetic on them.
+    if isinstance(node_layout, dict):
+        import numpy as np
+
+        node_layout = {n: np.asarray(p, dtype=float) for n, p in node_layout.items()}
+
+    # Pin the edge label draw order. netgraph defaults this to inf (labels on
+    # top of everything); we drop it just below node_zorder so label text that
+    # lands on a node is hidden by the circle rather than printed over it.
+    edge_label_fontdict = dict(kwargs.pop("edge_label_fontdict", None) or {})
+    if edge_label_zorder is None:
+        edge_label_zorder = node_zorder - 0.5
+    edge_label_fontdict.setdefault("zorder", edge_label_zorder)
+
+    if scale is not None:
+        kwargs.setdefault("scale", scale)
+
+    # Create netgraph instance. node_zorder is kept above edge_zorder so node
+    # circles always paint on top of any edge that passes behind them.
     ng = NetgraphClass(
         graph,
         node_labels=node_labels,
         node_color=node_colors,
         edge_labels=edge_labels,
+        edge_label_fontdict=edge_label_fontdict,
         node_layout=node_layout,
         edge_layout=edge_layout,
         node_size=node_size,
         edge_width=edge_width,
         arrows=arrows,
+        node_zorder=node_zorder,
+        edge_zorder=edge_zorder,
         ax=ax,
         **kwargs,
     )
