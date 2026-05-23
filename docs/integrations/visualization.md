@@ -275,6 +275,12 @@ export_graph(
 )
 ```
 
+### Interactive Demo
+
+You can experiment with different force settings using this interactive D3 visualization:
+
+<iframe src="../../assets/demos/kg-d3-demo.html" width="100%" height="700px" style="border: 1px solid #ddd; border-radius: 6px; background: white;"></iframe>
+
 ## Cytoscape.js (Self-Contained HTML)
 
 Cytoscape export produces a standalone HTML file (no build step).
