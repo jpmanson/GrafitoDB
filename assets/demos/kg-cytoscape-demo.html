@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Grafito Cytoscape Graph</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #cy { width: 100vw; height: 100vh; background: #f8f9fb; }
+  </style>
+  <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+</head>
+<body>
+<div id="cy"></div>
+<script>
+const elements = [{"data": {"id": "1", "label": "Person Alice Chen", "group": "Person", "color": "#8ecae6", "title": "Alice Chen"}}, {"data": {"id": "2", "label": "Person Bob Rivera", "group": "Person", "color": "#8ecae6", "title": "Bob Rivera"}}, {"data": {"id": "3", "label": "Person Carla Mendes", "group": "Person", "color": "#8ecae6", "title": "Carla Mendes"}}, {"data": {"id": "4", "label": "Person Diego Soto", "group": "Person", "color": "#8ecae6", "title": "Diego Soto"}}, {"data": {"id": "5", "label": "Person Elena Voss", "group": "Person", "color": "#8ecae6", "title": "Elena Voss"}}, {"data": {"id": "6", "label": "Person Frank Liu", "group": "Person", "color": "#8ecae6", "title": "Frank Liu"}}, {"data": {"id": "7", "label": "Topic Knowledge Graphs", "group": "Topic", "color": "#219ebc", "title": "Knowledge Graphs"}}, {"data": {"id": "8", "label": "Topic RAG Systems", "group": "Topic", "color": "#219ebc", "title": "RAG Systems"}}, {"data": {"id": "9", "label": "Topic Vector Search", "group": "Topic", "color": "#219ebc", "title": "Vector Search"}}, {"data": {"id": "10", "label": "Topic Graph Visualization", "group": "Topic", "color": "#219ebc", "title": "Graph Visualization"}}, {"data": {"id": "11", "label": "Topic Large Language Models", "group": "Topic", "color": "#219ebc", "title": "Large Language Models"}}, {"data": {"id": "12", "label": "Topic Semantic Search", "group": "Topic", "color": "#219ebc", "title": "Semantic Search"}}, {"data": {"id": "1-7-1", "source": "1", "target": "7", "label": "RESEARCHES"}}, {"data": {"id": "1-10-2", "source": "1", "target": "10", "label": "RESEARCHES"}}, {"data": {"id": "1-2-16", "source": "1", "target": "2", "label": "COLLABORATES_WITH"}}, {"data": {"id": "1-4-17", "source": "1", "target": "4", "label": "COLLABORATES_WITH"}}, {"data": {"id": "2-10-3", "source": "2", "target": "10", "label": "WORKS_ON"}}, {"data": {"id": "2-9-4", "source": "2", "target": "9", "label": "IMPLEMENTS"}}, {"data": {"id": "2-6-19", "source": "2", "target": "6", "label": "KNOWS"}}, {"data": {"id": "3-10-5", "source": "3", "target": "10", "label": "DESIGNS"}}, {"data": {"id": "3-5-18", "source": "3", "target": "5", "label": "REVIEWS"}}, {"data": {"id": "4-7-6", "source": "4", "target": "7", "label": "EXPERIMENTS_WITH"}}, {"data": {"id": "4-8-7", "source": "4", "target": "8", "label": "BUILDS"}}, {"data": {"id": "5-8-8", "source": "5", "target": "8", "label": "OPTIMIZES"}}, {"data": {"id": "5-11-9", "source": "5", "target": "11", "label": "TRAINS"}}, {"data": {"id": "6-11-10", "source": "6", "target": "11", "label": "RESEARCHES"}}, {"data": {"id": "6-9-11", "source": "6", "target": "9", "label": "WORKS_ON"}}, {"data": {"id": "7-11-12", "source": "7", "target": "11", "label": "INTEGRATES_WITH"}}, {"data": {"id": "8-9-13", "source": "8", "target": "9", "label": "USES"}}, {"data": {"id": "10-7-14", "source": "10", "target": "7", "label": "HELPS_UNDERSTAND"}}, {"data": {"id": "12-7-15", "source": "12", "target": "7", "label": "IMPROVES"}}];
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: elements,
+  style: [
+    {
+      selector: 'node',
+      style: {
+        'label': 'data(label)',
+        'background-color': 'data(color)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'color': '#1b1f23',
+        'font-size': 9,
+        'width': 22,
+        'height': 22,
+        'text-wrap': 'wrap',
+        'text-max-width': 80
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'triangle',
+        'line-color': '#9aa4b2',
+        'target-arrow-color': '#9aa4b2',
+        'label': 'data(label)',
+        'font-size': 8,
+        'color': '#556'
+      }
+    }
+  ],
+  layout: {"name": "cose", "padding": 30}
+});
+</script>
+</body>
+</html>
