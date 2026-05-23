@@ -63,6 +63,10 @@ save_pyvis_html(
 )
 ```
 
+Example output:
+
+![PyVis Interactive Visualization](../assets/images/kg-pyvis-screenshot.png)
+
 ## Advanced PyVis Customization
 
 If you need deeper control over node/edge styling, use PyVis directly after
@@ -71,10 +75,6 @@ exporting to NetworkX.
 ### Per-Type Node Styling
 
 ```
-
-Captura de un grafo generado con PyVis:
-
-![PyVis Screenshot](../assets/images/kg-pyvis-screenshot.png)
 
 python
 from pyvis.network import Network
