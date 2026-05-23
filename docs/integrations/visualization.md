@@ -374,13 +374,11 @@ Example output:
 
 ![Netgraph Visualization](../assets/images/kg-netgraph-clean.png)
 
-Otra variante con etiquetas más destacadas:
+Another variant with more prominent labels:
 
 ![Netgraph Labeled](../assets/images/kg-netgraph-labeled.png)
 
-Versión con énfasis en las relaciones:
 
-![Netgraph Edges](../assets/images/kg-netgraph-edges.png)
 
 
 
