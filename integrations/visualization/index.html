@@ -3831,29 +3831,27 @@
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">physics</span><span class="o">=</span><span class="s1">&#39;spread&#39;</span>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">)</span>
 </span></code></pre></div>
+<p>Example output:</p>
+<p><img alt="PyVis Interactive Visualization" src="../../assets/images/kg-pyvis-screenshot.png" /></p>
 <h2 id="advanced-pyvis-customization">Advanced PyVis Customization</h2>
 <p>If you need deeper control over node/edge styling, use PyVis directly after
 exporting to NetworkX.</p>
 <h3 id="per-type-node-styling">Per-Type Node Styling</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Captura de un grafo generado con PyVis:
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>![PyVis Screenshot](../assets/images/kg-pyvis-screenshot.png)
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>python
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>from pyvis.network import Network
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>graph = db.to_networkx()
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>net = Network(height=&quot;650px&quot;, width=&quot;100%&quot;, bgcolor=&quot;#ffffff&quot;, font_color=&quot;black&quot;)
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>node_colors = {&quot;ACTION&quot;: &quot;#ffcc80&quot;, &quot;OBSERVATION&quot;: &quot;#e3f2fd&quot;}
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>for node_id, attrs in graph.nodes(data=True):
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    props = attrs.get(&quot;properties&quot;, attrs)
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    ntype = props.get(&quot;type&quot;, &quot;OBSERVATION&quot;)
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    label = props.get(&quot;content&quot;, &quot;&quot;)[:20] + &quot;...&quot;
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    color = node_colors.get(ntype, &quot;#e3f2fd&quot;)
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    shape = &quot;box&quot; if ntype == &quot;ACTION&quot; else &quot;ellipse&quot;
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    net.add_node(node_id, label=label, color=color, shape=shape)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>from pyvis.network import Network
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>graph = db.to_networkx()
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>net = Network(height=&quot;650px&quot;, width=&quot;100%&quot;, bgcolor=&quot;#ffffff&quot;, font_color=&quot;black&quot;)
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>node_colors = {&quot;ACTION&quot;: &quot;#ffcc80&quot;, &quot;OBSERVATION&quot;: &quot;#e3f2fd&quot;}
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>for node_id, attrs in graph.nodes(data=True):
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    props = attrs.get(&quot;properties&quot;, attrs)
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    ntype = props.get(&quot;type&quot;, &quot;OBSERVATION&quot;)
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    label = props.get(&quot;content&quot;, &quot;&quot;)[:20] + &quot;...&quot;
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    color = node_colors.get(ntype, &quot;#e3f2fd&quot;)
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    shape = &quot;box&quot; if ntype == &quot;ACTION&quot; else &quot;ellipse&quot;
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    net.add_node(node_id, label=label, color=color, shape=shape)
 </span></code></pre></div>
 <h3 id="per-relationship-styling">Per-Relationship Styling</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">edge_colors</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;TEMPORAL_NEXT&quot;</span><span class="p">:</span> <span class="s2">&quot;#2962ff&quot;</span><span class="p">,</span> <span class="s2">&quot;SEMANTIC&quot;</span><span class="p">:</span> <span class="s2">&quot;#00c853&quot;</span><span class="p">,</span> <span class="s2">&quot;ENTITY&quot;</span><span class="p">:</span> <span class="s2">&quot;#d50000&quot;</span><span class="p">}</span>
