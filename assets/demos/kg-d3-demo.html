@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Grafito D3 Graph</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; display: flex; }
+    #controls {
+      width: 260px;
+      padding: 20px;
+      background: #f8f9fb;
+      border-right: 1px solid #ddd;
+      font-size: 13px;
+    }
+    .control { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 4px; font-weight: 500; }
+    input[type="range"] { width: 100%; }
+    #graph { flex: 1; }
+    svg { width: 100%; height: 100vh; background: #f8f9fb; }
+    .link { stroke: #9aa4b2; stroke-width: 1.2px; }
+    .edge-label { font-size: 9px; fill: #556; pointer-events: none; }
+    .node text { font-size: 11px; fill: #1b1f23; pointer-events: none; }
+  </style>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <div id="controls">
+    <h3>Force Controls</h3>
+    
+    <div class="control">
+      <label>Repulsion: <span id="charge-val">-300</span></label>
+      <input type="range" id="charge" min="-1000" max="0" step="10" value="-300">
+    </div>
+    
+    <div class="control">
+      <label>Link Distance: <span id="distance-val">120</span></label>
+      <input type="range" id="distance" min="30" max="300" step="5" value="120">
+    </div>
+    
+    <div class="control">
+      <label>Center Strength: <span id="center-val">0.5</span></label>
+      <input type="range" id="center" min="0" max="2" step="0.1" value="0.5">
+    </div>
+    
+    <div class="control">
+      <label>Node Size: <span id="size-val">8</span></label>
+      <input type="range" id="size" min="4" max="20" step="1" value="8">
+    </div>
+  </div>
+  
+  <div id="graph">
+    <svg width="100%" height="100vh"></svg>
+  </div>
+
+<script>
+const data = {"nodes": [{"id": "1", "label": "Person Alice Chen", "group": "Person", "color": "#4ecdc4", "title": "Alice Chen"}, {"id": "2", "label": "Person Bob Rivera", "group": "Person", "color": "#4ecdc4", "title": "Bob Rivera"}, {"id": "3", "label": "Person Carla Mendes", "group": "Person", "color": "#4ecdc4", "title": "Carla Mendes"}, {"id": "4", "label": "Person Diego Soto", "group": "Person", "color": "#4ecdc4", "title": "Diego Soto"}, {"id": "5", "label": "Person Elena Voss", "group": "Person", "color": "#4ecdc4", "title": "Elena Voss"}, {"id": "6", "label": "Person Frank Liu", "group": "Person", "color": "#4ecdc4", "title": "Frank Liu"}, {"id": "7", "label": "Topic Knowledge Graphs", "group": "Topic", "color": "#ff6b6b", "title": "Knowledge Graphs"}, {"id": "8", "label": "Topic RAG Systems", "group": "Topic", "color": "#ff6b6b", "title": "RAG Systems"}, {"id": "9", "label": "Topic Vector Search", "group": "Topic", "color": "#ff6b6b", "title": "Vector Search"}, {"id": "10", "label": "Topic Graph Visualization", "group": "Topic", "color": "#ff6b6b", "title": "Graph Visualization"}, {"id": "11", "label": "Topic Large Language Models", "group": "Topic", "color": "#ff6b6b", "title": "Large Language Models"}, {"id": "12", "label": "Topic Semantic Search", "group": "Topic", "color": "#ff6b6b", "title": "Semantic Search"}], "links": [{"source": "1", "target": "7", "label": "RESEARCHES"}, {"source": "1", "target": "10", "label": "RESEARCHES"}, {"source": "1", "target": "2", "label": "COLLABORATES_WITH"}, {"source": "1", "target": "4", "label": "COLLABORATES_WITH"}, {"source": "2", "target": "10", "label": "WORKS_ON"}, {"source": "2", "target": "9", "label": "IMPLEMENTS"}, {"source": "2", "target": "6", "label": "KNOWS"}, {"source": "3", "target": "10", "label": "DESIGNS"}, {"source": "3", "target": "5", "label": "REVIEWS"}, {"source": "4", "target": "7", "label": "EXPERIMENTS_WITH"}, {"source": "4", "target": "8", "label": "BUILDS"}, {"source": "5", "target": "8", "label": "OPTIMIZES"}, {"source": "5", "target": "11", "label": "TRAINS"}, {"source": "6", "target": "11", "label": "RESEARCHES"}, {"source": "6", "target": "9", "label": "WORKS_ON"}, {"source": "7", "target": "11", "label": "INTEGRATES_WITH"}, {"source": "8", "target": "9", "label": "USES"}, {"source": "10", "target": "7", "label": "HELPS_UNDERSTAND"}, {"source": "12", "target": "7", "label": "IMPROVES"}]};
+
+const svg = d3.select("svg");
+const width = window.innerWidth - 280;
+const height = window.innerHeight;
+
+let nodeRadius = 8;
+
+const simulation = d3.forceSimulation(data.nodes)
+  .force("link", d3.forceLink(data.links).id(d => d.id).distance(120))
+  .force("charge", d3.forceManyBody().strength(-300))
+  .force("center", d3.forceCenter(width / 2, height / 2));
+
+const container = svg.append("g");
+
+// Links
+const link = container.append("g")
+  .selectAll("line")
+  .data(data.links)
+  .join("line")
+  .attr("class", "link");
+
+// Edge labels
+const edgeLabels = container.append("g")
+  .selectAll("text")
+  .data(data.links)
+  .join("text")
+  .attr("class", "edge-label")
+  .text(d => d.label);
+
+// Nodes
+const node = container.append("g")
+  .selectAll("g")
+  .data(data.nodes)
+  .join("g")
+  .call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended));
+
+const circles = node.append("circle")
+  .attr("r", nodeRadius)
+  .attr("fill", d => d.color)
+  .attr("stroke", "#fff")
+  .attr("stroke-width", 1.5);
+
+node.append("text")
+  .attr("x", 12)
+  .attr("y", 4)
+  .text(d => d.label.replace("Person ", "").replace("Topic ", ""));
+
+simulation.on("tick", () => {
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+
+  edgeLabels
+    .attr("x", d => (d.source.x + d.target.x) / 2)
+    .attr("y", d => (d.source.y + d.target.y) / 2);
+
+  node.attr("transform", d => `translate(${d.x},${d.y})`);
+});
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(event, d) {
+  d.fx = event.x;
+  d.fy = event.y;
+}
+
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+// === SLIDERS ===
+const chargeSlider = document.getElementById("charge");
+const distanceSlider = document.getElementById("distance");
+const centerSlider = document.getElementById("center");
+const sizeSlider = document.getElementById("size");
+
+const chargeVal = document.getElementById("charge-val");
+const distanceVal = document.getElementById("distance-val");
+const centerVal = document.getElementById("center-val");
+const sizeVal = document.getElementById("size-val");
+
+function updateForces() {
+  const charge = +chargeSlider.value;
+  const distance = +distanceSlider.value;
+  const centerStrength = +centerSlider.value;
+
+  chargeVal.textContent = charge;
+  distanceVal.textContent = distance;
+  centerVal.textContent = centerStrength;
+
+  simulation
+    .force("charge", d3.forceManyBody().strength(charge))
+    .force("link", d3.forceLink(data.links).id(d => d.id).distance(distance))
+    .force("center", d3.forceCenter(width / 2, height / 2).strength(centerStrength))
+    .alpha(1)
+    .restart();
+}
+
+function updateNodeSize() {
+  nodeRadius = +sizeSlider.value;
+  sizeVal.textContent = nodeRadius;
+  circles.attr("r", nodeRadius);
+}
+
+chargeSlider.oninput = updateForces;
+distanceSlider.oninput = updateForces;
+centerSlider.oninput = updateForces;
+sizeSlider.oninput = updateNodeSize;
+
+// Initial values
+chargeVal.textContent = chargeSlider.value;
+distanceVal.textContent = distanceSlider.value;
+centerVal.textContent = centerSlider.value;
+sizeVal.textContent = sizeSlider.value;
+</script>
+</body>
+</html>
