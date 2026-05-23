@@ -364,6 +364,12 @@ export_graph(
 )
 ```
 
+Example output:
+
+![Netgraph Visualization](../assets/images/kg-netgraph-clean.png)
+
+
+
 ### Vector Formats (SVG/PDF)
 
 Netgraph excels at producing vector graphics for publications:
