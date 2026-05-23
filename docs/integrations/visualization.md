@@ -70,7 +70,13 @@ exporting to NetworkX.
 
 ### Per-Type Node Styling
 
-```python
+```
+
+Captura de un grafo generado con PyVis:
+
+![PyVis Screenshot](../assets/images/kg-pyvis-screenshot.png)
+
+python
 from pyvis.network import Network
 
 graph = db.to_networkx()
@@ -367,6 +373,14 @@ export_graph(
 Example output:
 
 ![Netgraph Visualization](../assets/images/kg-netgraph-clean.png)
+
+Otra variante con etiquetas más destacadas:
+
+![Netgraph Labeled](../assets/images/kg-netgraph-labeled.png)
+
+Versión con énfasis en las relaciones:
+
+![Netgraph Edges](../assets/images/kg-netgraph-edges.png)
 
 
 
