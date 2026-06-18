@@ -1736,6 +1736,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2570,6 +2581,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2733,6 +2755,53 @@ not errors).</p>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Full-text search over titles, descriptions, and bodies</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">db</span><span class="o">.</span><span class="n">text_search</span><span class="p">(</span><span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </span></code></pre></div>
+<h3 id="semantic-search">Semantic search</h3>
+<p>Pass an embedding function to embed each concept into a vector index at import
+time. Concepts are embedded from their <code>title</code>, <code>description</code>, and <code>body</code>, so
+you can query the bundle by meaning rather than keywords:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformerEmbeddingFunction</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">embedder</span> <span class="o">=</span> <span class="n">SentenceTransformerEmbeddingFunction</span><span class="p">(</span><span class="s2">&quot;all-MiniLM-L6-v2&quot;</span><span class="p">)</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">db</span><span class="o">.</span><span class="n">import_okf_bundle</span><span class="p">(</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Query by meaning; the index already knows how to embed the query text</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="s2">&quot;how do customers pay for orders&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">&quot;okf&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Relevant import options:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>embed</code></td>
+<td><code>None</code></td>
+<td>An <code>EmbeddingFunction</code>; when set, concepts are embedded for semantic search.</td>
+</tr>
+<tr>
+<td><code>embed_index</code></td>
+<td><code>"okf"</code></td>
+<td>Name of the vector index created for concept embeddings.</td>
+</tr>
+<tr>
+<td><code>embed_fields</code></td>
+<td><code>("title", "description", "body")</code></td>
+<td>Concept fields concatenated into the embedded document.</td>
+</tr>
+<tr>
+<td><code>embed_backend</code></td>
+<td><code>"bruteforce"</code></td>
+<td>Vector index backend (the default needs no extra dependencies).</td>
+</tr>
+</tbody>
+</table>
+<p>The summary dict reports the number of <code>embedded</code> concepts. This pairs full-text
+(<code>text_search</code>) and vector (<code>semantic_search</code>) retrieval over the same imported
+bundle — useful for hybrid agent-memory workflows.</p>
 <h3 id="options">Options</h3>
 <table>
 <thead>
@@ -2765,8 +2834,8 @@ created for links whose target is not in the bundle), and <code>skipped</code>
 (<code>index.md</code>/<code>log.md</code> files).</p>
 <h2 id="exporting-a-bundle">Exporting a bundle</h2>
 <p>The inverse operation serializes the graph back to OKF markdown:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># {&#39;concepts&#39;: 8, &#39;skipped&#39;: 0, &#39;viz&#39;: True}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># {&#39;concepts&#39;: 8, &#39;skipped&#39;: 0, &#39;viz&#39;: True}</span>
 </span></code></pre></div>
 <p>This writes:</p>
 <ul>
@@ -2810,14 +2879,14 @@ section listing their outgoing relationships.</p>
 <h2 id="round-trip-and-agent-memory">Round-trip and agent memory</h2>
 <p>Import → query/enrich → export is lossless for the graph structure and
 preserves unknown frontmatter keys:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">db</span><span class="o">.</span><span class="n">import_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># ... query, traverse, or add knowledge via Cypher / the programmatic API ...</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE (n:Playbook {title: &#39;New runbook&#39;, body: &#39;Steps...&#39;})&quot;</span><span class="p">)</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Persist the enriched knowledge back to markdown (commit it to git)</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">db</span><span class="o">.</span><span class="n">import_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># ... query, traverse, or add knowledge via Cypher / the programmatic API ...</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE (n:Playbook {title: &#39;New runbook&#39;, body: &#39;Steps...&#39;})&quot;</span><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># Persist the enriched knowledge back to markdown (commit it to git)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Multi-label nodes</p>
@@ -2829,7 +2898,7 @@ the open design question on representing multi-label nodes.</p>
 <p>A runnable end-to-end example (import → Cypher → full-text search → export with
 <code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the sample bundle in
 <code>examples/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>examples/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>examples/okf_import.py
 </span></code></pre></div>
 
 
