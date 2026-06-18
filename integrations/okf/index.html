@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/apoc/import-export/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/integrations/okf/">
       
       
-        <link rel="prev" href="../collections/">
+        <link rel="prev" href="../neo4j-import/">
       
       
-        <link rel="next" href="../../examples/social-network/">
+        <link rel="next" href="../visualization/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Import/Export - GrafitoDB</title>
+        <title>Open Knowledge Format (OKF) - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#apoc-import-export" class="md-skip">
+        <a href="#open-knowledge-format-okf" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Import/Export
+              Open Knowledge Format (OKF)
             
           </span>
         </div>
@@ -324,11 +324,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../integrations/networkx/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../networkx/" class="md-tabs__link">
           
   
   
@@ -364,13 +366,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../xml-html/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../apoc/xml-html/" class="md-tabs__link">
           
   
   
@@ -1498,28 +1498,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -1537,7 +1540,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1555,7 +1558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../integrations/networkx/" class="md-nav__link">
+      <a href="../networkx/" class="md-nav__link">
         
   
   
@@ -1583,7 +1586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../integrations/rdf/" class="md-nav__link">
+      <a href="../rdf/" class="md-nav__link">
         
   
   
@@ -1611,7 +1614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../integrations/neo4j-import/" class="md-nav__link">
+      <a href="../neo4j-import/" class="md-nav__link">
         
   
   
@@ -1636,10 +1639,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../integrations/okf/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open Knowledge Format (OKF)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1655,6 +1685,126 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-concepts-map-to-the-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How concepts map to the graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#importing-a-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Importing a bundle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Importing a bundle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exporting-a-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting a bundle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exporting a bundle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#round-trip-and-agent-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Round-trip and agent memory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1667,7 +1817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../integrations/visualization/" class="md-nav__link">
+      <a href="../visualization/" class="md-nav__link">
         
   
   
@@ -1900,31 +2050,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -1942,7 +2089,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1960,7 +2107,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../xml-html/" class="md-nav__link">
+      <a href="../../apoc/xml-html/" class="md-nav__link">
         
   
   
@@ -1988,7 +2135,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../json/" class="md-nav__link">
+      <a href="../../apoc/json/" class="md-nav__link">
         
   
   
@@ -2016,7 +2163,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../collections/" class="md-nav__link">
+      <a href="../../apoc/collections/" class="md-nav__link">
         
   
   
@@ -2041,37 +2188,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Import/Export
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../apoc/import-export/" class="md-nav__link">
         
   
   
@@ -2087,48 +2207,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#import" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#export" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Export
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2458,10 +2536,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#import" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import
+        Prerequisites
       
     </span>
   </a>
@@ -2469,10 +2547,88 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#export" class="md-nav__link">
+  <a href="#how-concepts-map-to-the-graph" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Export
+        How concepts map to the graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#importing-a-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Importing a bundle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Importing a bundle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exporting-a-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting a bundle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exporting a bundle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#round-trip-and-agent-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Round-trip and agent memory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
       
     </span>
   </a>
@@ -2499,13 +2655,178 @@
   
 
 
-<h1 id="apoc-import-export">APOC: Import / Export</h1>
-<p>GrafitoDB currently supports JSON-based import via APOC-style procedures.
-Export procedures are not implemented yet.</p>
-<h2 id="import">Import</h2>
-<p>See <a href="../json/">APOC: JSON / JSONL</a> for the full <code>apoc.import.json</code> reference.</p>
-<h2 id="export">Export</h2>
-<p>Export procedures are planned but not available in the current release.</p>
+<h1 id="open-knowledge-format-okf">Open Knowledge Format (OKF)</h1>
+<p><a href="https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf">Open Knowledge Format</a>
+(OKF) is an open, human- and agent-friendly format for representing <em>knowledge</em>:
+a directory tree of markdown files with YAML frontmatter. There is no schema
+registry and no required tooling — if you can <code>git clone</code> a repo, you can ship
+an OKF bundle.</p>
+<p>GrafitoDB can <strong>import</strong> an OKF bundle into a queryable property graph and
+<strong>export</strong> a graph back to an OKF bundle. This makes OKF a durable, diffable,
+human-readable storage layer while GrafitoDB provides Cypher, full-text, and
+semantic search on top — a natural fit for <strong>agent memory</strong>: persist knowledge
+as markdown in git, index and query it at runtime.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># PyYAML is included by default</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>grafito
+</span></code></pre></div>
+<h2 id="how-concepts-map-to-the-graph">How concepts map to the graph</h2>
+<table>
+<thead>
+<tr>
+<th>OKF</th>
+<th>GrafitoDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Concept (a <code>.md</code> file)</td>
+<td>Node</td>
+</tr>
+<tr>
+<td><code>type</code> (frontmatter, required)</td>
+<td>Node label</td>
+</tr>
+<tr>
+<td><code>title</code>, <code>description</code>, <code>resource</code>, <code>tags</code>, <code>timestamp</code>, extra keys</td>
+<td>Node properties</td>
+</tr>
+<tr>
+<td>Concept ID (e.g. <code>tables/orders</code>)</td>
+<td>Node <code>uri</code> (<code>okf:tables/orders</code>)</td>
+</tr>
+<tr>
+<td>Markdown body</td>
+<td><code>body</code> property (feeds full-text search)</td>
+</tr>
+<tr>
+<td>Markdown link <code>[x](/tables/y.md)</code></td>
+<td>Relationship (<code>LINKS_TO</code> by default)</td>
+</tr>
+<tr>
+<td><code>index.md</code> / <code>log.md</code></td>
+<td>Skipped (reserved, derivable)</td>
+</tr>
+</tbody>
+</table>
+<p>Concepts without a <code>type</code> and links to not-yet-written concepts fall back to the
+generic <code>Concept</code> label (permissive consumption — broken links are tolerated,
+not errors).</p>
+<h2 id="importing-a-bundle">Importing a bundle</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">import_okf_bundle</span><span class="p">(</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>  <span class="c1"># {&#39;nodes&#39;: 8, &#39;relationships&#39;: 9, &#39;stubs&#39;: 3, &#39;skipped&#39;: 6}</span>
+</span></code></pre></div>
+<p>Once imported, the knowledge is fully queryable:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Cypher: what does the Orders table link to?</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="s2">    MATCH (a {title: &#39;Orders&#39;})-[:LINKS_TO]-&gt;(b)</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s2">    RETURN b.title AS target</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Full-text search over titles, descriptions, and bodies</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">db</span><span class="o">.</span><span class="n">text_search</span><span class="p">(</span><span class="s2">&quot;customer&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="options">Options</h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>link_type</code></td>
+<td><code>"LINKS_TO"</code></td>
+<td>Relationship type created for intra-bundle markdown links.</td>
+</tr>
+<tr>
+<td><code>configure_fts</code></td>
+<td><code>True</code></td>
+<td>Configure full-text search over <code>title</code>/<code>description</code>/<code>body</code> (best-effort; skipped if SQLite lacks FTS5).</td>
+</tr>
+<tr>
+<td><code>uri_prefix</code></td>
+<td><code>"okf:"</code></td>
+<td>Prefix prepended to each concept ID to form the node <code>uri</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The returned summary dict reports <code>nodes</code>, <code>relationships</code>, <code>stubs</code> (nodes
+created for links whose target is not in the bundle), and <code>skipped</code>
+(<code>index.md</code>/<code>log.md</code> files).</p>
+<h2 id="exporting-a-bundle">Exporting a bundle</h2>
+<p>The inverse operation serializes the graph back to OKF markdown:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># {&#39;concepts&#39;: 8, &#39;skipped&#39;: 0, &#39;viz&#39;: True}</span>
+</span></code></pre></div>
+<p>This writes:</p>
+<ul>
+<li>one markdown file per node (label → <code>type</code>, properties → frontmatter, <code>body</code>
+  → markdown body);</li>
+<li>per-directory <code>index.md</code> files for progressive disclosure — the root index
+  lists child directories under <code># Subdirectories</code>, and each directory groups
+  its concepts by <code>type</code>;</li>
+<li>an optional self-contained <code>viz.html</code> graph viewer (<code>write_viz=True</code>).</li>
+</ul>
+<p>Stub nodes (created for broken links during import) are <strong>not</strong> exported. Nodes
+created programmatically without a stored <code>body</code> get a synthesized <code># Links</code>
+section listing their outgoing relationships.</p>
+<h3 id="options_1">Options</h3>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uri_prefix</code></td>
+<td><code>"okf:"</code></td>
+<td>Prefix used to recover concept IDs from node URIs. Should match the import value.</td>
+</tr>
+<tr>
+<td><code>write_index</code></td>
+<td><code>True</code></td>
+<td>Generate per-directory <code>index.md</code> files.</td>
+</tr>
+<tr>
+<td><code>write_viz</code></td>
+<td><code>False</code></td>
+<td>Also emit a self-contained <code>viz.html</code> at the bundle root.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="round-trip-and-agent-memory">Round-trip and agent memory</h2>
+<p>Import → query/enrich → export is lossless for the graph structure and
+preserves unknown frontmatter keys:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">db</span><span class="o">.</span><span class="n">import_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># ... query, traverse, or add knowledge via Cypher / the programmatic API ...</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE (n:Playbook {title: &#39;New runbook&#39;, body: &#39;Steps...&#39;})&quot;</span><span class="p">)</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Persist the enriched knowledge back to markdown (commit it to git)</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">db</span><span class="o">.</span><span class="n">export_okf_bundle</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Multi-label nodes</p>
+<p>OKF concepts have a single <code>type</code>. When a node has several labels, the
+exporter uses the first label as <code>type</code>. See <code>todo/okf/IMPROVEMENTS.md</code> for
+the open design question on representing multi-label nodes.</p>
+</div>
+<h2 id="example">Example</h2>
+<p>A runnable end-to-end example (import → Cypher → full-text search → export with
+<code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the sample bundle in
+<code>examples/okf_bundle/</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>examples/okf_import.py
+</span></code></pre></div>
 
 
 
