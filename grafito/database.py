@@ -3082,6 +3082,58 @@ class GrafitoDatabase:
             rel_limit=rel_limit,
         )
 
+    def import_okf_bundle(
+        self,
+        path: str,
+        *,
+        link_type: str = "LINKS_TO",
+        configure_fts: bool = True,
+        uri_prefix: str = "okf:",
+    ) -> dict:
+        """Import an Open Knowledge Format (OKF) bundle into this database.
+
+        A bundle is a directory tree of markdown files with YAML frontmatter.
+        Each concept becomes a node (label from ``type``, frontmatter as
+        properties, body as the ``body`` property), and intra-bundle markdown
+        links become relationships.
+
+        Returns a summary dict with node/relationship/stub/skipped counts.
+        """
+        from .importers.okf import import_bundle
+
+        return import_bundle(
+            self,
+            path,
+            link_type=link_type,
+            configure_fts=configure_fts,
+            uri_prefix=uri_prefix,
+        )
+
+    def export_okf_bundle(
+        self,
+        path: str,
+        *,
+        uri_prefix: str = "okf:",
+        write_index: bool = True,
+        write_viz: bool = False,
+    ) -> dict:
+        """Export this database to an Open Knowledge Format (OKF) bundle.
+
+        Writes a directory tree of markdown files with YAML frontmatter (the
+        inverse of :meth:`import_okf_bundle`), with per-directory ``index.md``
+        files and an optional self-contained ``viz.html``. Returns a summary
+        dict with concept/skipped/viz counts.
+        """
+        from .integrations.okf import export_bundle
+
+        return export_bundle(
+            self,
+            path,
+            uri_prefix=uri_prefix,
+            write_index=write_index,
+            write_viz=write_viz,
+        )
+
     def _split_cypher_statements(self, script: str) -> list[str]:
         """Split Cypher script into statements, respecting string literals and comments."""
         statements = []

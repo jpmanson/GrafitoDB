@@ -3,6 +3,7 @@
 __all__ = [
     "export_rdf",
     "export_turtle",
+    "export_okf_bundle",
     "to_pyvis",
     "save_pyvis_html",
     "plot_matplotlib",
@@ -20,6 +21,10 @@ def __getattr__(name: str):
         from .rdf import export_rdf, export_turtle
 
         return export_rdf if name == "export_rdf" else export_turtle
+    if name == "export_okf_bundle":
+        from .okf import export_bundle
+
+        return export_bundle
     if name in ("to_pyvis", "save_pyvis_html", "plot_matplotlib", "save_matplotlib", "render_graph", "export_graph", "available_viz_backends", "register_viz_backend", "graph_to_netgraph"):
         from .viz import (
             to_pyvis,
