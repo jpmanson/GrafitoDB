@@ -15,6 +15,7 @@ GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 - **Vector/semantic search** (optional ANN backends)
 - **Full-text search** (FTS5) and hybrid workflows
 - **RDF/Turtle export** (optional)
+- **Open Knowledge Format (OKF)** import/export (agent-friendly markdown bundles)
 - **Visualization helpers** (optional, via PyVis)
 
 ## Documentation
@@ -825,6 +826,38 @@ db.import_neo4j_dump("examples/recommendations-5.26.dump")
 Notes:
 - Requires `zstandard` (included by default).
 - Imports a Neo4j dump database file; no running Neo4j instance is needed.
+
+Open Knowledge Format (OKF) import/export:
+
+[OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) is
+an agent-friendly knowledge format — a directory of markdown files with YAML
+frontmatter. GrafitoDB imports a bundle into a queryable graph and exports a
+graph back to a bundle, making OKF a durable, git-diffable storage layer for
+agent memory.
+
+```python
+from grafito import GrafitoDatabase
+
+db = GrafitoDatabase(":memory:")
+
+# Import: concept `type` -> label, frontmatter -> properties,
+# body -> `body` property, markdown links -> LINKS_TO relationships.
+summary = db.import_okf_bundle("examples/okf_bundle")
+# {'nodes': 3, 'relationships': 6, 'stubs': 0, 'skipped': 1}
+
+# Now query the knowledge with Cypher and full-text search
+db.execute("MATCH (a {title: 'Orders'})-[:LINKS_TO]->(b) RETURN b.title")
+db.text_search("customer", k=5)
+
+# Export back to an OKF bundle (per-directory index.md + optional viz.html)
+db.export_okf_bundle("out/bundle", write_viz=True)
+```
+
+Notes:
+- `PyYAML` is included by default; no extra needed.
+- `index.md`/`log.md` are skipped on import and regenerated on export.
+- Broken links and concepts without a `type` are tolerated (stub/`Concept`).
+- See `examples/okf_import.py` and the [OKF docs](https://jpmanson.github.io/GrafitoDB/integrations/okf/).
 
 Note: `store_embeddings=True` persists raw vectors in SQLite (`vector_entries`). This is independent of FAISS
 `index_path`. You can enable both (FAISS index persistence + stored vectors) or just one, depending on your
