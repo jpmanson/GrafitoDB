@@ -12,6 +12,8 @@ This importer maps an OKF bundle onto the Property Graph Model:
 - markdown body -> ``body`` property (feeds full-text search)
 - concept ID -> node ``uri`` (``<uri_prefix><concept-id>``)
 - markdown links -> relationships (default type ``LINKS_TO``)
+- links under a ``# Citations`` heading -> ``CITES`` relationships, to concepts
+  (intra-bundle) or to auto-created ``Reference`` nodes (external URLs)
 
 See ``todo/okf/SPEC.md`` for the format specification.
 """
@@ -34,11 +36,21 @@ RESERVED_FILENAMES = {"index.md", "log.md"}
 # and for stub nodes created from links to not-yet-written concepts (sec. 5.3).
 DEFAULT_LABEL = "Concept"
 
+# Label for auto-created nodes representing external citation sources (sec. 8).
+REFERENCE_LABEL = "Reference"
+
 # Markdown inline link: [anchor](target)
 _LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
 
+# Bare URL (citations in real bundles often list plain URLs, not markdown links).
+_BARE_URL_RE = re.compile(r"https?://[^\s<>\]\)]+")
+
 # Schemes treated as external citations/resources rather than intra-bundle links.
-_EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "ftp://", "//", "#")
+_EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "ftp://", "//")
+
+# `# Citations` section heading (any level), SPEC sec. 8.
+_CITATIONS_HEADING_RE = re.compile(r"^(#{1,6})\s+Citations\s*$", re.IGNORECASE | re.MULTILINE)
+_HEADING_RE = re.compile(r"^(#{1,6})\s+", re.MULTILINE)
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -67,32 +79,35 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
     return {}, text
 
 
-def _normalize_target(target: str, source_id: str) -> str | None:
-    """Resolve a markdown link target to a concept ID, or None if external.
+def classify_target(target: str, source_id: str) -> tuple[str, str] | None:
+    """Classify a markdown link target.
 
-    `source_id` is the concept ID of the document containing the link, used to
-    resolve relative paths.
+    Returns ``("concept", concept_id)`` for an intra-bundle link,
+    ``("external", url)`` for an external URL, or ``None`` for a pure in-page
+    anchor / empty target. `source_id` resolves relative paths.
     """
     target = target.strip()
-    # Drop a fragment/anchor and surrounding angle brackets or quotes.
+    # Drop a title/whitespace and surrounding angle brackets.
     target = target.split()[0] if target else target
     target = target.strip("<>")
-    if not target or target.startswith(_EXTERNAL_PREFIXES):
+    if not target or target.startswith("#"):
         return None
-    # Strip any in-page fragment.
-    target = target.split("#", 1)[0]
-    if not target:
+    if target.startswith(_EXTERNAL_PREFIXES):
+        return "external", target
+    # Intra-bundle path; strip any in-page fragment.
+    path = target.split("#", 1)[0]
+    if not path:
         return None
-    if target.startswith("/"):
+    if path.startswith("/"):
         # Bundle-relative (absolute) link (SPEC sec. 5.1).
-        concept_id = target.lstrip("/")
+        concept_id = path.lstrip("/")
     else:
         # Relative link, resolved against the source concept's directory.
         base = PurePosixPath(source_id).parent
-        concept_id = _posix_join(base, target)
+        concept_id = _posix_join(base, path)
     if concept_id.endswith(".md"):
         concept_id = concept_id[: -len(".md")]
-    return concept_id or None
+    return ("concept", concept_id) if concept_id else None
 
 
 def _posix_join(base: PurePosixPath, rel: str) -> str:
@@ -113,10 +128,56 @@ def extract_links(body: str, source_id: str) -> list[tuple[str, str]]:
     links: list[tuple[str, str]] = []
     for match in _LINK_RE.finditer(body):
         anchor, raw_target = match.group(1), match.group(2)
-        concept_id = _normalize_target(raw_target, source_id)
-        if concept_id is not None:
-            links.append((anchor, concept_id))
+        classified = classify_target(raw_target, source_id)
+        if classified is not None and classified[0] == "concept":
+            links.append((anchor, classified[1]))
     return links
+
+
+def split_citations(body: str) -> tuple[str, str]:
+    """Split a body into (main_body, citations_block).
+
+    The citations block spans from a ``# Citations`` heading to the next heading
+    of the same or higher level (or end of file). Returns ``(body, "")`` when no
+    citations section is present.
+    """
+    match = _CITATIONS_HEADING_RE.search(body)
+    if not match:
+        return body, ""
+    start = match.start()
+    level = len(match.group(1))
+    end = len(body)
+    for heading in _HEADING_RE.finditer(body, match.end()):
+        if len(heading.group(1)) <= level:
+            end = heading.start()
+            break
+    citations_block = body[start:end]
+    main_body = body[:start] + body[end:]
+    return main_body, citations_block
+
+
+def extract_citations(citations_block: str, source_id: str) -> list[tuple[str, str, str]]:
+    """Return [(anchor, kind, value), ...] for links inside a citations block.
+
+    ``kind`` is ``"concept"`` (value is a concept ID) or ``"external"`` (value
+    is a URL). Handles both markdown links and bare URLs.
+    """
+    cites: list[tuple[str, str, str]] = []
+    link_spans: list[tuple[int, int]] = []
+    for match in _LINK_RE.finditer(citations_block):
+        anchor, raw_target = match.group(1), match.group(2)
+        link_spans.append(match.span())
+        classified = classify_target(raw_target, source_id)
+        if classified is not None:
+            cites.append((anchor, classified[0], classified[1]))
+    # Bare URLs that are not already part of a markdown link.
+    for match in _BARE_URL_RE.finditer(citations_block):
+        start = match.start()
+        if any(span_start <= start < span_end for span_start, span_end in link_spans):
+            continue
+        url = match.group(0).rstrip(".,;")
+        cites.append(("", "external", url))
+    return cites
 
 
 def _concept_id_for(path: Path, root: Path) -> str:
@@ -129,6 +190,8 @@ def import_bundle(
     root: str | Path,
     *,
     link_type: str = "LINKS_TO",
+    citations: bool = True,
+    citation_type: str = "CITES",
     configure_fts: bool = True,
     uri_prefix: str = "okf:",
 ) -> dict:
@@ -138,12 +201,16 @@ def import_bundle(
         db: Target database.
         root: Path to the bundle root directory.
         link_type: Relationship type created for intra-bundle markdown links.
+        citations: Parse the ``# Citations`` section into ``citation_type``
+            relationships (to concepts or auto-created ``Reference`` nodes).
+        citation_type: Relationship type created for citations.
         configure_fts: Configure full-text search over title/description/body
             (best-effort; skipped if SQLite lacks FTS5).
         uri_prefix: Prefix prepended to each concept ID to form the node ``uri``.
 
     Returns:
-        Summary dict: ``{"nodes", "relationships", "stubs", "skipped"}``.
+        Summary dict:
+        ``{"nodes", "relationships", "citations", "references", "stubs", "skipped"}``.
     """
     root_path = Path(root)
     if not root_path.is_dir():
@@ -151,6 +218,8 @@ def import_bundle(
 
     concept_to_node: dict[str, int] = {}
     pending_links: list[tuple[str, str, str]] = []  # (source_id, anchor, target_id)
+    # (source_id, anchor, kind, value)
+    pending_citations: list[tuple[str, str, str, str]] = []
     nodes = 0
     skipped = 0
 
@@ -177,13 +246,19 @@ def import_bundle(
         concept_to_node[concept_id] = node.id
         nodes += 1
 
-        for anchor, target_id in extract_links(body, concept_id):
+        # Citation links are excluded from LINKS_TO so they only yield CITES.
+        main_body, citations_block = split_citations(body) if citations else (body, "")
+        for anchor, target_id in extract_links(main_body, concept_id):
             pending_links.append((concept_id, anchor, target_id))
+        for anchor, kind, value in extract_citations(citations_block, concept_id):
+            pending_citations.append((concept_id, anchor, kind, value))
 
     # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
     relationships = 0
     stubs = 0
-    for source_id, anchor, target_id in pending_links:
+
+    def resolve_concept(target_id: str) -> int:
+        nonlocal stubs
         if target_id not in concept_to_node:
             stub = db.create_node(
                 labels=[DEFAULT_LABEL],
@@ -192,13 +267,39 @@ def import_bundle(
             )
             concept_to_node[target_id] = stub.id
             stubs += 1
+        return concept_to_node[target_id]
+
+    for source_id, anchor, target_id in pending_links:
         db.create_relationship(
             concept_to_node[source_id],
-            concept_to_node[target_id],
+            resolve_concept(target_id),
             link_type,
             properties={"anchor": anchor} if anchor else {},
         )
         relationships += 1
+
+    # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
+    reference_nodes: dict[str, int] = {}  # url -> node_id
+    citation_count = 0
+    for source_id, anchor, kind, value in pending_citations:
+        if kind == "concept":
+            target = resolve_concept(value)
+        else:
+            if value not in reference_nodes:
+                ref = db.create_node(
+                    labels=[REFERENCE_LABEL],
+                    properties={"title": anchor or value, "url": value, "okf_auto": True},
+                    uri=value,
+                )
+                reference_nodes[value] = ref.id
+            target = reference_nodes[value]
+        db.create_relationship(
+            concept_to_node[source_id],
+            target,
+            citation_type,
+            properties={"anchor": anchor} if anchor else {},
+        )
+        citation_count += 1
 
     if configure_fts and db.has_fts5():
         # OKF `type` values are free-form (may contain spaces), so index across
@@ -209,6 +310,8 @@ def import_bundle(
     return {
         "nodes": nodes,
         "relationships": relationships,
+        "citations": citation_count,
+        "references": len(reference_nodes),
         "stubs": stubs,
         "skipped": skipped,
     }

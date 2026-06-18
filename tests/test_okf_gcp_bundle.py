@@ -53,6 +53,20 @@ def test_links_outside_subset_become_stubs(db):
     assert summary["stubs"] > 0
 
 
+def test_citations_become_reference_nodes(db):
+    summary = db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    # The real ga4 concepts cite external docs as bare URLs under # Citations.
+    assert summary["citations"] > 0
+    assert summary["references"] > 0
+    refs = [
+        n
+        for n in db.match_nodes()
+        if "Reference" in n.labels and n.properties.get("okf_auto")
+    ]
+    assert refs
+    assert all(r.properties.get("url", "").startswith("http") for r in refs)
+
+
 def test_events_table_links_resolve(db):
     db.import_okf_bundle(str(BUNDLE), configure_fts=False)
     rows = db.execute(

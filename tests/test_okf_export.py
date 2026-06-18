@@ -99,6 +99,21 @@ def test_stub_nodes_are_not_exported(db, tmp_path):
     assert not (tmp_path / "ghost.md").exists()
 
 
+def test_auto_reference_nodes_not_exported(db, tmp_path):
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\n---\nx\n\n# Citations\n- https://example.com/s\n",
+        encoding="utf-8",
+    )
+    db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    out = tmp_path / "out"
+    summary = db.export_okf_bundle(str(out))
+    # The Doc concept is written; the auto-created Reference node is not.
+    assert summary["concepts"] == 1
+    assert summary["skipped"] == 1
+    md_files = [p.name for p in out.rglob("*.md") if p.name != "index.md"]
+    assert md_files == ["doc.md"]
+
+
 def test_programmatic_node_synthesizes_links_section(db, tmp_path):
     a = db.create_node(labels=["Doc"], properties={"title": "A"}, uri="okf:a")
     b = db.create_node(labels=["Doc"], properties={"title": "B"}, uri="okf:b")

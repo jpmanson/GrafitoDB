@@ -3087,6 +3087,8 @@ class GrafitoDatabase:
         path: str,
         *,
         link_type: str = "LINKS_TO",
+        citations: bool = True,
+        citation_type: str = "CITES",
         configure_fts: bool = True,
         uri_prefix: str = "okf:",
     ) -> dict:
@@ -3095,9 +3097,12 @@ class GrafitoDatabase:
         A bundle is a directory tree of markdown files with YAML frontmatter.
         Each concept becomes a node (label from ``type``, frontmatter as
         properties, body as the ``body`` property), and intra-bundle markdown
-        links become relationships.
+        links become relationships. Links under a ``# Citations`` heading become
+        ``CITES`` relationships to concepts or to auto-created ``Reference``
+        nodes (external URLs).
 
-        Returns a summary dict with node/relationship/stub/skipped counts.
+        Returns a summary dict with
+        node/relationship/citation/reference/stub/skipped counts.
         """
         from .importers.okf import import_bundle
 
@@ -3105,6 +3110,8 @@ class GrafitoDatabase:
             self,
             path,
             link_type=link_type,
+            citations=citations,
+            citation_type=citation_type,
             configure_fts=configure_fts,
             uri_prefix=uri_prefix,
         )

@@ -29,6 +29,7 @@ pip install grafito
 | Concept ID (e.g. `tables/orders`) | Node `uri` (`okf:tables/orders`) |
 | Markdown body | `body` property (feeds full-text search) |
 | Markdown link `[x](/tables/y.md)` | Relationship (`LINKS_TO` by default) |
+| Link under `# Citations` | `CITES` relationship (to a concept or a `Reference` node) |
 | `index.md` / `log.md` | Skipped (reserved, derivable) |
 
 Concepts without a `type` and links to not-yet-written concepts fall back to the
