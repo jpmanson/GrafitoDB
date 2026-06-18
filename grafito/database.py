@@ -3090,6 +3090,10 @@ class GrafitoDatabase:
         citations: bool = True,
         citation_type: str = "CITES",
         configure_fts: bool = True,
+        embed: "EmbeddingFunction | None" = None,
+        embed_index: str = "okf",
+        embed_fields: tuple[str, ...] = ("title", "description", "body"),
+        embed_backend: str = "bruteforce",
         uri_prefix: str = "okf:",
     ) -> dict:
         """Import an Open Knowledge Format (OKF) bundle into this database.
@@ -3101,8 +3105,12 @@ class GrafitoDatabase:
         ``CITES`` relationships to concepts or to auto-created ``Reference``
         nodes (external URLs).
 
+        Pass ``embed=<EmbeddingFunction>`` to also embed each concept into a
+        vector index (``embed_index``) for semantic search; query it later with
+        ``db.semantic_search("text", index=embed_index)``.
+
         Returns a summary dict with
-        node/relationship/citation/reference/stub/skipped counts.
+        node/relationship/citation/reference/stub/skipped/embedded counts.
         """
         from .importers.okf import import_bundle
 
@@ -3113,6 +3121,10 @@ class GrafitoDatabase:
             citations=citations,
             citation_type=citation_type,
             configure_fts=configure_fts,
+            embed=embed,
+            embed_index=embed_index,
+            embed_fields=embed_fields,
+            embed_backend=embed_backend,
             uri_prefix=uri_prefix,
         )
 

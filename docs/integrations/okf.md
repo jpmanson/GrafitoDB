@@ -59,6 +59,35 @@ db.execute("""
 db.text_search("customer", k=5)
 ```
 
+### Semantic search
+
+Pass an embedding function to embed each concept into a vector index at import
+time. Concepts are embedded from their `title`, `description`, and `body`, so
+you can query the bundle by meaning rather than keywords:
+
+```python
+from grafito.embedding_functions import SentenceTransformerEmbeddingFunction
+
+embedder = SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
+db.import_okf_bundle("path/to/bundle", embed=embedder)
+
+# Query by meaning; the index already knows how to embed the query text
+db.semantic_search("how do customers pay for orders", index="okf", k=5)
+```
+
+Relevant import options:
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `embed` | `None` | An `EmbeddingFunction`; when set, concepts are embedded for semantic search. |
+| `embed_index` | `"okf"` | Name of the vector index created for concept embeddings. |
+| `embed_fields` | `("title", "description", "body")` | Concept fields concatenated into the embedded document. |
+| `embed_backend` | `"bruteforce"` | Vector index backend (the default needs no extra dependencies). |
+
+The summary dict reports the number of `embedded` concepts. This pairs full-text
+(`text_search`) and vector (`semantic_search`) retrieval over the same imported
+bundle — useful for hybrid agent-memory workflows.
+
 ### Options
 
 | Argument | Default | Description |

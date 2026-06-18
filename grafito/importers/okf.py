@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -185,6 +185,20 @@ def _concept_id_for(path: Path, root: Path) -> str:
     return rel[: -len(".md")] if rel.endswith(".md") else rel
 
 
+# Default concept fields combined into the document embedded for semantic search.
+DEFAULT_EMBED_FIELDS = ("title", "description", "body")
+
+
+def concept_document(properties: dict, fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS) -> str:
+    """Build the text embedded for a concept by joining selected fields."""
+    parts = []
+    for field in fields:
+        value = properties.get(field)
+        if isinstance(value, str) and value.strip():
+            parts.append(value.strip())
+    return "\n\n".join(parts)
+
+
 def import_bundle(
     db: "GrafitoDatabase",
     root: str | Path,
@@ -193,6 +207,10 @@ def import_bundle(
     citations: bool = True,
     citation_type: str = "CITES",
     configure_fts: bool = True,
+    embed: "Any" = None,
+    embed_index: str = "okf",
+    embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
+    embed_backend: str = "bruteforce",
     uri_prefix: str = "okf:",
 ) -> dict:
     """Import an OKF bundle directory into ``db``.
@@ -206,11 +224,19 @@ def import_bundle(
         citation_type: Relationship type created for citations.
         configure_fts: Configure full-text search over title/description/body
             (best-effort; skipped if SQLite lacks FTS5).
+        embed: Optional ``EmbeddingFunction``. When provided, each concept is
+            embedded for semantic search into a vector index. Query later with
+            ``db.semantic_search("text", index=embed_index)``.
+        embed_index: Name of the vector index created for concept embeddings.
+        embed_fields: Concept fields concatenated into the embedded document.
+        embed_backend: Vector index backend (default ``bruteforce``, no extra
+            dependencies).
         uri_prefix: Prefix prepended to each concept ID to form the node ``uri``.
 
     Returns:
-        Summary dict:
-        ``{"nodes", "relationships", "citations", "references", "stubs", "skipped"}``.
+        Summary dict with
+        ``nodes``, ``relationships``, ``citations``, ``references``,
+        ``stubs``, ``skipped`` and ``embedded`` counts.
     """
     root_path = Path(root)
     if not root_path.is_dir():
@@ -220,6 +246,7 @@ def import_bundle(
     pending_links: list[tuple[str, str, str]] = []  # (source_id, anchor, target_id)
     # (source_id, anchor, kind, value)
     pending_citations: list[tuple[str, str, str, str]] = []
+    embed_docs: list[tuple[int, str]] = []  # (node_id, document) for real concepts
     nodes = 0
     skipped = 0
 
@@ -245,6 +272,9 @@ def import_bundle(
         )
         concept_to_node[concept_id] = node.id
         nodes += 1
+
+        if embed is not None:
+            embed_docs.append((node.id, concept_document(properties, embed_fields)))
 
         # Citation links are excluded from LINKS_TO so they only yield CITES.
         main_body, citations_block = split_citations(body) if citations else (body, "")
@@ -307,6 +337,21 @@ def import_bundle(
         db.create_text_index("node", None, ["title", "description", "body"])
         db.rebuild_text_index()
 
+    embedded = 0
+    if embed is not None and embed_docs:
+        node_ids = [node_id for node_id, _ in embed_docs]
+        documents = [doc for _, doc in embed_docs]
+        dim = getattr(embed, "dimension", None) or len(embed([documents[0] or " "])[0])
+        db.create_vector_index(
+            embed_index,
+            dim=dim,
+            backend=embed_backend,
+            embedding_function=embed,
+            if_not_exists=True,
+        )
+        db.upsert_embeddings(node_ids, documents, index=embed_index)
+        embedded = len(embed_docs)
+
     return {
         "nodes": nodes,
         "relationships": relationships,
@@ -314,4 +359,5 @@ def import_bundle(
         "references": len(reference_nodes),
         "stubs": stubs,
         "skipped": skipped,
+        "embedded": embedded,
     }
