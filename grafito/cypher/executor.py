@@ -1793,12 +1793,18 @@ class CypherExecutor:
         if clause.remove_clause:
             self._execute_remove(matches, clause.remove_clause)
 
+        # When RETURN aggregates, grouping happens during projection, so ORDER BY
+        # / SKIP must run on the grouped rows (and may reference aggregate aliases).
+        return_aggregates = bool(clause.return_clause) and any(
+            isinstance(item.expression, FunctionCall) for item in clause.return_clause.items
+        )
+
         # Apply ORDER BY BEFORE RETURN (needs access to Node objects)
-        if clause.order_by_clause:
+        if clause.order_by_clause and not return_aggregates:
             matches = self._apply_order_by(matches, clause.order_by_clause)
 
         # Apply SKIP (before LIMIT and RETURN)
-        if clause.skip_clause:
+        if clause.skip_clause and not return_aggregates:
             matches = matches[clause.skip_clause.count:]
 
         # Apply LIMIT (on raw matches if no RETURN, or will be applied after RETURN)
@@ -1808,6 +1814,13 @@ class CypherExecutor:
         # Apply RETURN projection if present
         if clause.return_clause:
             matches = self._apply_return(matches, clause.return_clause)
+            # ORDER BY / SKIP run after the aggregated projection so they can
+            # sort/skip by grouping keys and aggregate aliases.
+            if return_aggregates:
+                if clause.order_by_clause:
+                    matches = self._apply_order_by(matches, clause.order_by_clause)
+                if clause.skip_clause:
+                    matches = matches[clause.skip_clause.count:]
             # Apply LIMIT after RETURN if present
             if clause.limit_clause:
                 matches = matches[:clause.limit_clause.count]
@@ -2697,6 +2710,37 @@ class CypherExecutor:
             base_key = str(base)
         return f"{base_key}.{expr.property}"
 
+    def _return_item_key(self, item: ReturnItem) -> str:
+        """Compute the output key for a non-aggregated RETURN/WITH item."""
+        if item.alias:
+            return item.alias
+        expr = item.expression
+        if isinstance(expr, Variable):
+            return expr.name
+        if isinstance(expr, (PropertyAccess, PropertyLookup)):
+            return self._format_property_key(expr)
+        return str(expr)
+
+    def _aggregation_result_key(self, item: ReturnItem) -> str:
+        """Compute the output key for an aggregated RETURN item."""
+        if item.alias:
+            return item.alias
+
+        func = item.expression
+        func_name = func.function_name
+        distinct_prefix = "DISTINCT " if func.distinct else ""
+        if func.star:
+            return f"{func_name}({distinct_prefix}*)"
+        if len(func.arguments) == 1:
+            argument = func.arguments[0]
+            if isinstance(argument, Literal):
+                return f"{func_name}({distinct_prefix}{argument.value})"
+            if isinstance(argument, Variable):
+                return f"{func_name}({distinct_prefix}{argument.name})"
+            if isinstance(argument, PropertyAccess):
+                return f"{func_name}({distinct_prefix}{argument.variable}.{argument.property})"
+        return func_name
+
     def _apply_normal_return(self, matches: list[dict], return_clause: ReturnClause) -> list[dict]:
         """Apply non-aggregated RETURN projection."""
         results = []
@@ -2706,17 +2750,7 @@ class CypherExecutor:
 
             for item in return_clause.items:
                 value = self._evaluate_return_expression(match, item.expression)
-
-                if item.alias:
-                    key = item.alias
-                elif isinstance(item.expression, Variable):
-                    key = item.expression.name
-                elif isinstance(item.expression, (PropertyAccess, PropertyLookup)):
-                    key = self._format_property_key(item.expression)
-                else:
-                    key = str(item.expression)
-
-                result[key] = value
+                result[self._return_item_key(item)] = value
 
             results.append(result)
 
@@ -2724,55 +2758,86 @@ class CypherExecutor:
             return self._apply_distinct(results)
         return results
 
+    def _filter_rows(self, rows: list[dict], condition: Expression) -> list[dict]:
+        """Keep rows whose condition evaluates truthy; drop rows that fail."""
+        filtered = []
+        for row in rows:
+            evaluator = self._make_evaluator(row)
+            try:
+                if evaluator.evaluate(condition):
+                    filtered.append(row)
+            except CypherExecutionError:
+                continue
+        return filtered
+
+    def _grouped_aggregation(
+        self,
+        items: list[ReturnItem],
+        matches: list[dict],
+        build_row,
+    ) -> list[dict]:
+        """Apply implicit GROUP BY: group matches by the non-aggregated items.
+
+        Standard Cypher groups implicitly by the return/with items that are not
+        aggregate functions. When there are no grouping items, the whole input
+        collapses to a single global aggregate row.
+
+        Args:
+            items: RETURN/WITH items (mix of grouping keys and aggregates).
+            matches: Input variable bindings to aggregate over.
+            build_row: Callable that receives the matches belonging to one group
+                and returns the projected output row for that group.
+
+        Returns:
+            One row per distinct grouping key (preserving first-seen order), or a
+            single row when there are no grouping items.
+        """
+        grouping_items = [item for item in items if not isinstance(item.expression, FunctionCall)]
+
+        if not grouping_items:
+            return [build_row(matches)]
+
+        groups: dict[Any, list[dict]] = {}
+        order: list[Any] = []
+        for match in matches:
+            group_key = tuple(
+                self._freeze_result(self._evaluate_return_expression(match, item.expression))
+                for item in grouping_items
+            )
+            if group_key not in groups:
+                groups[group_key] = []
+                order.append(group_key)
+            groups[group_key].append(match)
+
+        return [build_row(groups[group_key]) for group_key in order]
+
     def _apply_aggregation_return(self, matches: list[dict], return_clause: ReturnClause) -> list[dict]:
-        """Apply aggregated RETURN projection (COUNT, SUM, AVG, MIN, MAX)."""
-        result = {}
+        """Apply aggregated RETURN projection (COUNT, SUM, AVG, MIN, MAX).
 
-        for item in return_clause.items:
-            if isinstance(item.expression, FunctionCall):
-                # Evaluate aggregation function
-                func_name = item.expression.function_name
-                arguments = item.expression.arguments
-                distinct = item.expression.distinct
-                star = item.expression.star
-
-                # Generate result key (e.g., "COUNT(n)" or "SUM(n.age)")
-                if item.alias:
-                    key = item.alias
+        Implements implicit GROUP BY: non-aggregated return items become the
+        grouping keys and aggregates are computed per group.
+        """
+        def build_row(group_matches: list[dict]) -> dict:
+            result = {}
+            for item in return_clause.items:
+                if isinstance(item.expression, FunctionCall):
+                    func = item.expression
+                    value = self._calculate_aggregation(
+                        func.function_name,
+                        func.arguments,
+                        group_matches,
+                        func.distinct,
+                        func.star,
+                    )
+                    result[self._aggregation_result_key(item)] = value
                 else:
-                    distinct_prefix = "DISTINCT " if distinct else ""
-                    if star:
-                        key = f"{func_name}({distinct_prefix}*)"
-                    elif len(arguments) == 1:
-                        argument = arguments[0]
-                        if isinstance(argument, Literal):
-                            key = f"{func_name}({distinct_prefix}{argument.value})"
-                        elif isinstance(argument, Variable):
-                            key = f"{func_name}({distinct_prefix}{argument.name})"
-                        elif isinstance(argument, PropertyAccess):
-                            key = f"{func_name}({distinct_prefix}{argument.variable}.{argument.property})"
-                        else:
-                            key = func_name
-                    else:
-                        key = func_name
+                    representative = group_matches[0] if group_matches else {}
+                    result[self._return_item_key(item)] = self._evaluate_return_expression(
+                        representative, item.expression
+                    )
+            return result
 
-                # Calculate aggregation
-                value = self._calculate_aggregation(func_name, arguments, matches, distinct, star)
-                result[key] = value
-
-            else:
-                # Mixed aggregation and non-aggregation not fully supported yet
-                # For now, just evaluate the expression on the first match
-                if len(matches) > 0:
-                    evaluator = self._make_evaluator(matches[0])
-                    value = evaluator.evaluate(item.expression)
-                else:
-                    value = None
-
-                key = item.alias if item.alias else str(item.expression)
-                result[key] = value
-
-        results = [result]
+        results = self._grouped_aggregation(return_clause.items, matches, build_row)
         if return_clause.distinct:
             return self._apply_distinct(results)
         return results
@@ -3220,49 +3285,52 @@ class CypherExecutor:
             for item in clause.items
         )
 
-        # Apply WHERE against the full input rows to allow aliases in WITH
-        if clause.where_clause:
-            filtered_input = []
-            for match in input_results:
-                evaluator = self._make_evaluator(match)
-                try:
-                    if evaluator.evaluate(clause.where_clause.condition):
-                        filtered_input.append(match)
-                except:
-                    pass
-            input_results = filtered_input
+        # Without aggregation, WHERE filters the input rows (so it can reference
+        # any bound variable). With aggregation it behaves like HAVING and runs
+        # after grouping (so it can reference aggregate aliases) — see below.
+        if clause.where_clause and not has_aggregation:
+            input_results = self._filter_rows(input_results, clause.where_clause.condition)
 
         if has_aggregation:
-            result = {}
-            for item in clause.items:
-                if isinstance(item.expression, FunctionCall):
-                    value = self._calculate_aggregation(
-                        item.expression.function_name,
-                        item.expression.arguments,
-                        input_results,
-                        item.expression.distinct,
-                        item.expression.star
-                    )
-                else:
-                    evaluator = self._make_evaluator(input_results[0])
-                    value = evaluator.evaluate(item.expression)
-
-                if item.alias:
-                    result[item.alias] = value
-                elif isinstance(item.expression, FunctionCall):
-                    distinct_prefix = "DISTINCT " if item.expression.distinct else ""
-                    if item.expression.star:
-                        key = f"{item.expression.function_name}({distinct_prefix}*)"
-                    elif item.expression.arguments and isinstance(item.expression.arguments[0], PropertyAccess):
-                        arg = item.expression.arguments[0]
-                        key = f"{item.expression.function_name}({distinct_prefix}{arg.variable}.{arg.property})"
+            def build_with_row(group_rows: list[dict]) -> dict:
+                representative = group_rows[0] if group_rows else {}
+                result = {}
+                for item in clause.items:
+                    if isinstance(item.expression, FunctionCall):
+                        value = self._calculate_aggregation(
+                            item.expression.function_name,
+                            item.expression.arguments,
+                            group_rows,
+                            item.expression.distinct,
+                            item.expression.star
+                        )
+                    elif isinstance(item.expression, Variable):
+                        # Preserve the bound object (e.g. Node) for downstream clauses.
+                        value = representative.get(item.expression.name)
                     else:
-                        key = f"{item.expression.function_name}({distinct_prefix}...)"
-                    result[key] = value
-                else:
-                    result[str(item.expression)] = value
+                        evaluator = self._make_evaluator(representative)
+                        value = evaluator.evaluate(item.expression)
 
-            projected_results = [result]
+                    if item.alias:
+                        result[item.alias] = value
+                    elif isinstance(item.expression, FunctionCall):
+                        distinct_prefix = "DISTINCT " if item.expression.distinct else ""
+                        if item.expression.star:
+                            key = f"{item.expression.function_name}({distinct_prefix}*)"
+                        elif item.expression.arguments and isinstance(item.expression.arguments[0], PropertyAccess):
+                            arg = item.expression.arguments[0]
+                            key = f"{item.expression.function_name}({distinct_prefix}{arg.variable}.{arg.property})"
+                        else:
+                            key = f"{item.expression.function_name}({distinct_prefix}...)"
+                        result[key] = value
+                    else:
+                        result[self._return_item_key(item)] = value
+                return result
+
+            projected_results = self._grouped_aggregation(clause.items, input_results, build_with_row)
+            # HAVING: filter the grouped rows by the post-aggregation WHERE.
+            if clause.where_clause:
+                projected_results = self._filter_rows(projected_results, clause.where_clause.condition)
         else:
             projected_results = []
             for match in input_results:

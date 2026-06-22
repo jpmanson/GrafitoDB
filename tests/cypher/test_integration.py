@@ -2201,6 +2201,135 @@ class TestCypherAggregations:
         assert results[0]['COUNT(*)'] == 0
         db.close()
 
+    def test_implicit_group_by_count(self):
+        """RETURN with a grouping key + aggregate must group, not collapse globally."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        results = db.execute("MATCH (n:T) RETURN n.k AS k, COUNT(*) AS c ORDER BY k")
+        assert results == [{'k': 'x', 'c': 2}, {'k': 'y', 'c': 1}]
+        db.close()
+
+    def test_implicit_group_by_sum(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Sale {cat: 'a', amount: 10}), (:Sale {cat: 'a', amount: 5}), (:Sale {cat: 'b', amount: 7})")
+
+        results = db.execute(
+            "MATCH (n:Sale) RETURN n.cat AS cat, SUM(n.amount) AS total ORDER BY cat"
+        )
+        assert results == [{'cat': 'a', 'total': 15}, {'cat': 'b', 'total': 7}]
+        db.close()
+
+    def test_implicit_group_by_order_by_aggregate(self):
+        """ORDER BY must be able to sort by the aggregate alias of grouped rows."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        results = db.execute(
+            "MATCH (n:T) RETURN n.k AS k, COUNT(*) AS c ORDER BY c DESC"
+        )
+        assert results == [{'k': 'x', 'c': 2}, {'k': 'y', 'c': 1}]
+        db.close()
+
+    def test_implicit_group_by_with_clause(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        results = db.execute(
+            "MATCH (n:T) WITH n.k AS k, COUNT(*) AS c RETURN k, c ORDER BY k"
+        )
+        assert results == [{'k': 'x', 'c': 2}, {'k': 'y', 'c': 1}]
+        db.close()
+
+    def test_implicit_group_by_multiple_keys(self):
+        """Grouping must key on every non-aggregated return item, not just one."""
+        db = GrafitoDatabase(':memory:')
+        db.execute(
+            "CREATE (:Sale {region: 'eu', cat: 'a'}), (:Sale {region: 'eu', cat: 'a'}), "
+            "(:Sale {region: 'eu', cat: 'b'}), (:Sale {region: 'us', cat: 'a'})"
+        )
+
+        results = db.execute(
+            "MATCH (n:Sale) RETURN n.region AS region, n.cat AS cat, COUNT(*) AS c "
+            "ORDER BY region, cat"
+        )
+        assert results == [
+            {'region': 'eu', 'cat': 'a', 'c': 2},
+            {'region': 'eu', 'cat': 'b', 'c': 1},
+            {'region': 'us', 'cat': 'a', 'c': 1},
+        ]
+        db.close()
+
+    def test_implicit_group_by_min_max_avg(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute(
+            "CREATE (:P {team: 'a', age: 10}), (:P {team: 'a', age: 30}), (:P {team: 'b', age: 50})"
+        )
+
+        results = db.execute(
+            "MATCH (n:P) RETURN n.team AS team, MIN(n.age) AS lo, MAX(n.age) AS hi, "
+            "AVG(n.age) AS mean ORDER BY team"
+        )
+        assert results == [
+            {'team': 'a', 'lo': 10, 'hi': 30, 'mean': 20.0},
+            {'team': 'b', 'lo': 50, 'hi': 50, 'mean': 50.0},
+        ]
+        db.close()
+
+    def test_implicit_group_by_collect(self):
+        """COLLECT must gather per group, not into one global list."""
+        db = GrafitoDatabase(':memory:')
+        db.execute(
+            "CREATE (:P {team: 'a', name: 'Alice'}), (:P {team: 'a', name: 'Bob'}), "
+            "(:P {team: 'b', name: 'Carol'})"
+        )
+
+        results = db.execute(
+            "MATCH (n:P) RETURN n.team AS team, COLLECT(n.name) AS members ORDER BY team"
+        )
+        assert results == [
+            {'team': 'a', 'members': ['Alice', 'Bob']},
+            {'team': 'b', 'members': ['Carol']},
+        ]
+        db.close()
+
+    def test_implicit_group_by_relationship_property(self):
+        """Grouping key can come from a relationship traversal."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (a:User {name: 'A'}), (b:User {name: 'B'})")
+        db.execute("MATCH (a:User {name: 'A'}), (b:User {name: 'B'}) "
+                   "CREATE (a)-[:RATED {stars: 5}]->(b), (a)-[:RATED {stars: 5}]->(b), "
+                   "(a)-[:RATED {stars: 3}]->(b)")
+
+        results = db.execute(
+            "MATCH (:User)-[r:RATED]->(:User) RETURN r.stars AS stars, COUNT(*) AS c "
+            "ORDER BY stars"
+        )
+        assert results == [{'stars': 3, 'c': 1}, {'stars': 5, 'c': 2}]
+        db.close()
+
+    def test_implicit_group_by_having_style_filter(self):
+        """WITH groups, then WHERE filters the grouped rows (HAVING equivalent)."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        results = db.execute(
+            "MATCH (n:T) WITH n.k AS k, COUNT(*) AS c WHERE c > 1 RETURN k, c ORDER BY k"
+        )
+        assert results == [{'k': 'x', 'c': 2}]
+        db.close()
+
+    def test_implicit_group_by_distinct_rows(self):
+        """DISTINCT applies to the already-grouped rows."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        results = db.execute(
+            "MATCH (n:T) RETURN DISTINCT n.k AS k, COUNT(*) AS c ORDER BY k"
+        )
+        assert results == [{'k': 'x', 'c': 2}, {'k': 'y', 'c': 1}]
+        db.close()
+
     def test_sum_with_null_values(self):
         db = GrafitoDatabase(':memory:')
         db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
