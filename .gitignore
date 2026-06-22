@@ -43,6 +43,8 @@ res
 examples/Grafito Demo.ipynb
 lib
 tmp_pyvis_test.html
+okf_knowledge_graph.png
+okf_knowledge_graph.html
 TODO.md
 debug_neo4j
 tmp_neo4j_extract

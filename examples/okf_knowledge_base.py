@@ -240,6 +240,40 @@ def main() -> None:
         "  structured context, over the same plain markdown you authored."
     )
 
+    # ── Visualization ────────────────────────────────────────────────────────
+    # Everything above *queried* the graph; here we *draw* it. GrafitoDB exports
+    # to NetworkX and bridges to visualization backends, so a few lines turn the
+    # bundle into a picture (nodes colored by label: ADR / Term / Playbook /
+    # Reference) and an interactive HTML you can drag around.
+    banner("6. Visualizing the graph")
+    graph = db.to_networkx()
+    print(f"  NetworkX export: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
+    try:
+        from grafito.integrations import export_graph, save_pyvis_html
+
+        png_path = export_graph(
+            graph,
+            "okf_knowledge_graph.png",
+            backend="netgraph",
+            label_attr="title",      # show each doc's title (a node property)
+            color_by_label=True,     # ADR / Term / Playbook / Reference each get a color
+            node_size=7,
+            edge_layout="curved",    # route edges around nodes instead of through them
+            node_label_fontdict={"size": 7},
+        )
+        print(f"  Static image : {Path(png_path).resolve()}")
+
+        html_path = save_pyvis_html(
+            graph,
+            path="okf_knowledge_graph.html",
+            label_attr="title",
+            color_by_label=True,
+            physics="spread",
+        )
+        print(f"  Interactive  : {Path(html_path).resolve()}  (open in a browser, drag the nodes)")
+    except ImportError:
+        print("  (visualization backends not installed — `pip install grafito[viz]`)")
+
     db.close()
 
 
