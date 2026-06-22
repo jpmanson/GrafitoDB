@@ -1808,9 +1808,12 @@ class CypherExecutor:
             isinstance(item.expression, FunctionCall) for item in clause.return_clause.items
         )
 
-        # Apply ORDER BY BEFORE RETURN (needs access to Node objects)
+        # Apply ORDER BY BEFORE RETURN (needs access to Node objects), making the
+        # projected aliases visible so `RETURN n.x AS y ORDER BY y` sorts correctly.
         if clause.order_by_clause and not return_aggregates:
-            matches = self._apply_order_by(matches, clause.order_by_clause)
+            matches = self._apply_order_by(
+                matches, clause.order_by_clause, return_clause=clause.return_clause
+            )
 
         # Apply SKIP (before LIMIT and RETURN)
         if clause.skip_clause and not return_aggregates:
@@ -3225,22 +3228,46 @@ class CypherExecutor:
                         f"REMOVE item must have either property or label"
                     )
 
-    def _apply_order_by(self, matches: list[dict], order_by_clause) -> list[dict]:
+    def _apply_order_by(self, matches: list[dict], order_by_clause, return_clause=None) -> list[dict]:
         """Apply ORDER BY clause to sort results.
 
         Args:
             matches: List of result dictionaries
             order_by_clause: OrderByClause AST node
+            return_clause: When ORDER BY runs before a non-aggregated projection,
+                the RETURN clause whose aliases should be made visible to the sort
+                keys (so `RETURN n.x AS y ORDER BY y` sorts by the projected value).
 
         Returns:
             Sorted list of results
         """
+        alias_items = []
+        if return_clause is not None:
+            alias_items = [
+                item for item in return_clause.items
+                if item.alias and not isinstance(item.expression, FunctionCall)
+            ]
+
+        def order_context(match):
+            """Augment the match bindings with projected aliases for sorting."""
+            if not alias_items:
+                return match
+            ctx = dict(match)
+            evaluator = self._make_evaluator(match)
+            for item in alias_items:
+                try:
+                    ctx[item.alias] = evaluator.evaluate(item.expression)
+                except Exception:
+                    pass
+            return ctx
+
         def get_sort_key(match):
             """Generate sort key tuple for a match."""
             keys = []
+            context = order_context(match)
             for item in order_by_clause.items:
-                # Evaluate the expression for this match
-                evaluator = self._make_evaluator(match)
+                # Evaluate the expression against the alias-aware context.
+                evaluator = self._make_evaluator(context)
                 try:
                     value = evaluator.evaluate(item.expression)
                     # Handle None values (sort to end)

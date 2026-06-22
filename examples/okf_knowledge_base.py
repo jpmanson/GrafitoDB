@@ -113,20 +113,25 @@ def main() -> None:
     )
 
     # Every node carries the doc's frontmatter as properties, PLUS the full
-    # markdown prose under `body`. Let's look at the inventory grouped by label
-    # (the OKF `type:` field — ADR / Term / Playbook — becomes the node label).
+    # markdown prose under `body`. A single query lists every document with its
+    # label (the OKF `type:` field — ADR / Term / Playbook — becomes the node
+    # label, read back with labels()), excluding the auto-created Reference nodes
+    # via the `NOT n:Reference` label predicate.
     print("\n  Documents in the bundle (label · title · key metadata):")
-    for label in ("ADR", "Term", "Playbook"):
-        rows = db.execute(
-            f"MATCH (n:{label}) "
-            f"RETURN n.title AS title, n.status AS status, n.tags AS tags, "
-            f"n.timestamp AS ts ORDER BY title"
-        )
-        for r in rows:
-            meta = f"tags={r['tags']}"
-            if r["status"]:
-                meta = f"status={r['status']}  " + meta
-            print(f"    [{label:<8}] {r['title']:<42} {meta}")
+    rows = db.execute(
+        """
+        MATCH (n) WHERE NOT n:Reference
+        RETURN labels(n) AS labels, n.title AS title,
+               n.status AS status, n.tags AS tags
+        ORDER BY labels, title
+        """
+    )
+    for r in rows:
+        label = r["labels"][0]
+        meta = f"tags={r['tags']}"
+        if r["status"]:
+            meta = f"status={r['status']}  " + meta
+        print(f"    [{label:<8}] {r['title']:<42} {meta}")
 
     # ── Traversal ────────────────────────────────────────────────────────────
     # The links plain markdown can only render, Cypher can now *query*.

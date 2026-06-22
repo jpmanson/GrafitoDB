@@ -2187,6 +2187,45 @@ class TestCypherSet:
 class TestCypherOrderBy:
     """Test end-to-end ORDER BY queries."""
 
+    def test_order_by_projected_alias(self):
+        """ORDER BY can reference a RETURN alias (regression: it used to silently
+        not sort because ORDER BY ran before projection and the alias was unknown)."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P {title: 'Zeta'}), (:P {title: 'Alpha'}), (:P {title: 'Mike'})")
+
+        assert db.execute(
+            "MATCH (n:P) RETURN n.title AS title ORDER BY title"
+        ) == [{'title': 'Alpha'}, {'title': 'Mike'}, {'title': 'Zeta'}]
+        assert db.execute(
+            "MATCH (n:P) RETURN n.title AS foo ORDER BY foo DESC"
+        ) == [{'foo': 'Zeta'}, {'foo': 'Mike'}, {'foo': 'Alpha'}]
+        db.close()
+
+    def test_order_by_underlying_expression_still_works(self):
+        """Ordering by the original expression (not the alias) keeps working,
+        including by a property that is not projected."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P {title: 'Zeta', age: 3}), (:P {title: 'Alpha', age: 1}), (:P {title: 'Mike', age: 2})")
+
+        assert db.execute(
+            "MATCH (n:P) RETURN n.title AS title ORDER BY n.title"
+        ) == [{'title': 'Alpha'}, {'title': 'Mike'}, {'title': 'Zeta'}]
+        # ORDER BY a property that is not in the RETURN projection.
+        assert db.execute(
+            "MATCH (n:P) RETURN n.title AS title ORDER BY n.age"
+        ) == [{'title': 'Alpha'}, {'title': 'Mike'}, {'title': 'Zeta'}]
+        db.close()
+
+    def test_order_by_alias_that_shadows_variable(self):
+        """`RETURN n.title AS n ORDER BY n` sorts by the projected alias value,
+        not the Node variable (which previously raised when compared)."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P {title: 'Zeta'}), (:P {title: 'Alpha'}), (:P {title: 'Mike'})")
+        assert db.execute(
+            "MATCH (n:P) RETURN n.title AS n ORDER BY n"
+        ) == [{'n': 'Alpha'}, {'n': 'Mike'}, {'n': 'Zeta'}]
+        db.close()
+
     def test_order_by_ascending(self):
         db = GrafitoDatabase(':memory:')
         db.execute("CREATE (n:Person {name: 'Charlie', age: 35})")
