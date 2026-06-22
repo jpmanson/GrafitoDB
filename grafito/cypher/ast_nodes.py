@@ -116,6 +116,16 @@ class UnaryOp(Expression):
     operand: Expression
 
 
+@dataclass
+class LabelPredicate(Expression):
+    """Label test predicate: `n:Label` (or `n:A:B`) used in a WHERE expression.
+
+    True iff the operand is a node carrying *all* of the given labels.
+    """
+    operand: Expression
+    labels: list[str]
+
+
 # ============================================================================
 # List Expressions
 # ============================================================================

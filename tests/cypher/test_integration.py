@@ -231,6 +231,36 @@ class TestCypherWhere:
         assert results == [{'n.name': 'Bob'}]
         db.close()
 
+    def test_where_label_predicate(self):
+        """`n:Label` works as a boolean predicate in WHERE (not only in the pattern)."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Person:Admin {name: 'Alice'}), (:Person {name: 'Bob'}), (:Robot {name: 'C3PO'})")
+
+        assert db.execute(
+            "MATCH (n) WHERE n:Admin RETURN n.name AS nm ORDER BY nm"
+        ) == [{'nm': 'Alice'}]
+        assert db.execute(
+            "MATCH (n) WHERE NOT n:Person RETURN n.name AS nm ORDER BY nm"
+        ) == [{'nm': 'C3PO'}]
+        # Conjunction of labels.
+        assert db.execute(
+            "MATCH (n) WHERE n:Person:Admin RETURN n.name AS nm"
+        ) == [{'nm': 'Alice'}]
+        # Combined with OR.
+        assert db.execute(
+            "MATCH (n) WHERE n:Admin OR n:Robot RETURN n.name AS nm ORDER BY nm"
+        ) == [{'nm': 'Alice'}, {'nm': 'C3PO'}]
+        db.close()
+
+    def test_label_predicate_in_return(self):
+        """`n:Label` can also be projected as a boolean."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Person:Admin {name: 'Alice'})")
+        assert db.execute(
+            "MATCH (n:Person {name: 'Alice'}) RETURN n:Admin AS is_admin, n:Robot AS is_robot"
+        ) == [{'is_admin': True, 'is_robot': False}]
+        db.close()
+
     def test_exists_property_in_return(self):
         """exists(n.prop) returns a boolean: true when present, false when absent."""
         db = GrafitoDatabase(':memory:')
@@ -856,6 +886,25 @@ class TestCypherReturn:
             RETURN [1e-3, -2.5e2] AS values
         """)
         assert results == [{'values': [0.001, -250.0]}]
+        db.close()
+
+    def test_standalone_return(self):
+        """A query may be just a RETURN, with no preceding MATCH/WITH."""
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN 1 AS x") == [{'x': 1}]
+        assert db.execute("RETURN 1 + 1 AS x") == [{'x': 2}]
+        assert db.execute("RETURN 'hi' AS a, 10 - 4 AS b") == [{'a': 'hi', 'b': 6}]
+        db.close()
+
+    def test_standalone_return_with_function_and_list(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN toUpper('abc') AS x") == [{'x': 'ABC'}]
+        assert db.execute("RETURN [1, 2, 3] AS xs") == [{'xs': [1, 2, 3]}]
+        db.close()
+
+    def test_standalone_return_with_union(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN 1 AS x UNION RETURN 2 AS x") == [{'x': 1}, {'x': 2}]
         db.close()
 
 

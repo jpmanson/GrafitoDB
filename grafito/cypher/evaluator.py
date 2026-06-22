@@ -7,7 +7,7 @@ import re
 import unicodedata
 from typing import Any
 from .ast_nodes import (
-    Expression, Literal, PropertyAccess, PropertyLookup, BinaryOp, UnaryOp,
+    Expression, Literal, PropertyAccess, PropertyLookup, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, ListLiteral, ListComprehension, ListIndex,
     ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
     ReduceExpression, PatternComprehension
@@ -52,6 +52,8 @@ class ExpressionEvaluator:
             return self._evaluate_binary_op(expr)
         elif isinstance(expr, UnaryOp):
             return self._evaluate_unary_op(expr)
+        elif isinstance(expr, LabelPredicate):
+            return self._evaluate_label_predicate(expr)
         elif isinstance(expr, CaseExpression):
             return self._evaluate_case_expression(expr)
         elif isinstance(expr, ListLiteral):
@@ -275,6 +277,20 @@ class ExpressionEvaluator:
             return self.evaluate(expr.operand) is not None
         else:
             raise CypherExecutionError(f"Unknown unary operator: {expr.operator}")
+
+    def _evaluate_label_predicate(self, expr: LabelPredicate) -> Any:
+        """Evaluate `n:Label` (or `n:A:B`): true iff the operand node carries
+        all of the given labels. Null operand propagates null."""
+        value = self.evaluate(expr.operand)
+        if value is None:
+            return None
+        if hasattr(value, 'labels'):
+            node_labels = value.labels
+        elif isinstance(value, dict) and 'labels' in value:
+            node_labels = value['labels']
+        else:
+            raise CypherExecutionError("label predicate (n:Label) expects a node")
+        return all(label in node_labels for label in expr.labels)
 
     def _compare_values(self, left: Any, right: Any, operator: str) -> Any:
         """Compare two values with proper type handling.

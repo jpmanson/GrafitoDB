@@ -7,7 +7,7 @@ from .ast_nodes import (
     DeleteClause, SetClause, SetItem, RemoveClause, RemoveItem,
     OrderByClause, OrderByItem, LimitClause, SkipClause,
     Pattern, PatternElement, NodePattern, RelationshipPattern, PatternFunction,
-    ReturnItem, Expression, Literal, PropertyAccess, PropertyLookup, FunctionCall, BinaryOp, UnaryOp,
+    ReturnItem, Expression, Literal, PropertyAccess, PropertyLookup, FunctionCall, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, CaseWhen, UnionClause, SubqueryClause, ProcedureCallClause, ListLiteral, ListComprehension,
     ListIndex, ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
     ReduceExpression, PatternComprehension, UnwindClause, LoadCsvClause,
@@ -86,6 +86,10 @@ class Parser:
     def _parse_single_query(self) -> Query:
         """Parse a single query (no UNION)."""
         clauses = []
+
+        # A query may consist solely of a RETURN (e.g. `RETURN 1 + 1 AS x`).
+        if self.current_token().type == TokenType.RETURN:
+            return Query(clause=self._parse_return())
 
         first_clause = self._parse_next_clause(allow_with_start=True)
         clauses.append(first_clause)
@@ -1258,6 +1262,21 @@ class Parser:
     def _parse_comparison_expression(self) -> Expression:
         """Parse comparison expression."""
         left = self._parse_additive_expression()
+
+        # Label predicate: `n:Label` (or `n:A:B`) as a boolean test.
+        if self.current_token().type == TokenType.COLON:
+            labels = []
+            while self.current_token().type == TokenType.COLON:
+                self.advance()
+                if self.current_token().type not in self._name_tokens:
+                    raise CypherSyntaxError(
+                        f"Expected label name after ':', got {self.current_token().type.name}",
+                        self.current_token().line,
+                        self.current_token().column
+                    )
+                labels.append(self.current_token().value)
+                self.advance()
+            return LabelPredicate(operand=left, labels=labels)
 
         # Check for comparison operators
         token = self.current_token()

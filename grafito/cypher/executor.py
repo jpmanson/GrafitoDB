@@ -217,6 +217,10 @@ class CypherExecutor:
             return self._execute_show_constraints(query.clause)
         elif isinstance(query.clause, ForeachClause):
             return self._execute_foreach(query.clause, [{}])
+        elif isinstance(query.clause, ReturnClause):
+            # Standalone RETURN (no preceding MATCH/WITH): project against a
+            # single empty row, e.g. `RETURN 1 + 1 AS x`.
+            return self._apply_return([{}], query.clause)
         else:
             raise CypherExecutionError(f"Unknown clause type: {type(query.clause)}")
 
