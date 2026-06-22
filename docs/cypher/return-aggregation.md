@@ -55,6 +55,19 @@ MATCH (p:Person)
 RETURN p.firstName + ' ' + p.lastName AS fullName
 ```
 
+Arithmetic uses `+ - * / % ^` with standard precedence; see
+[Numeric Functions](numeric-functions.md#arithmetic-operators).
+
+### Standalone RETURN
+
+A query can consist of just a `RETURN` (no `MATCH`), which is handy for
+evaluating expressions:
+
+```cypher
+RETURN 1 + 1 AS x            // [{'x': 2}]
+RETURN toUpper('abc') AS x   // [{'x': 'ABC'}]
+```
+
 ## Aggregation Functions
 
 ### COUNT
@@ -261,12 +274,37 @@ RETURN [r IN relationships(p) | type(r)] as relTypes
 
 #### length()
 
-Returns the number of relationships in a path.
+Returns the number of relationships in a path. `length()` also accepts a string
+or list and returns its length.
 
 ```cypher
 MATCH p = (a)-[:KNOWS*]->(b)
 RETURN length(p) as hops
 ```
+
+## Graph and Scalar Functions
+
+These functions inspect nodes and relationships:
+
+| Function | Returns |
+|----------|---------|
+| `labels(n)` | List of a node's labels |
+| `type(r)` | A relationship's type |
+| `properties(x)` | Property map of a node/relationship (or the map itself) |
+| `keys(x)` | List of property names |
+| `id(x)` | Integer identity of a node/relationship |
+| `elementId(x)` | Identity as a string |
+| `startNode(r)` / `endNode(r)` | The source / target node of a relationship |
+
+```cypher
+MATCH (n:Person {name: 'Alice'})
+RETURN labels(n) AS labels, properties(n) AS props, id(n) AS id
+
+MATCH ()-[r]->()
+RETURN type(r) AS rel_type, startNode(r).name AS from, endNode(r).name AS to
+```
+
+`labels()` can also be used as a filter, e.g. `WHERE 'Admin' IN labels(n)`.
 
 ## Common Use Cases
 

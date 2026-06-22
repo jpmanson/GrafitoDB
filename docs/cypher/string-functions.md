@@ -65,6 +65,32 @@ RETURN toString(datetime())   // '2024-01-15T14:30:00.123456'
 RETURN toString(null)         // 'null'
 ```
 
+### toBoolean()
+
+Converts a string or integer to a boolean. `'true'`/`'false'` are matched
+case-insensitively; an integer is `false` when `0` and `true` otherwise. A
+string that is neither `'true'` nor `'false'` returns `null`.
+
+```cypher
+RETURN toBoolean('TRUE')   // true
+RETURN toBoolean('false')  // false
+RETURN toBoolean('maybe')  // null
+RETURN toBoolean(1)        // true
+```
+
+### List Casting
+
+`toIntegerList()`, `toFloatList()`, `toStringList()`, and `toBooleanList()` cast
+each element of a list. An element that cannot be converted becomes `null`
+(rather than raising an error).
+
+```cypher
+RETURN toIntegerList(['1', '2', 'x'])      // [1, 2, null]
+RETURN toFloatList(['1.5', '2'])           // [1.5, 2.0]
+RETURN toStringList([1, 2])                // ['1', '2']
+RETURN toBooleanList(['true', 'nope', 'false'])  // [true, null, false]
+```
+
 ## Case Conversion
 
 ### toUpper()
@@ -95,6 +121,44 @@ RETURN toLower('Hello World')  // 'hello world'
 // Remove leading and trailing whitespace
 RETURN trim('  hello  ')  // 'hello'
 RETURN trim('\thello\n')  // 'hello'
+```
+
+### ltrim() / rtrim()
+
+Trim whitespace from only the left or right side.
+
+```cypher
+RETURN ltrim('  hi')  // 'hi'
+RETURN rtrim('hi  ')  // 'hi'
+```
+
+## Replace, Slice and Reverse
+
+### replace()
+
+Replace every occurrence of a substring.
+
+```cypher
+RETURN replace('abcabc', 'a', 'X')  // 'XbcXbc'
+```
+
+### left() / right()
+
+Take the first or last `n` characters.
+
+```cypher
+RETURN left('hello', 2)   // 'he'
+RETURN right('hello', 2)  // 'lo'
+```
+
+### reverse()
+
+`reverse()` preserves the input type: a string reverses to a string, a list to a
+list.
+
+```cypher
+RETURN reverse('abc')        // 'cba'
+RETURN reverse([1, 2, 3])    // [3, 2, 1]
 ```
 
 ## Substring Extraction
@@ -364,6 +428,9 @@ RETURN p.name
 ## APOC String Functions
 
 ### Replace
+
+`apoc.text.replace()` treats its pattern as a **regular expression** (unlike the
+native [`replace()`](#replace) which matches a literal substring).
 
 ```cypher
 RETURN apoc.text.replace('hello-world', '-', '_')  // 'hello_world'

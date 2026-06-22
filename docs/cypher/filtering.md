@@ -298,6 +298,50 @@ WHERE SINGLE(x IN list WHERE x = 2)
 RETURN list
 ```
 
+## Label Predicates
+
+Test a node's labels directly in `WHERE` with `n:Label`. Chain labels with `:`
+to require all of them, and combine with `NOT`, `AND`, `OR` like any boolean:
+
+```cypher
+// Nodes carrying the Admin label
+MATCH (n)
+WHERE n:Admin
+RETURN n.name
+
+// Both labels required
+MATCH (n)
+WHERE n:Person:Admin
+RETURN n.name
+
+// Negation and combination
+MATCH (n)
+WHERE NOT n:Reference AND (n:ADR OR n:Term)
+RETURN n.title
+```
+
+The same predicate can be projected as a boolean in `RETURN`:
+
+```cypher
+MATCH (n:Person {name: 'Alice'})
+RETURN n:Admin AS is_admin
+```
+
+## Parameters
+
+Use `$name` parameters instead of interpolating values into the `WHERE`
+condition (see [Query Parameters](overview.md#query-parameters)):
+
+```cypher
+MATCH (n:Person)
+WHERE n.age >= $min_age AND n.name IN $names
+RETURN n.name
+```
+
+```python
+db.execute(query, {"min_age": 18, "names": ["Alice", "Bob"]})
+```
+
 ## Pattern Filtering
 
 ### EXISTS

@@ -93,6 +93,7 @@ nav:
       - Lists and Maps: cypher/collections.md
       - Temporal and Spatial Types: cypher/temporal-spatial.md
       - String Functions: cypher/string-functions.md
+      - Numeric Functions: cypher/numeric-functions.md
       - Indexes and Constraints: cypher/indexes-constraints.md
       - Vector Search: cypher/vector-search.md
 

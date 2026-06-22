@@ -85,6 +85,28 @@ for row in results:
     print(row['n.name'])
 ```
 
+### Query Parameters
+
+Pass runtime values with `$name` parameters instead of interpolating them into
+the query string. Parameters bind in `WHERE`, pattern properties, `RETURN` and
+`CREATE`:
+
+```python
+# Second argument is a dict of parameter values.
+db.execute(
+    "MATCH (n:Person {name: $name}) RETURN n.age AS age",
+    {"name": "Alice"},
+)
+
+db.execute(
+    "CREATE (n:Person {name: $name, age: $age})",
+    {"name": "Zoe", "age": 40},
+)
+```
+
+This avoids manual quote-escaping and the injection risk of building queries
+with f-strings. A referenced parameter that is not provided raises an error.
+
 ## Query Structure
 
 A typical Cypher query has this structure:
@@ -241,8 +263,8 @@ alice = db.create_node(labels=['Person'], properties={'name': 'Alice'})
 # Query with Cypher
 results = db.execute("MATCH (n:Person) RETURN n")
 
-# Update with Cypher
-db.execute(f"MATCH (n) WHERE id(n) = {alice.id} SET n.active = true")
+# Update with Cypher (use a parameter instead of interpolating the value)
+db.execute("MATCH (n) WHERE id(n) = $id SET n.active = true", {"id": alice.id})
 
 # Verify with API
 updated = db.get_node(alice.id)
