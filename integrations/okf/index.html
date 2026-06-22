@@ -1802,10 +1802,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
+        Examples
       
     </span>
   </a>
@@ -2647,10 +2647,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
+        Examples
       
     </span>
   </a>
@@ -2894,11 +2894,19 @@ preserves unknown frontmatter keys:</p>
 exporter uses the first label as <code>type</code>. See <code>todo/okf/IMPROVEMENTS.md</code> for
 the open design question on representing multi-label nodes.</p>
 </div>
-<h2 id="example">Example</h2>
+<h2 id="examples">Examples</h2>
 <p>A runnable end-to-end example (import → Cypher → full-text search → export with
-<code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the sample bundle in
+<code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the tabular sample bundle in
 <code>examples/okf_bundle/</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>examples/okf_import.py
+</span></code></pre></div>
+<p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
+<code>examples/okf_knowledge_base/</code> is a small engineering knowledge base —
+architecture decision records, an on-call runbook, and glossary terms, all
+cross-linked with citations. The script shows relationship traversal and
+semantic retrieval over prose (it retrieves a "slow query" runbook for the
+query <em>"how do I make a query run faster"</em>, which never uses those words):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
 </span></code></pre></div>
 
 
