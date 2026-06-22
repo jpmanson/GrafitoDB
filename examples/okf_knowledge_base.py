@@ -153,20 +153,23 @@ def main() -> None:
         "   graph encodes that dependency explicitly, instead of you grepping links.)"
     )
 
-    # 2b. Multi-hop: everything reachable from the runbook within 2 hops.
-    print("\nConcepts within 2 hops of the slow-query runbook:")
+    # 2b. Multi-hop: everything reachable from the runbook within 2 hops, with
+    #     the shortest distance to each — min(length(p)) over the named path tells
+    #     direct links (1 hop) apart from transitive ones (2 hops).
+    print("\nConcepts within 2 hops of the slow-query runbook (with hop distance):")
     rows = db.execute(
         """
-        MATCH (r {title: 'Triaging a slow graph query'})-[:LINKS_TO*1..2]->(c)
-        RETURN DISTINCT c.title AS title
-        ORDER BY title
+        MATCH p=(r {title: 'Triaging a slow graph query'})-[:LINKS_TO*1..2]->(c)
+        RETURN c.title AS title, min(length(p)) AS hops
+        ORDER BY hops, title
         """
     )
     for row in rows:
-        print(f"  ~ {row['title']}")
+        print(f"  {row['hops']} hop{'s' if row['hops'] > 1 else ' '}  ~ {row['title']}")
     print(
-        "  (transitive context: the runbook mentions Cypher, which in turn links to\n"
-        "   its decision record — variable-length traversal surfaces both at once.)"
+        "  (transitive context: the runbook links to Cypher directly (1 hop), which\n"
+        "   in turn links to its decision record (2 hops) — variable-length traversal\n"
+        "   plus min(length(p)) surfaces both and how far each one is.)"
     )
 
     # ── Aggregation ──────────────────────────────────────────────────────────
