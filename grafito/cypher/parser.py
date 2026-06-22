@@ -1346,10 +1346,14 @@ class Parser:
         if token.type == TokenType.CASE:
             return self._parse_case_expression()
 
-        # Aggregation functions: COUNT, SUM, AVG, MIN, MAX, COLLECT, STDDEV, PERCENTILECONT
+        # Aggregation functions: COUNT, SUM, AVG, MIN, MAX, COLLECT, STDDEV, PERCENTILECONT.
+        # Only treat as a function call when followed by '('; otherwise the keyword is being
+        # used as a plain name (e.g. an alias referenced in ORDER BY: `... AS count ORDER BY count`),
+        # so fall through to the generic name handling below.
         if token.type in (TokenType.COUNT, TokenType.SUM, TokenType.AVG, TokenType.MIN, TokenType.MAX,
                           TokenType.COLLECT, TokenType.STDDEV, TokenType.PERCENTILECONT):
-            return self._parse_function_call()
+            if self.peek_token().type == TokenType.LPAREN:
+                return self._parse_function_call()
 
         # Parenthesized expression
         if token.type == TokenType.LPAREN:

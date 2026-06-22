@@ -2330,6 +2330,29 @@ class TestCypherAggregations:
         assert results == [{'k': 'x', 'c': 2}, {'k': 'y', 'c': 1}]
         db.close()
 
+    def test_order_by_alias_named_like_aggregate_function(self):
+        """An alias whose name matches an aggregate function (count, sum, ...) can
+        be referenced in ORDER BY without being mis-parsed as a function call."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:T {k: 'x'}), (:T {k: 'x'}), (:T {k: 'y'})")
+
+        # 'count' as an alias used in ORDER BY
+        results = db.execute(
+            "MATCH (n:T) RETURN n.k AS k, COUNT(*) AS count ORDER BY count DESC"
+        )
+        assert results == [{'k': 'x', 'count': 2}, {'k': 'y', 'count': 1}]
+
+        # 'sum' as an alias used in ORDER BY
+        results = db.execute(
+            "MATCH (n:T) RETURN n.k AS sum, COUNT(*) AS c ORDER BY sum"
+        )
+        assert results == [{'sum': 'x', 'c': 2}, {'sum': 'y', 'c': 1}]
+
+        # The aggregate function itself must still parse normally
+        results = db.execute("MATCH (n:T) RETURN COUNT(*) AS c")
+        assert results == [{'c': 3}]
+        db.close()
+
     def test_sum_with_null_values(self):
         db = GrafitoDatabase(':memory:')
         db.execute("CREATE (n:Person {name: 'Alice', age: 30})")

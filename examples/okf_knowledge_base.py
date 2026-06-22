@@ -111,15 +111,19 @@ def main() -> None:
     for row in rows:
         print(f"  ~ {row['title']}")
 
-    # 3. Citations: external sources cited across the bundle. (We count in
-    #    Python because grafito's Cypher does not yet do implicit GROUP BY.)
-    from collections import Counter
-
-    pairs = db.execute("MATCH (a)-[:CITES]->(r:Reference) RETURN r.url AS url")
-    most_cited = Counter(row["url"] for row in pairs).most_common(3)
+    # 3. Citations: external sources cited across the bundle, counted with an
+    #    implicit GROUP BY (grouped by the non-aggregated return item).
     print("\nMost-cited external sources:")
-    for url, count in most_cited:
-        print(f"  [{count}x] {url}")
+    rows = db.execute(
+        """
+        MATCH (a)-[:CITES]->(r:Reference)
+        RETURN r.url AS url, COUNT(*) AS citations
+        ORDER BY citations DESC
+        LIMIT 3
+        """
+    )
+    for row in rows:
+        print(f"  [{row['citations']}x] {row['url']}")
 
     # 4. Semantic search over prose: a paraphrased question, no keyword overlap.
     print("\nSemantic search — 'how do I make a query run faster?'")
