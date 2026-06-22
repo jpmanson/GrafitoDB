@@ -558,17 +558,24 @@ class ExpressionEvaluator:
         if name in {'filter', 'extract', 'reduce'}:
             raise CypherExecutionError(f"{name}() is parsed as a list expression, not a function call")
 
-        if name in {'tointeger', 'tofloat', 'tostring'}:
+        if name in {'tointeger', 'tofloat', 'tostring', 'toboolean'}:
             if len(args) != 1:
                 raise CypherExecutionError(f"{name}() expects 1 argument")
             return self._evaluate_cast(name, args[0])
+
+        if name in {'tointegerlist', 'tofloatlist', 'tostringlist', 'tobooleanlist'}:
+            return self._evaluate_list_cast(name, args)
+
+        if name == 'length':
+            return self._evaluate_length(args)
 
         if name in {'toupper', 'tolower', 'trim', 'ltrim', 'rtrim', 'split', 'substring',
                     'matches', 'regex', 'replace', 'left', 'right'}:
             return self._evaluate_string_function(name, args)
 
         if name in {'abs', 'ceil', 'floor', 'round', 'sqrt', 'sign', 'exp', 'log',
-                    'log10', 'sin', 'cos', 'tan', 'e', 'pi', 'rand'}:
+                    'log10', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2',
+                    'cot', 'degrees', 'radians', 'haversin', 'e', 'pi', 'rand'}:
             return self._evaluate_math_function(name, args)
 
         if name in {'startnode', 'endnode'}:
@@ -1035,6 +1042,18 @@ class ExpressionEvaluator:
             import random
             return random.random()
 
+        # atan2(y, x) takes two numeric arguments.
+        if name == 'atan2':
+            if len(args) != 2:
+                raise CypherExecutionError("atan2() expects 2 arguments")
+            y, x = args
+            if y is None or x is None:
+                return None
+            for a in (y, x):
+                if isinstance(a, bool) or not isinstance(a, (int, float)):
+                    raise CypherExecutionError("atan2() expects numbers")
+            return math.atan2(y, x)
+
         if len(args) != 1:
             raise CypherExecutionError(f"{name}() expects 1 argument")
         value = args[0]
@@ -1074,6 +1093,20 @@ class ExpressionEvaluator:
             return math.cos(value)
         if name == 'tan':
             return math.tan(value)
+        if name == 'cot':
+            return 1.0 / math.tan(value)
+        if name in {'asin', 'acos'}:
+            if value < -1 or value > 1:
+                raise CypherExecutionError(f"{name}() requires an argument in [-1, 1]")
+            return math.asin(value) if name == 'asin' else math.acos(value)
+        if name == 'atan':
+            return math.atan(value)
+        if name == 'degrees':
+            return math.degrees(value)
+        if name == 'radians':
+            return math.radians(value)
+        if name == 'haversin':
+            return (1.0 - math.cos(value)) / 2.0
         raise CypherExecutionError(f"Unknown math function: {name}")
 
     def _evaluate_endpoint_function(self, name: str, args: list[Any]) -> Any:
@@ -1288,8 +1321,55 @@ class ExpressionEvaluator:
                 return float(value)
         if name == 'tostring':
             return str(value)
+        if name == 'toboolean':
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, int):
+                return value != 0
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered == 'true':
+                    return True
+                if lowered == 'false':
+                    return False
+                return None  # Cypher returns null for unparseable strings.
 
         raise CypherExecutionError(f"Cannot cast value using {name}()")
+
+    def _evaluate_list_cast(self, name: str, args: list[Any]) -> Any:
+        """Evaluate toIntegerList/toFloatList/toStringList/toBooleanList.
+
+        Element-wise cast over a list; an element that cannot be converted
+        becomes null (Cypher semantics), rather than raising.
+        """
+        if len(args) != 1:
+            raise CypherExecutionError(f"{name}() expects 1 argument")
+        value = args[0]
+        if value is None:
+            return None
+        if not isinstance(value, (list, tuple)):
+            raise CypherExecutionError(f"{name}() expects a list")
+        scalar = name[:-4]  # strip trailing 'list' -> tointeger/tofloat/...
+        result = []
+        for element in value:
+            try:
+                result.append(self._evaluate_cast(scalar, element))
+            except (ValueError, TypeError, CypherExecutionError):
+                result.append(None)
+        return result
+
+    def _evaluate_length(self, args: list[Any]) -> Any:
+        """Evaluate length(): relationships in a path, or string/list length."""
+        if len(args) != 1:
+            raise CypherExecutionError("length() expects 1 argument")
+        value = args[0]
+        if value is None:
+            return None
+        if isinstance(value, Path):
+            return len(value.relationships)
+        if isinstance(value, (str, list, tuple)):
+            return len(value)
+        raise CypherExecutionError("length() expects a path, string, or list")
 
     def _evaluate_temporal_function(self, name: str, value: Any) -> Any:
         """Evaluate temporal function calls."""

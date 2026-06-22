@@ -6,6 +6,7 @@ needs no model downloads or optional dependencies.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -30,7 +31,11 @@ class HashingEmbeddingFunction(EmbeddingFunction):
         for text in input:
             vec = [0.0] * self._dim
             for token in re.findall(r"[a-z0-9]+", (text or "").lower()):
-                vec[hash(token) % self._dim] += 1.0
+                # Stable hash: Python's built-in hash() is randomized per process
+                # (PYTHONHASHSEED), which would make the embedding non-deterministic.
+                digest = hashlib.md5(token.encode("utf-8")).digest()
+                bucket = int.from_bytes(digest[:8], "little") % self._dim
+                vec[bucket] += 1.0
             norm = sum(v * v for v in vec) ** 0.5 or 1.0
             vectors.append([v / norm for v in vec])
         return vectors

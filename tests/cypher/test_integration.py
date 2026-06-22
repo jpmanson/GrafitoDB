@@ -1050,6 +1050,50 @@ class TestCypherScalarFunctions:
         ) == [{'s': 'Alice', 'e': 'Bob'}]
         db.close()
 
+    def test_length_of_path_string_and_list(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P {name: 'a'}), (:P {name: 'b'}), (:P {name: 'c'})")
+        db.execute("MATCH (a:P {name: 'a'}), (b:P {name: 'b'}) CREATE (a)-[:R]->(b)")
+        db.execute("MATCH (b:P {name: 'b'}), (c:P {name: 'c'}) CREATE (b)-[:R]->(c)")
+        # length(path) counts relationships.
+        assert db.execute(
+            "MATCH p=(a:P {name: 'a'})-[*1..2]->(b) RETURN length(p) AS r ORDER BY r"
+        ) == [{'r': 1}, {'r': 2}]
+        assert db.execute("RETURN length('hello') AS r") == [{'r': 5}]
+        assert db.execute("RETURN length([1, 2, 3]) AS r") == [{'r': 3}]
+        db.close()
+
+    def test_inverse_and_extra_trig(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN asin(1) AS r")[0]['r'] == pytest.approx(1.5707963267948966)
+        assert db.execute("RETURN acos(1) AS r") == [{'r': 0.0}]
+        assert db.execute("RETURN atan2(1, 1) AS r")[0]['r'] == pytest.approx(0.7853981633974483)
+        assert db.execute("RETURN degrees(pi()) AS r")[0]['r'] == pytest.approx(180.0)
+        assert db.execute("RETURN radians(180) AS r")[0]['r'] == pytest.approx(3.141592653589793)
+        with pytest.raises(Exception):
+            db.execute("RETURN asin(2) AS r")
+        db.close()
+
+    def test_to_boolean(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN toBoolean('TRUE') AS r") == [{'r': True}]
+        assert db.execute("RETURN toBoolean('false') AS r") == [{'r': False}]
+        # Unparseable string -> null (Cypher semantics).
+        assert db.execute("RETURN toBoolean('maybe') AS r") == [{'r': None}]
+        assert db.execute("RETURN toBoolean(1) AS r") == [{'r': True}]
+        db.close()
+
+    def test_to_list_casts(self):
+        db = GrafitoDatabase(':memory:')
+        # Non-convertible elements become null, not an error.
+        assert db.execute("RETURN toIntegerList(['1', '2', 'x']) AS r") == [{'r': [1, 2, None]}]
+        assert db.execute("RETURN toFloatList(['1.5', '2']) AS r") == [{'r': [1.5, 2.0]}]
+        assert db.execute("RETURN toStringList([1, 2]) AS r") == [{'r': ['1', '2']}]
+        assert db.execute("RETURN toBooleanList(['true', 'nope', 'false']) AS r") == [
+            {'r': [True, None, False]}
+        ]
+        db.close()
+
 
 class TestCypherGraphFunctions:
     """End-to-end labels()/type()/properties()/id()/elementId() over the graph."""
