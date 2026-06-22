@@ -231,6 +231,58 @@ class TestCypherWhere:
         assert results == [{'n.name': 'Bob'}]
         db.close()
 
+    def test_exists_property_in_return(self):
+        """exists(n.prop) returns a boolean: true when present, false when absent."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
+        db.execute("CREATE (n:Person {name: 'Bob'})")  # no age
+
+        assert db.execute(
+            "MATCH (n:Person {name: 'Alice'}) RETURN exists(n.age) AS e"
+        ) == [{'e': True}]
+        assert db.execute(
+            "MATCH (n:Person {name: 'Bob'}) RETURN exists(n.age) AS e"
+        ) == [{'e': False}]
+        db.close()
+
+    def test_exists_property_in_where(self):
+        """exists(n.prop) as a WHERE predicate keeps only nodes with the property,
+        matching `n.prop IS NOT NULL` (regression: it used to silently match none)."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
+        db.execute("CREATE (n:Person {name: 'Bob'})")
+
+        assert db.execute(
+            "MATCH (n:Person) WHERE exists(n.age) RETURN n.name AS name"
+        ) == [{'name': 'Alice'}]
+        assert db.execute(
+            "MATCH (n:Person) WHERE NOT exists(n.age) RETURN n.name AS name"
+        ) == [{'name': 'Bob'}]
+        # Parity with IS NOT NULL.
+        assert db.execute(
+            "MATCH (n:Person) WHERE exists(n.age) RETURN n.name AS name"
+        ) == db.execute(
+            "MATCH (n:Person) WHERE n.age IS NOT NULL RETURN n.name AS name"
+        )
+        db.close()
+
+    def test_exists_is_case_insensitive(self):
+        """EXISTS(...) and exists(...) behave identically."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
+        db.execute("CREATE (n:Person {name: 'Bob'})")
+        assert db.execute(
+            "MATCH (n:Person) WHERE EXISTS(n.age) RETURN n.name AS name"
+        ) == [{'name': 'Alice'}]
+        db.close()
+
+    def test_exists_wrong_arity_raises(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
+        with pytest.raises(Exception):
+            db.execute("MATCH (n:Person) RETURN exists(n.age, n.name) AS e")
+        db.close()
+
     def test_where_in_list(self):
         db = GrafitoDatabase(':memory:')
         db.execute("CREATE (n:Person {name: 'Alice'})")

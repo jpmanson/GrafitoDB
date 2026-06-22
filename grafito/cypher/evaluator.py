@@ -540,6 +540,13 @@ class ExpressionEvaluator:
                     return value
             return None
 
+        if name == 'exists':
+            # Property form: exists(n.prop) is true iff the property is present
+            # (a missing property evaluates to None), matching `n.prop IS NOT NULL`.
+            if len(args) != 1:
+                raise CypherExecutionError("exists() expects 1 argument")
+            return args[0] is not None
+
         if name in {'nodes', 'relationships'}:
             if len(args) != 1:
                 raise CypherExecutionError(f"{name}() expects 1 argument")
