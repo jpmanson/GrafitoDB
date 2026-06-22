@@ -859,6 +859,70 @@ class TestCypherReturn:
         db.close()
 
 
+class TestCypherGraphFunctions:
+    """End-to-end labels()/type()/properties()/id()/elementId() over the graph."""
+
+    def _db(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute(
+            "CREATE (a:Person:Admin {name: 'Alice', age: 30})"
+            "-[:KNOWS {since: 2020}]->(b:Person {name: 'Bob'})"
+        )
+        return db
+
+    def test_labels_in_return(self):
+        db = self._db()
+        assert db.execute("MATCH (n:Admin) RETURN labels(n) AS l") == [{'l': ['Admin', 'Person']}]
+        db.close()
+
+    def test_labels_as_where_predicate(self):
+        db = self._db()
+        assert db.execute(
+            "MATCH (n) WHERE 'Admin' IN labels(n) RETURN n.name AS name"
+        ) == [{'name': 'Alice'}]
+        db.close()
+
+    def test_type_of_relationship(self):
+        db = self._db()
+        assert db.execute("MATCH ()-[r]->() RETURN type(r) AS t") == [{'t': 'KNOWS'}]
+        assert db.execute(
+            "MATCH ()-[r]->() WHERE type(r) = 'KNOWS' RETURN type(r) AS t"
+        ) == [{'t': 'KNOWS'}]
+        db.close()
+
+    def test_properties_of_node_and_relationship(self):
+        db = self._db()
+        assert db.execute("MATCH (n:Admin) RETURN properties(n) AS p") == [
+            {'p': {'name': 'Alice', 'age': 30}}
+        ]
+        assert db.execute("MATCH ()-[r]->() RETURN properties(r) AS p") == [
+            {'p': {'since': 2020}}
+        ]
+        db.close()
+
+    def test_id_and_element_id(self):
+        db = self._db()
+        rows = db.execute("MATCH (n:Admin) RETURN id(n) AS i, elementId(n) AS e")
+        assert len(rows) == 1
+        assert isinstance(rows[0]['i'], int)
+        assert rows[0]['e'] == str(rows[0]['i'])
+        db.close()
+
+    def test_composed_with_size(self):
+        db = self._db()
+        assert db.execute("MATCH (n:Admin) RETURN size(labels(n)) AS s") == [{'s': 2}]
+        db.close()
+
+    def test_null_propagation_with_optional_match(self):
+        db = self._db()
+        rows = db.execute(
+            "MATCH (n:Person {name: 'Bob'}) "
+            "OPTIONAL MATCH (n)-[r:NOPE]->() RETURN type(r) AS t"
+        )
+        assert rows == [{'t': None}]
+        db.close()
+
+
 class TestCypherLoadCsv:
     """Test LOAD CSV ingestion."""
 

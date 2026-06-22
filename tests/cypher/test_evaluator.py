@@ -925,6 +925,55 @@ class TestEvaluatorMapListFunctions:
         with pytest.raises(CypherExecutionError):
             evaluator.evaluate(FunctionCallExpression(name='apoc.coll.contains', arguments=[Literal(1), Literal(2)]))
 
+class TestEvaluatorGraphFunctions:
+    """Test labels/type/properties/id/elementId over nodes and relationships."""
+
+    def _env(self):
+        node = Node(id=7, labels=['Person', 'Admin'], properties={'name': 'Alice', 'age': 30})
+        rel = Relationship(id=3, source_id=7, target_id=8, type='KNOWS', properties={'since': 2020})
+        return node, rel, ExpressionEvaluator({'n': node, 'r': rel})
+
+    def test_labels(self):
+        node, _, ev = self._env()
+        assert ev.evaluate(FunctionCallExpression(name='labels', arguments=[Variable('n')])) == ['Person', 'Admin']
+
+    def test_type(self):
+        _, _, ev = self._env()
+        assert ev.evaluate(FunctionCallExpression(name='type', arguments=[Variable('r')])) == 'KNOWS'
+
+    def test_properties_node_and_relationship(self):
+        _, _, ev = self._env()
+        assert ev.evaluate(FunctionCallExpression(name='properties', arguments=[Variable('n')])) == {'name': 'Alice', 'age': 30}
+        assert ev.evaluate(FunctionCallExpression(name='properties', arguments=[Variable('r')])) == {'since': 2020}
+
+    def test_properties_of_map_returns_map(self):
+        ev = ExpressionEvaluator({})
+        expr = FunctionCallExpression(name='properties', arguments=[MapLiteral(items={'a': Literal(1)})])
+        assert ev.evaluate(expr) == {'a': 1}
+
+    def test_id_and_element_id(self):
+        _, _, ev = self._env()
+        assert ev.evaluate(FunctionCallExpression(name='id', arguments=[Variable('n')])) == 7
+        assert ev.evaluate(FunctionCallExpression(name='id', arguments=[Variable('r')])) == 3
+        # elementId() returns the identifier as a string.
+        assert ev.evaluate(FunctionCallExpression(name='elementId', arguments=[Variable('n')])) == '7'
+
+    def test_null_propagation(self):
+        ev = ExpressionEvaluator({})
+        for fn in ('labels', 'type', 'properties', 'id', 'elementId'):
+            assert ev.evaluate(FunctionCallExpression(name=fn, arguments=[Literal(None)])) is None
+
+    def test_wrong_type_raises(self):
+        _, _, ev = self._env()
+        # labels() on a relationship, type() on a node, id() on a scalar.
+        with pytest.raises(CypherExecutionError):
+            ev.evaluate(FunctionCallExpression(name='labels', arguments=[Variable('r')]))
+        with pytest.raises(CypherExecutionError):
+            ev.evaluate(FunctionCallExpression(name='type', arguments=[Variable('n')]))
+        with pytest.raises(CypherExecutionError):
+            ev.evaluate(FunctionCallExpression(name='id', arguments=[Literal(1)]))
+
+
 class TestEvaluatorListFunctions:
     """Test filter/extract/reduce list functions."""
 

@@ -567,6 +567,58 @@ class ExpressionEvaluator:
                 return list(value.properties.keys()) if name == 'keys' else list(value.properties.values())
             raise CypherExecutionError(f"{name}() expects a map, node, or relationship")
 
+        if name == 'labels':
+            if len(args) != 1:
+                raise CypherExecutionError("labels() expects 1 argument")
+            value = args[0]
+            if value is None:
+                return None
+            if hasattr(value, 'labels'):
+                return list(value.labels)
+            if isinstance(value, dict) and 'labels' in value:
+                return list(value['labels'])
+            raise CypherExecutionError("labels() expects a node")
+
+        if name == 'type':
+            if len(args) != 1:
+                raise CypherExecutionError("type() expects 1 argument")
+            value = args[0]
+            if value is None:
+                return None
+            if hasattr(value, 'type'):
+                return value.type
+            if isinstance(value, dict) and 'type' in value:
+                return value['type']
+            raise CypherExecutionError("type() expects a relationship")
+
+        if name == 'properties':
+            if len(args) != 1:
+                raise CypherExecutionError("properties() expects 1 argument")
+            value = args[0]
+            if value is None:
+                return None
+            if hasattr(value, 'properties'):
+                return dict(value.properties)
+            if isinstance(value, dict):
+                # properties(map) returns the map itself.
+                return dict(value)
+            raise CypherExecutionError("properties() expects a map, node, or relationship")
+
+        if name in {'id', 'elementid'}:
+            if len(args) != 1:
+                raise CypherExecutionError(f"{name}() expects 1 argument")
+            value = args[0]
+            if value is None:
+                return None
+            if hasattr(value, 'id'):
+                identity = value.id
+            elif isinstance(value, dict) and 'id' in value:
+                identity = value['id']
+            else:
+                raise CypherExecutionError(f"{name}() expects a node or relationship")
+            # elementId() yields a string identifier; id() yields the integer.
+            return str(identity) if name == 'elementid' else identity
+
         if name == 'apoc.text.join':
             if len(args) != 2:
                 raise CypherExecutionError("apoc.text.join() expects 2 arguments")
