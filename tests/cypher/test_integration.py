@@ -992,6 +992,65 @@ class TestCypherArithmetic:
         db.close()
 
 
+class TestCypherScalarFunctions:
+    """Test math/string/endpoint scalar functions."""
+
+    def test_math_functions(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN abs(-5) AS r") == [{'r': 5}]
+        assert db.execute("RETURN ceil(1.2) AS r") == [{'r': 2.0}]
+        assert db.execute("RETURN floor(1.8) AS r") == [{'r': 1.0}]
+        assert db.execute("RETURN sqrt(9) AS r") == [{'r': 3.0}]
+        assert db.execute("RETURN sign(-3) AS r") == [{'r': -1}]
+        assert db.execute("RETURN log10(1000) AS r") == [{'r': 3.0}]
+        db.close()
+
+    def test_round_is_half_away_from_zero(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN round(2.5) AS r") == [{'r': 3.0}]
+        assert db.execute("RETURN round(-2.5) AS r") == [{'r': -3.0}]
+        db.close()
+
+    def test_math_constants(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN pi() AS r")[0]['r'] == pytest.approx(3.141592653589793)
+        assert db.execute("RETURN e() AS r")[0]['r'] == pytest.approx(2.718281828459045)
+        assert db.execute("RETURN rand() >= 0 AND rand() < 1 AS r") == [{'r': True}]
+        db.close()
+
+    def test_math_null_propagation_and_domain_errors(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN abs(null) AS r") == [{'r': None}]
+        with pytest.raises(Exception):
+            db.execute("RETURN sqrt(-1) AS r")
+        with pytest.raises(Exception):
+            db.execute("RETURN log(0) AS r")
+        db.close()
+
+    def test_string_functions(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN replace('abcabc', 'a', 'X') AS r") == [{'r': 'XbcXbc'}]
+        assert db.execute("RETURN left('hello', 2) AS r") == [{'r': 'he'}]
+        assert db.execute("RETURN right('hello', 2) AS r") == [{'r': 'lo'}]
+        assert db.execute("RETURN ltrim('  hi') AS r") == [{'r': 'hi'}]
+        assert db.execute("RETURN rtrim('hi  ') AS r") == [{'r': 'hi'}]
+        db.close()
+
+    def test_reverse_preserves_type(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN reverse('abc') AS r") == [{'r': 'cba'}]
+        assert db.execute("RETURN reverse([1, 2, 3]) AS r") == [{'r': [3, 2, 1]}]
+        db.close()
+
+    def test_start_and_end_node(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P {name: 'Alice'})-[:KNOWS]->(:P {name: 'Bob'})")
+        assert db.execute(
+            "MATCH ()-[r]->() RETURN startNode(r).name AS s, endNode(r).name AS e"
+        ) == [{'s': 'Alice', 'e': 'Bob'}]
+        db.close()
+
+
 class TestCypherGraphFunctions:
     """End-to-end labels()/type()/properties()/id()/elementId() over the graph."""
 

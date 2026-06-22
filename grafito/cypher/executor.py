@@ -99,6 +99,7 @@ class CypherExecutor:
             context,
             pattern_matcher=self._pattern_comprehension_matcher,
             parameters=self.parameters,
+            node_resolver=self.db.get_node,
         )
 
     def _evaluate_properties(

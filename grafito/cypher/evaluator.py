@@ -19,17 +19,20 @@ from ..models import Path, Point
 class ExpressionEvaluator:
     """Evaluates WHERE clause expressions against a variable context."""
 
-    def __init__(self, context: dict[str, Any], pattern_matcher=None, parameters: dict[str, Any] | None = None):
+    def __init__(self, context: dict[str, Any], pattern_matcher=None, parameters: dict[str, Any] | None = None,
+                 node_resolver=None):
         """Initialize evaluator with variable context.
 
         Args:
             context: Dictionary mapping variable names to Node/Relationship objects
             pattern_matcher: Optional matcher for pattern comprehensions
             parameters: Optional query parameters, resolving $name references
+            node_resolver: Optional callable(node_id) -> Node, for startNode/endNode
         """
         self.context = context
         self.pattern_matcher = pattern_matcher
         self.parameters = parameters or {}
+        self.node_resolver = node_resolver
 
     def evaluate(self, expr: Expression) -> Any:
         """Evaluate an expression and return the result.
@@ -560,8 +563,16 @@ class ExpressionEvaluator:
                 raise CypherExecutionError(f"{name}() expects 1 argument")
             return self._evaluate_cast(name, args[0])
 
-        if name in {'toupper', 'tolower', 'trim', 'split', 'substring', 'matches', 'regex'}:
+        if name in {'toupper', 'tolower', 'trim', 'ltrim', 'rtrim', 'split', 'substring',
+                    'matches', 'regex', 'replace', 'left', 'right'}:
             return self._evaluate_string_function(name, args)
+
+        if name in {'abs', 'ceil', 'floor', 'round', 'sqrt', 'sign', 'exp', 'log',
+                    'log10', 'sin', 'cos', 'tan', 'e', 'pi', 'rand'}:
+            return self._evaluate_math_function(name, args)
+
+        if name in {'startnode', 'endnode'}:
+            return self._evaluate_endpoint_function(name, args)
 
         if name in {'deaccent', 'strip_html', 'strip_emoji', 'snake_case'}:
             return self._evaluate_text_cleanup_function(name, args)
@@ -896,7 +907,13 @@ class ExpressionEvaluator:
         if name == 'reverse':
             if len(args) != 1:
                 raise CypherExecutionError("reverse() expects 1 argument")
-            return list(reversed(args[0])) if args[0] is not None else None
+            value = args[0]
+            if value is None:
+                return None
+            # reverse() preserves the input type: string -> string, list -> list.
+            if isinstance(value, str):
+                return value[::-1]
+            return list(reversed(value))
         if name == 'range':
             if len(args) not in (2, 3):
                 raise CypherExecutionError("range() expects 2 or 3 arguments")
@@ -913,7 +930,7 @@ class ExpressionEvaluator:
 
     def _evaluate_string_function(self, name: str, args: list[Any]) -> Any:
         """Evaluate string-related functions."""
-        if name in {'toupper', 'tolower', 'trim'}:
+        if name in {'toupper', 'tolower', 'trim', 'ltrim', 'rtrim'}:
             if len(args) != 1:
                 raise CypherExecutionError(f"{name}() expects 1 argument")
             value = args[0]
@@ -925,7 +942,35 @@ class ExpressionEvaluator:
                 return value.upper()
             if name == 'tolower':
                 return value.lower()
+            if name == 'ltrim':
+                return value.lstrip()
+            if name == 'rtrim':
+                return value.rstrip()
             return value.strip()
+
+        if name == 'replace':
+            if len(args) != 3:
+                raise CypherExecutionError("replace() expects 3 arguments")
+            value, search, replacement = args
+            if value is None or search is None or replacement is None:
+                return None
+            if not all(isinstance(a, str) for a in (value, search, replacement)):
+                raise CypherExecutionError("replace() expects string arguments")
+            return value.replace(search, replacement)
+
+        if name in {'left', 'right'}:
+            if len(args) != 2:
+                raise CypherExecutionError(f"{name}() expects 2 arguments")
+            value, length = args
+            if value is None or length is None:
+                return None
+            if not isinstance(value, str):
+                raise CypherExecutionError(f"{name}() expects a string")
+            if not isinstance(length, int) or isinstance(length, bool):
+                raise CypherExecutionError(f"{name}() length must be an integer")
+            if length < 0:
+                raise CypherExecutionError(f"{name}() length must be >= 0")
+            return value[:length] if name == 'left' else (value[-length:] if length else '')
 
         if name == 'split':
             if len(args) != 2:
@@ -974,6 +1019,76 @@ class ExpressionEvaluator:
                 raise CypherExecutionError(f"{name}() invalid regex: {exc}") from exc
 
         raise CypherExecutionError(f"Unknown string function: {name}")
+
+    def _evaluate_math_function(self, name: str, args: list[Any]) -> Any:
+        """Evaluate numeric/math functions."""
+        import math
+
+        # Constants take no arguments.
+        if name in {'e', 'pi', 'rand'}:
+            if args:
+                raise CypherExecutionError(f"{name}() expects no arguments")
+            if name == 'e':
+                return math.e
+            if name == 'pi':
+                return math.pi
+            import random
+            return random.random()
+
+        if len(args) != 1:
+            raise CypherExecutionError(f"{name}() expects 1 argument")
+        value = args[0]
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise CypherExecutionError(f"{name}() expects a number")
+
+        if name == 'abs':
+            return abs(value)
+        if name == 'ceil':
+            return float(math.ceil(value))
+        if name == 'floor':
+            return float(math.floor(value))
+        if name == 'round':
+            # Cypher rounds halves away from zero (unlike Python's banker's rounding).
+            return float(math.floor(value + 0.5) if value >= 0 else math.ceil(value - 0.5))
+        if name == 'sqrt':
+            if value < 0:
+                raise CypherExecutionError("sqrt() of a negative number")
+            return math.sqrt(value)
+        if name == 'sign':
+            return (value > 0) - (value < 0)
+        if name == 'exp':
+            return math.exp(value)
+        if name == 'log':
+            if value <= 0:
+                raise CypherExecutionError("log() requires a positive number")
+            return math.log(value)
+        if name == 'log10':
+            if value <= 0:
+                raise CypherExecutionError("log10() requires a positive number")
+            return math.log10(value)
+        if name == 'sin':
+            return math.sin(value)
+        if name == 'cos':
+            return math.cos(value)
+        if name == 'tan':
+            return math.tan(value)
+        raise CypherExecutionError(f"Unknown math function: {name}")
+
+    def _evaluate_endpoint_function(self, name: str, args: list[Any]) -> Any:
+        """Evaluate startNode()/endNode() over a relationship."""
+        if len(args) != 1:
+            raise CypherExecutionError(f"{name}() expects 1 argument")
+        rel = args[0]
+        if rel is None:
+            return None
+        node_id = getattr(rel, 'source_id' if name == 'startnode' else 'target_id', None)
+        if node_id is None:
+            raise CypherExecutionError(f"{name}() expects a relationship")
+        if self.node_resolver is None:
+            raise CypherExecutionError(f"{name}() cannot resolve nodes in this context")
+        return self.node_resolver(node_id)
 
     def _evaluate_text_cleanup_function(self, name: str, args: list[Any]) -> Any:
         """Evaluate text cleanup functions."""
