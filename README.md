@@ -268,6 +268,23 @@ for row in results:
     print(f"{row['n.name']} is {row['n.age']} years old")
 ```
 
+### Query Parameters
+
+Pass runtime values as `$name` parameters instead of interpolating them into the
+query string (avoids quote-escaping and injection). Parameters bind in `WHERE`,
+pattern properties, `RETURN`, and `CREATE`:
+
+```python
+db.execute(
+    "MATCH (n:Person {name: $name}) RETURN n.age AS age",
+    {"name": "Alice"},
+)
+db.execute(
+    "CREATE (n:Person {name: $name, age: $age})",
+    {"name": "Zoe", "age": 40},
+)
+```
+
 ### Variable-Length Path Configuration
 
 Unbounded variable-length patterns (e.g., `[:KNOWS*..]`) use a default max hop limit.
@@ -991,6 +1008,8 @@ Current casting behavior:
 - `toInteger(value)` accepts integers, floats, booleans, and numeric strings (floats are truncated); `null` stays `null`.
 - `toFloat(value)` accepts integers, floats, booleans, and numeric strings; `null` stays `null`.
 - `toString(value)` uses Python string conversion; `null` becomes `None`.
+- `toBoolean(value)` parses `'true'`/`'false'` (case-insensitive) and integers; an unparseable string returns `null`.
+- `toIntegerList` / `toFloatList` / `toStringList` / `toBooleanList` cast each element, leaving non-convertible elements as `null`.
 
 ```python
 results = db.execute("""
@@ -1008,6 +1027,8 @@ Current string function behavior:
 - `toUpper(text)`, `toLower(text)`, `trim(text)` return `null` when input is `null`.
 - `split(text, delimiter)` returns a list of strings or `null` if any input is `null`.
 - `substring(text, start, length?)` uses 0-based indexing; length is optional.
+- `replace(text, search, replacement)`, `left(text, n)`, `right(text, n)`, `ltrim(text)`, `rtrim(text)`.
+- `reverse(value)` preserves the input type (string → string, list → list).
 - `regex(text, pattern)` and `matches(text, pattern)` return boolean match results; `null` if any input is `null`.
 - Invalid argument types raise a `CypherExecutionError`.
 - `substring()` rejects negative `start` or `length`.
@@ -1054,6 +1075,25 @@ results = db.execute("""
 """)
 ```
 
+#### Numeric and Graph Functions
+
+```python
+# Arithmetic operators: + - * / % ^  (integer division for int/int; ^ is float)
+db.execute("RETURN 2 + 3 * 4 AS a, 10 / 3 AS b, 2 ^ 10 AS c")
+
+# Math/trig: abs, ceil, floor, round, sqrt, sign, exp, log, log10,
+# sin/cos/tan, asin/acos/atan/atan2, degrees, radians, e(), pi(), rand()
+db.execute("RETURN round(sqrt(20)) AS r, degrees(pi()) AS deg")
+
+# Graph functions: labels, type, properties, keys, id, elementId, startNode, endNode
+db.execute("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props")
+db.execute("MATCH ()-[r]->() RETURN type(r) AS t, startNode(r).name AS from")
+```
+
+> A standalone `RETURN` (no `MATCH`/`WITH`) is supported, e.g. `RETURN 1 + 1 AS x`.
+> See the [Numeric Functions](https://jpmanson.github.io/GrafitoDB/cypher/numeric-functions/)
+> and [String Functions](https://jpmanson.github.io/GrafitoDB/cypher/string-functions/) docs for the full list.
+
 #### WHERE - Filter Results
 
 ```python
@@ -1091,6 +1131,10 @@ results = db.execute("""
     WHERE n.age IS NOT NULL
     RETURN n.name
 """)
+
+# Label predicate and property existence
+results = db.execute("MATCH (n) WHERE n:Person AND NOT n:Archived RETURN n.name")
+results = db.execute("MATCH (n:Person) WHERE exists(n.email) RETURN n.name")
 
 # Complex expressions with parentheses
 results = db.execute("""
