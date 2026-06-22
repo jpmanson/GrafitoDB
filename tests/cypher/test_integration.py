@@ -935,6 +935,63 @@ class TestCypherReturn:
         db.close()
 
 
+class TestCypherArithmetic:
+    """Test multiplicative arithmetic operators: * / % ^."""
+
+    def test_multiplication(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:P {x: 10})")
+        assert db.execute("MATCH (n:P) RETURN n.x * 2 AS y") == [{'y': 20}]
+        assert db.execute("RETURN 2 * 3 AS b") == [{'b': 6}]
+        db.close()
+
+    def test_division(self):
+        db = GrafitoDatabase(':memory:')
+        # Integer division when both operands are ints; true division otherwise.
+        assert db.execute("RETURN 10 / 3 AS y") == [{'y': 3}]
+        assert db.execute("RETURN 10.0 / 4 AS y") == [{'y': 2.5}]
+        db.close()
+
+    def test_modulo(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN 10 % 3 AS y") == [{'y': 1}]
+        db.close()
+
+    def test_power_is_right_associative(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN 2 ^ 10 AS y") == [{'y': 1024.0}]
+        # 2 ^ (2 ^ 3) == 2 ^ 8 == 256
+        assert db.execute("RETURN 2 ^ 2 ^ 3 AS y") == [{'y': 256.0}]
+        db.close()
+
+    def test_operator_precedence(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN 2 + 3 * 4 AS y") == [{'y': 14}]
+        assert db.execute("RETURN (2 + 3) * 4 AS y") == [{'y': 20}]
+        assert db.execute("RETURN 2 + 2 * 2 ^ 3 AS y") == [{'y': 18.0}]
+        db.close()
+
+    def test_division_by_zero_raises(self):
+        db = GrafitoDatabase(':memory:')
+        with pytest.raises(Exception):
+            db.execute("RETURN 1 / 0 AS y")
+        with pytest.raises(Exception):
+            db.execute("RETURN 1 % 0 AS y")
+        db.close()
+
+    def test_null_propagates_through_arithmetic(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:P {x: 10})")
+        assert db.execute("MATCH (n:P) RETURN n.missing * 2 AS y") == [{'y': None}]
+        db.close()
+
+    def test_arithmetic_does_not_break_count_star(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:P), (:P)")
+        assert db.execute("MATCH (n:P) RETURN COUNT(*) AS c") == [{'c': 2}]
+        db.close()
+
+
 class TestCypherGraphFunctions:
     """End-to-end labels()/type()/properties()/id()/elementId() over the graph."""
 

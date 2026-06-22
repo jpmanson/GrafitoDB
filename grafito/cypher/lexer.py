@@ -268,6 +268,15 @@ class Lexer:
             elif char == '*':
                 self.tokens.append(Token(TokenType.ASTERISK, '*', self.line, start_column))
                 self.advance()
+            elif char == '/':
+                self.tokens.append(Token(TokenType.SLASH, '/', self.line, start_column))
+                self.advance()
+            elif char == '%':
+                self.tokens.append(Token(TokenType.PERCENT, '%', self.line, start_column))
+                self.advance()
+            elif char == '^':
+                self.tokens.append(Token(TokenType.CARET, '^', self.line, start_column))
+                self.advance()
             elif char == '+':
                 self.tokens.append(Token(TokenType.PLUS, '+', self.line, start_column))
                 self.advance()

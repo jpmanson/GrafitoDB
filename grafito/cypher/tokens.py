@@ -89,6 +89,9 @@ class TokenType(Enum):
     COMMA = auto()        # ,
     DOT = auto()          # .
     ASTERISK = auto()     # *
+    SLASH = auto()        # /
+    PERCENT = auto()      # %
+    CARET = auto()        # ^
     PLUS = auto()         # +
     PIPE = auto()         # |
     ARROW_RIGHT = auto()  # ->

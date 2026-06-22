@@ -1310,13 +1310,36 @@ class Parser:
 
     def _parse_additive_expression(self) -> Expression:
         """Parse additive expression ('+' and '-')."""
-        left = self._parse_unary_expression()
+        left = self._parse_multiplicative_expression()
 
         while self.current_token().type in (TokenType.PLUS, TokenType.DASH):
             operator_token = self.current_token()
             self.advance()
-            right = self._parse_unary_expression()
+            right = self._parse_multiplicative_expression()
             left = BinaryOp(left=left, operator=operator_token.value, right=right)
+
+        return left
+
+    def _parse_multiplicative_expression(self) -> Expression:
+        """Parse multiplicative expression ('*', '/', '%')."""
+        left = self._parse_power_expression()
+
+        while self.current_token().type in (TokenType.ASTERISK, TokenType.SLASH, TokenType.PERCENT):
+            operator_token = self.current_token()
+            self.advance()
+            right = self._parse_power_expression()
+            left = BinaryOp(left=left, operator=operator_token.value, right=right)
+
+        return left
+
+    def _parse_power_expression(self) -> Expression:
+        """Parse power expression ('^'), right-associative."""
+        left = self._parse_unary_expression()
+
+        if self.current_token().type == TokenType.CARET:
+            self.advance()
+            right = self._parse_power_expression()
+            return BinaryOp(left=left, operator='^', right=right)
 
         return left
 

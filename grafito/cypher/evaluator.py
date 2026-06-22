@@ -236,6 +236,26 @@ class ExpressionEvaluator:
             if isinstance(left, timedelta) and isinstance(right, timedelta):
                 return left - right
             return left - right
+        if operator in ('*', '/', '%', '^'):
+            left = self.evaluate(expr.left)
+            right = self.evaluate(expr.right)
+            if left is None or right is None:
+                return None
+            if operator == '*':
+                return left * right
+            if operator == '/':
+                if right == 0:
+                    raise CypherExecutionError("/ by zero")
+                # Integer division when both operands are ints (Cypher semantics).
+                if isinstance(left, int) and isinstance(right, int):
+                    return int(left / right)
+                return left / right
+            if operator == '%':
+                if right == 0:
+                    raise CypherExecutionError("% by zero")
+                return left % right
+            if operator == '^':
+                return float(left ** right)
 
         # Comparison operators (evaluate both sides first)
         left = self.evaluate(expr.left)
