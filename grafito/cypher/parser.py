@@ -7,7 +7,7 @@ from .ast_nodes import (
     DeleteClause, SetClause, SetItem, RemoveClause, RemoveItem,
     OrderByClause, OrderByItem, LimitClause, SkipClause,
     Pattern, PatternElement, NodePattern, RelationshipPattern, PatternFunction,
-    ReturnItem, Expression, Literal, PropertyAccess, PropertyLookup, FunctionCall, BinaryOp, UnaryOp, LabelPredicate,
+    ReturnItem, Expression, Literal, Parameter, PropertyAccess, PropertyLookup, FunctionCall, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, CaseWhen, UnionClause, SubqueryClause, ProcedureCallClause, ListLiteral, ListComprehension,
     ListIndex, ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
     ReduceExpression, PatternComprehension, UnwindClause, LoadCsvClause,
@@ -1360,6 +1360,11 @@ class Parser:
     def _parse_primary_base(self) -> Expression:
         """Parse base primary expression without postfix operators."""
         token = self.current_token()
+
+        # Query parameter: $name
+        if token.type == TokenType.PARAMETER:
+            self.advance()
+            return Parameter(name=token.value)
 
         # CASE expressions
         if token.type == TokenType.CASE:

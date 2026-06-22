@@ -40,6 +40,12 @@ class Literal(Expression):
     value: Any
 
 
+@dataclass
+class Parameter(Expression):
+    """Query parameter reference: $name, resolved from the params passed to execute()."""
+    name: str
+
+
 # ============================================================================
 # Property Access
 # ============================================================================

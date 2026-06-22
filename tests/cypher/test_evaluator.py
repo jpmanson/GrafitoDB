@@ -4,7 +4,7 @@ import pytest
 from grafito.models import Node, Relationship, Path
 from grafito.cypher.evaluator import ExpressionEvaluator
 from grafito.cypher.ast_nodes import (
-    Literal, PropertyAccess, BinaryOp, UnaryOp, CaseExpression, CaseWhen,
+    Literal, Parameter, PropertyAccess, BinaryOp, UnaryOp, CaseExpression, CaseWhen,
     Variable, ListLiteral, ListComprehension, ListIndex, ListSlice, ListPredicate,
     FunctionCallExpression, MapLiteral, ReduceExpression, PatternComprehension,
     Pattern, PatternElement, NodePattern, RelationshipPattern
@@ -924,6 +924,25 @@ class TestEvaluatorMapListFunctions:
             evaluator.evaluate(FunctionCallExpression(name='apoc.convert.toMap', arguments=[Literal(1)]))
         with pytest.raises(CypherExecutionError):
             evaluator.evaluate(FunctionCallExpression(name='apoc.coll.contains', arguments=[Literal(1), Literal(2)]))
+
+class TestEvaluatorParameters:
+    """Test $name parameter resolution."""
+
+    def test_resolves_parameter(self):
+        ev = ExpressionEvaluator({}, parameters={'name': 'Alice', 'n': 42})
+        assert ev.evaluate(Parameter(name='name')) == 'Alice'
+        assert ev.evaluate(Parameter(name='n')) == 42
+
+    def test_missing_parameter_raises(self):
+        ev = ExpressionEvaluator({}, parameters={'a': 1})
+        with pytest.raises(CypherExecutionError):
+            ev.evaluate(Parameter(name='b'))
+
+    def test_no_parameters_provided(self):
+        ev = ExpressionEvaluator({})
+        with pytest.raises(CypherExecutionError):
+            ev.evaluate(Parameter(name='x'))
+
 
 class TestEvaluatorGraphFunctions:
     """Test labels/type/properties/id/elementId over nodes and relationships."""

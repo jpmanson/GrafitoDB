@@ -3001,7 +3001,7 @@ class GrafitoDatabase:
             )
         return cursor.fetchone()['count']
 
-    def execute(self, cypher_query: str) -> list[dict]:
+    def execute(self, cypher_query: str, parameters: dict | None = None) -> list[dict]:
         """Execute a Cypher query and return results.
 
         This method provides Cypher query language support for Grafito.
@@ -3015,6 +3015,8 @@ class GrafitoDatabase:
 
         Args:
             cypher_query: Cypher query string
+            parameters: Optional mapping of names to values, bound to ``$name``
+                references in the query (avoids string interpolation).
 
         Returns:
             List of result dictionaries
@@ -3027,6 +3029,9 @@ class GrafitoDatabase:
             >>> db.execute("CREATE (n:Person {name: 'Alice', age: 30})")
             >>> db.execute("MATCH (n:Person) WHERE n.age > 25 RETURN n.name")
             [{'n.name': 'Alice'}]
+            >>> db.execute("MATCH (n:Person {name: $name}) RETURN n.age AS age",
+            ...            {"name": "Alice"})
+            [{'age': 30}]
         """
         from .cypher.lexer import Lexer
         from .cypher.parser import Parser
@@ -3041,7 +3046,7 @@ class GrafitoDatabase:
         ast = parser.parse()
 
         # 3. Execute
-        executor = CypherExecutor(self)
+        executor = CypherExecutor(self, parameters=parameters)
         return executor.execute(ast)
 
     def execute_script(self, cypher_script: str) -> list[list[dict]]:

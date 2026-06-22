@@ -89,12 +89,17 @@ class _HtmlTreeBuilder(HTMLParser):
 class CypherExecutor:
     """Executes Cypher query AST against a GrafitoDatabase."""
 
-    def __init__(self, db: GrafitoDatabase):
+    def __init__(self, db: GrafitoDatabase, parameters: dict[str, Any] | None = None):
         self.db = db
+        self.parameters = parameters or {}
 
     def _make_evaluator(self, context: dict[str, Any]) -> ExpressionEvaluator:
         """Build an expression evaluator with pattern comprehension support."""
-        return ExpressionEvaluator(context, pattern_matcher=self._pattern_comprehension_matcher)
+        return ExpressionEvaluator(
+            context,
+            pattern_matcher=self._pattern_comprehension_matcher,
+            parameters=self.parameters,
+        )
 
     def _evaluate_properties(
         self,

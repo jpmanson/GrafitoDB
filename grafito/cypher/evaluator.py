@@ -7,7 +7,7 @@ import re
 import unicodedata
 from typing import Any
 from .ast_nodes import (
-    Expression, Literal, PropertyAccess, PropertyLookup, BinaryOp, UnaryOp, LabelPredicate,
+    Expression, Literal, Parameter, PropertyAccess, PropertyLookup, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, ListLiteral, ListComprehension, ListIndex,
     ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
     ReduceExpression, PatternComprehension
@@ -19,14 +19,17 @@ from ..models import Path, Point
 class ExpressionEvaluator:
     """Evaluates WHERE clause expressions against a variable context."""
 
-    def __init__(self, context: dict[str, Any], pattern_matcher=None):
+    def __init__(self, context: dict[str, Any], pattern_matcher=None, parameters: dict[str, Any] | None = None):
         """Initialize evaluator with variable context.
 
         Args:
             context: Dictionary mapping variable names to Node/Relationship objects
+            pattern_matcher: Optional matcher for pattern comprehensions
+            parameters: Optional query parameters, resolving $name references
         """
         self.context = context
         self.pattern_matcher = pattern_matcher
+        self.parameters = parameters or {}
 
     def evaluate(self, expr: Expression) -> Any:
         """Evaluate an expression and return the result.
@@ -42,6 +45,8 @@ class ExpressionEvaluator:
         """
         if isinstance(expr, Literal):
             return self._evaluate_literal(expr)
+        elif isinstance(expr, Parameter):
+            return self._evaluate_parameter(expr)
         elif isinstance(expr, Variable):
             return self._evaluate_variable(expr)
         elif isinstance(expr, PropertyAccess):
@@ -80,6 +85,12 @@ class ExpressionEvaluator:
     def _evaluate_literal(self, expr: Literal) -> Any:
         """Evaluate a literal value."""
         return expr.value
+
+    def _evaluate_parameter(self, expr: Parameter) -> Any:
+        """Resolve a $name parameter reference from the supplied query parameters."""
+        if expr.name not in self.parameters:
+            raise CypherExecutionError(f"Parameter '${expr.name}' was not provided")
+        return self.parameters[expr.name]
 
     def _evaluate_variable(self, expr: Variable) -> Any:
         """Evaluate a variable reference."""

@@ -972,6 +972,73 @@ class TestCypherGraphFunctions:
         db.close()
 
 
+class TestCypherParameters:
+    """Test $name query parameters passed to execute()."""
+
+    def _db(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute(
+            "CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob', age: 25})"
+        )
+        return db
+
+    def test_parameter_in_where(self):
+        db = self._db()
+        assert db.execute(
+            "MATCH (n:Person) WHERE n.name = $name RETURN n.age AS age",
+            {"name": "Alice"},
+        ) == [{'age': 30}]
+        db.close()
+
+    def test_parameter_in_pattern_property(self):
+        db = self._db()
+        assert db.execute(
+            "MATCH (n:Person {name: $name}) RETURN n.age AS age",
+            {"name": "Bob"},
+        ) == [{'age': 25}]
+        db.close()
+
+    def test_numeric_parameter(self):
+        db = self._db()
+        assert db.execute(
+            "MATCH (n:Person) WHERE n.age >= $min RETURN n.name AS nm ORDER BY nm",
+            {"min": 28},
+        ) == [{'nm': 'Alice'}]
+        db.close()
+
+    def test_list_parameter_with_in(self):
+        db = self._db()
+        assert db.execute(
+            "MATCH (n:Person) WHERE n.name IN $names RETURN n.name AS nm ORDER BY nm",
+            {"names": ["Alice", "Bob"]},
+        ) == [{'nm': 'Alice'}, {'nm': 'Bob'}]
+        db.close()
+
+    def test_parameter_in_standalone_return(self):
+        db = GrafitoDatabase(':memory:')
+        assert db.execute("RETURN $x + 1 AS y", {"x": 41}) == [{'y': 42}]
+        db.close()
+
+    def test_parameter_used_in_create(self):
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (n:Person {name: $name, age: $age})", {"name": "Zoe", "age": 40})
+        assert db.execute("MATCH (n:Person) RETURN n.name AS nm, n.age AS age") == [
+            {'nm': 'Zoe', 'age': 40}
+        ]
+        db.close()
+
+    def test_missing_parameter_raises(self):
+        db = self._db()
+        with pytest.raises(Exception):
+            db.execute("RETURN $missing AS x", {})
+        db.close()
+
+    def test_execute_without_parameters_still_works(self):
+        db = self._db()
+        assert db.execute("MATCH (n:Person) RETURN count(*) AS c") == [{'c': 2}]
+        db.close()
+
+
 class TestCypherLoadCsv:
     """Test LOAD CSV ingestion."""
 

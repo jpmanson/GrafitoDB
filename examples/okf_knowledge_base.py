@@ -214,13 +214,14 @@ def main() -> None:
 
     # 5c. And because it's a node, you can pivot from the hit back into the graph:
     #     "search found the right doc — now show me what it depends on."
-    title = props["title"].replace("'", "\\'")
+    #     The hit's title is passed as a $parameter (no string interpolation).
     rows = db.execute(
-        f"""
-        MATCH (hit {{title: '{title}'}})-[:LINKS_TO]->(c)
+        """
+        MATCH (hit {title: $title})-[:LINKS_TO]->(c)
         RETURN DISTINCT c.title AS title
         ORDER BY title
-        """
+        """,
+        {"title": props["title"]},
     )
     print("\n  Pivoting from the hit into the graph — concepts this doc relies on:")
     for row in rows:

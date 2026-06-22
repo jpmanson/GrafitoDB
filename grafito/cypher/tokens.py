@@ -105,6 +105,7 @@ class TokenType(Enum):
 
     # Literals
     IDENTIFIER = auto()
+    PARAMETER = auto()    # $name
     INTEGER = auto()
     FLOAT = auto()
     STRING = auto()

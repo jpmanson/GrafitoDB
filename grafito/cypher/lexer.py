@@ -120,6 +120,22 @@ class Lexer:
         else:
             return Token(TokenType.INTEGER, int(value), self.line, start_column)
 
+    def read_parameter(self) -> Token:
+        """Read a query parameter reference: $name."""
+        start_column = self.column
+        self.advance()  # consume '$'
+        name = ''
+        while self.current_char() and (self.current_char().isalnum() or self.current_char() == '_'):
+            name += self.current_char()
+            self.advance()
+        if not name:
+            raise CypherSyntaxError(
+                "Expected a parameter name after '$'",
+                self.line,
+                start_column
+            )
+        return Token(TokenType.PARAMETER, name, self.line, start_column)
+
     def read_identifier(self) -> Token:
         """Read an identifier or keyword."""
         start_column = self.column
@@ -168,6 +184,10 @@ class Lexer:
             # Identifiers and keywords
             elif char.isalpha() or char == '_':
                 self.tokens.append(self.read_identifier())
+
+            # Query parameters: $name
+            elif char == '$':
+                self.tokens.append(self.read_parameter())
 
             # Two-character operators
             elif char == '-':
