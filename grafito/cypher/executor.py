@@ -2671,13 +2671,11 @@ class CypherExecutor:
 
         for match in matches:
             evaluator = self._make_evaluator(match)
-            try:
-                result = evaluator.evaluate(where_clause.condition)
-                if result:
-                    filtered.append(match)
-            except CypherExecutionError:
-                # Skip matches that fail evaluation
-                continue
+            # A predicate that evaluates to null is treated as false (row excluded).
+            # Genuine errors (unknown function, missing parameter, ...) propagate
+            # instead of being silently swallowed as a non-match.
+            if evaluator.evaluate(where_clause.condition):
+                filtered.append(match)
 
         return filtered
 
@@ -2768,15 +2766,16 @@ class CypherExecutor:
         return results
 
     def _filter_rows(self, rows: list[dict], condition: Expression) -> list[dict]:
-        """Keep rows whose condition evaluates truthy; drop rows that fail."""
+        """Keep rows whose condition evaluates truthy.
+
+        A null/false predicate drops the row; genuine evaluation errors
+        (unknown function, missing parameter, ...) propagate.
+        """
         filtered = []
         for row in rows:
             evaluator = self._make_evaluator(row)
-            try:
-                if evaluator.evaluate(condition):
-                    filtered.append(row)
-            except CypherExecutionError:
-                continue
+            if evaluator.evaluate(condition):
+                filtered.append(row)
         return filtered
 
     def _grouped_aggregation(

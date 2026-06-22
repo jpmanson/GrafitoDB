@@ -231,6 +231,33 @@ class TestCypherWhere:
         assert results == [{'n.name': 'Bob'}]
         db.close()
 
+    def test_where_unknown_function_raises(self):
+        """A genuine error in WHERE propagates instead of silently filtering rows."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Person {name: 'Alice', age: 30})")
+        with pytest.raises(Exception):
+            db.execute("MATCH (n:Person) WHERE bogus(n.age) RETURN n.name AS nm")
+        db.close()
+
+    def test_where_missing_parameter_raises(self):
+        """A missing $parameter in WHERE raises rather than returning an empty set."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Person {name: 'Alice'})")
+        with pytest.raises(Exception):
+            db.execute("MATCH (n:Person) WHERE n.name = $missing RETURN n.name AS nm", {})
+        db.close()
+
+    def test_where_null_predicate_excludes_row(self):
+        """A predicate over a missing property is null -> treated as false (row excluded),
+        not an error: this must keep working after errors stopped being swallowed."""
+        db = GrafitoDatabase(':memory:')
+        db.execute("CREATE (:Person {name: 'Alice', age: 30}), (:Person {name: 'Bob'})")
+        # Bob has no age: n.age > 20 is null for Bob -> excluded; no error raised.
+        assert db.execute(
+            "MATCH (n:Person) WHERE n.age > 20 RETURN n.name AS nm"
+        ) == [{'nm': 'Alice'}]
+        db.close()
+
     def test_where_label_predicate(self):
         """`n:Label` works as a boolean predicate in WHERE (not only in the pattern)."""
         db = GrafitoDatabase(':memory:')
