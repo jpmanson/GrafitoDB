@@ -151,12 +151,23 @@ db.export_okf_bundle("bundle")
     exporter uses the first label as `type`. See `todo/okf/IMPROVEMENTS.md` for
     the open design question on representing multi-label nodes.
 
-## Example
+## Examples
 
 A runnable end-to-end example (import → Cypher → full-text search → export with
-`viz.html`) lives in `examples/okf_import.py`, using the sample bundle in
+`viz.html`) lives in `examples/okf_import.py`, using the tabular sample bundle in
 `examples/okf_bundle/`:
 
 ```bash
 python examples/okf_import.py
+```
+
+OKF shines on *narrative*, cross-linked knowledge rather than tabular data.
+`examples/okf_knowledge_base/` is a small engineering knowledge base —
+architecture decision records, an on-call runbook, and glossary terms, all
+cross-linked with citations. The script shows relationship traversal and
+semantic retrieval over prose (it retrieves a "slow query" runbook for the
+query *"how do I make a query run faster"*, which never uses those words):
+
+```bash
+python examples/okf_knowledge_base.py
 ```

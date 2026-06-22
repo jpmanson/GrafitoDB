@@ -15,6 +15,7 @@ from grafito.importers.okf import (
 pytest.importorskip("yaml")
 
 BUNDLE = Path("examples") / "okf_bundle"
+KB_BUNDLE = Path("examples") / "okf_knowledge_base"
 
 
 @pytest.fixture
@@ -226,3 +227,30 @@ def test_citations_can_be_disabled(db, tmp_path):
     summary = db.import_okf_bundle(str(tmp_path), citations=False, configure_fts=False)
     assert summary["citations"] == 0
     assert summary["references"] == 0
+
+
+# --- Narrative (non-tabular) knowledge-base example bundle -------------------
+
+
+def test_knowledge_base_bundle_imports(db):
+    summary = db.import_okf_bundle(str(KB_BUNDLE), configure_fts=False)
+    # 3 ADRs + 1 runbook + 3 glossary terms = 7 concepts; 4 index.md skipped.
+    assert summary["nodes"] == 7
+    assert summary["skipped"] == 4
+    assert summary["stubs"] == 0  # all cross-links resolve within the bundle
+    assert summary["citations"] > 0
+    labels = set(db.get_all_labels())
+    assert {"ADR", "Playbook", "Term", "Reference"} <= labels
+
+
+def test_knowledge_base_cross_links_resolve(db):
+    db.import_okf_bundle(str(KB_BUNDLE), configure_fts=False)
+    rows = db.execute(
+        """
+        MATCH (a {title: 'Add optional vector search'})-[:LINKS_TO]->(b)
+        RETURN DISTINCT b.title AS title ORDER BY title
+        """
+    )
+    titles = {row["title"] for row in rows}
+    assert "Semantic search" in titles
+    assert "Use SQLite as the storage engine" in titles

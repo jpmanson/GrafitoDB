@@ -1,6 +1,6 @@
 """Import/export an Open Knowledge Format (OKF) bundle with GrafitoDB.
 
-OKF is a directory of markdown files with YAML frontmatter (see todo/okf/SPEC.md).
+OKF is a directory of markdown files with YAML frontmatter.
 This example imports the sample bundle in ``examples/okf_bundle``, runs a Cypher
 query and a full-text search, then exports the graph back to a new OKF bundle.
 """
