@@ -2967,6 +2967,31 @@ of nodes/relationships, while exposing the full graph via <code>bundle.db</code>
 </span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
 </span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
 </span></code></pre></div>
+<p>Mutating a bundle (agent-memory write path):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>               <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;draft&quot;</span><span class="p">])</span>   <span class="c1"># embedded + FTS-indexed</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;builds on&quot;</span><span class="p">)</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">cite</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/paper&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;source&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">remove_concept</span><span class="p">(</span><span class="s2">&quot;notes/old&quot;</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                                              <span class="c1"># persist to markdown</span>
+</span></code></pre></div>
+<p>Round-trip note: <code>save()</code> writes each concept's stored <code>body</code> verbatim. For a
+concept created <strong>without</strong> a body, <code>link</code>/<code>cite</code> edges are synthesized into
+<code># Links</code> / <code># Citations</code> sections on export (so they round-trip). For a concept
+<strong>with</strong> a body, include the links/citations in that body if you want them in the
+markdown — the edges remain queryable in the graph regardless.</p>
+<p>Materializing the directory tree and history (opt-in) lets you traverse the
+hierarchy as a graph and query the changelog:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
+</span></code></pre></div>
+<p><code>directory_nodes=True</code> adds <code>Directory</code> nodes + <code>CONTAINS</code> edges (root → subdir →
+concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked to mentioned concepts via
+<code>MENTIONS</code>. Both are synthesized/derived and are skipped on export.</p>
 <p>Design notes:</p>
 <ul>
 <li><strong>Delegates, never duplicates</strong> — <code>load</code>/<code>save</code> call <code>import_okf_bundle</code> /
@@ -2981,7 +3006,7 @@ of nodes/relationships, while exposing the full graph via <code>bundle.db</code>
 <p>A runnable end-to-end example (import → Cypher → full-text search → export with
 <code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the tabular sample bundle in
 <code>examples/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>examples/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>examples/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf_knowledge_base/</code> is a small engineering knowledge base —
@@ -2989,7 +3014,7 @@ architecture decision records, an on-call runbook, and glossary terms, all
 cross-linked with citations. The script shows relationship traversal and
 semantic retrieval over prose (it retrieves a "slow query" runbook for the
 query <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
 </span></code></pre></div>
 
 
