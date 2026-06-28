@@ -195,6 +195,22 @@ concept created **without** a body, `link`/`cite` edges are synthesized into
 **with** a body, include the links/citations in that body if you want them in the
 markdown — the edges remain queryable in the graph regardless.
 
+Materializing the directory tree and history (opt-in) lets you traverse the
+hierarchy as a graph and query the changelog:
+
+```python
+kb = OKFBundle.load("bundle", directory_nodes=True, import_log=True)
+
+kb.children()                 # {'subdirs': ['decisions', ...], 'concepts': [...]}
+kb.children("decisions")      # one level down, via CONTAINS edges
+kb.log()                      # all log.md entries, newest first
+kb.log("decisions/0001-use-sqlite")   # entries that mention this concept
+```
+
+`directory_nodes=True` adds `Directory` nodes + `CONTAINS` edges (root → subdir →
+concept); `import_log=True` adds `LogEntry` nodes linked to mentioned concepts via
+`MENTIONS`. Both are synthesized/derived and are skipped on export.
+
 Design notes:
 
 - **Delegates, never duplicates** — `load`/`save` call `import_okf_bundle` /

@@ -3099,6 +3099,8 @@ class GrafitoDatabase:
         embed_index: str = "okf",
         embed_fields: tuple[str, ...] = ("title", "description", "body"),
         embed_backend: str = "bruteforce",
+        directory_nodes: bool = False,
+        import_log: bool = False,
         uri_prefix: str = "okf:",
     ) -> dict:
         """Import an Open Knowledge Format (OKF) bundle into this database.
@@ -3130,6 +3132,8 @@ class GrafitoDatabase:
             embed_index=embed_index,
             embed_fields=embed_fields,
             embed_backend=embed_backend,
+            directory_nodes=directory_nodes,
+            import_log=import_log,
             uri_prefix=uri_prefix,
         )
 

@@ -131,10 +131,15 @@ def export_bundle(
     index_entries: list[tuple[str, str, str, str]] = []
 
     for node in db.match_nodes():
-        # Skip derived nodes: stubs (broken links) and auto-created Reference
-        # nodes for external citations. Both are re-derived from concept bodies
-        # on re-import, so they are not written as their own concept files.
-        if node.properties.get("stub") is True or node.properties.get("okf_auto") is True:
+        # Skip derived nodes, all re-synthesized on (re-)import: stubs (broken
+        # links), auto Reference nodes (external citations), Directory nodes, and
+        # LogEntry nodes. None are written as their own concept file.
+        if (
+            node.properties.get("stub") is True
+            or node.properties.get("okf_auto") is True
+            or node.properties.get("directory") is True
+            or node.properties.get("log") is True
+        ):
             skipped += 1
             continue
 

@@ -185,6 +185,33 @@ def _concept_id_for(path: Path, root: Path) -> str:
     return rel[: -len(".md")] if rel.endswith(".md") else rel
 
 
+# Log entry: a list bullet under a `## YYYY-MM-DD` date heading (SPEC sec. 7).
+_LOG_DATE_RE = re.compile(r"^#{1,6}\s+(\d{4}-\d{2}-\d{2})\s*$")
+_LOG_BULLET_RE = re.compile(r"^\s*[-*]\s+(.*\S)\s*$")
+_LOG_KIND_RE = re.compile(r"^\*\*([^*]+)\*\*:?\s*(.*)$")
+
+
+def parse_log_entries(text: str) -> list[tuple[str, str | None, str]]:
+    """Parse a ``log.md`` into ``[(date, kind, text), ...]`` (SPEC sec. 7).
+
+    ``kind`` is the leading bold word (``Update``/``Creation``/...) when present.
+    """
+    entries: list[tuple[str, str | None, str]] = []
+    current_date: str | None = None
+    for line in text.splitlines():
+        date_match = _LOG_DATE_RE.match(line)
+        if date_match:
+            current_date = date_match.group(1)
+            continue
+        bullet = _LOG_BULLET_RE.match(line)
+        if bullet and current_date:
+            entry = bullet.group(1).strip()
+            kind_match = _LOG_KIND_RE.match(entry)
+            kind = kind_match.group(1).strip() if kind_match else None
+            entries.append((current_date, kind, entry))
+    return entries
+
+
 # Default concept fields combined into the document embedded for semantic search.
 DEFAULT_EMBED_FIELDS = ("title", "description", "body")
 
@@ -211,6 +238,12 @@ def import_bundle(
     embed_index: str = "okf",
     embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
     embed_backend: str = "bruteforce",
+    directory_nodes: bool = False,
+    directory_label: str = "Directory",
+    contains_type: str = "CONTAINS",
+    import_log: bool = False,
+    log_label: str = "LogEntry",
+    mentions_type: str = "MENTIONS",
     uri_prefix: str = "okf:",
 ) -> dict:
     """Import an OKF bundle directory into ``db``.
@@ -231,18 +264,28 @@ def import_bundle(
         embed_fields: Concept fields concatenated into the embedded document.
         embed_backend: Vector index backend (default ``bruteforce``, no extra
             dependencies).
+        directory_nodes: Synthesize ``directory_label`` nodes + ``contains_type``
+            edges from concept paths, enabling top-down graph traversal
+            (root -> subdir -> concept). Off by default.
+        directory_label: Label for synthesized directory nodes.
+        contains_type: Relationship type for directory containment.
+        import_log: Import ``log.md`` entries as ``log_label`` nodes, linked to
+            mentioned concepts via ``mentions_type``. Off by default.
+        log_label: Label for log-entry nodes.
+        mentions_type: Relationship type from a log entry to a mentioned concept.
         uri_prefix: Prefix prepended to each concept ID to form the node ``uri``.
 
     Returns:
-        Summary dict with
-        ``nodes``, ``relationships``, ``citations``, ``references``,
-        ``stubs``, ``skipped`` and ``embedded`` counts.
+        Summary dict with ``nodes``, ``relationships``, ``citations``,
+        ``references``, ``stubs``, ``skipped``, ``embedded``, ``directories``
+        and ``log_entries`` counts.
     """
     root_path = Path(root)
     if not root_path.is_dir():
         raise NotADirectoryError(f"OKF bundle root not found: {root_path}")
 
     concept_to_node: dict[str, int] = {}
+    real_concepts: dict[str, int] = {}  # concept_id -> node_id (file concepts only)
     pending_links: list[tuple[str, str, str]] = []  # (source_id, anchor, target_id)
     # (source_id, anchor, kind, value)
     pending_citations: list[tuple[str, str, str, str]] = []
@@ -271,6 +314,7 @@ def import_bundle(
             uri=f"{uri_prefix}{concept_id}",
         )
         concept_to_node[concept_id] = node.id
+        real_concepts[concept_id] = node.id
         nodes += 1
 
         if embed is not None:
@@ -331,6 +375,62 @@ def import_bundle(
         )
         citation_count += 1
 
+    # Optional: synthesize a directory tree (Directory nodes + CONTAINS edges).
+    directories = 0
+    if directory_nodes:
+        dir_paths: set[str] = set()
+        for concept_id in real_concepts:
+            parts = concept_id.split("/")
+            for i in range(1, len(parts)):
+                dir_paths.add("/".join(parts[:i]))
+        dir_node: dict[str, int] = {}
+        root_node = db.create_node(
+            labels=[directory_label],
+            properties={"path": "", "name": "", "directory": True},
+            uri=uri_prefix,
+        )
+        dir_node[""] = root_node.id
+        directories += 1
+        for path in sorted(dir_paths):
+            node = db.create_node(
+                labels=[directory_label],
+                properties={"path": path, "name": path.rsplit("/", 1)[-1], "directory": True},
+                uri=f"{uri_prefix}{path}/",
+            )
+            dir_node[path] = node.id
+            directories += 1
+        for path in sorted(dir_paths):
+            parent = path.rsplit("/", 1)[0] if "/" in path else ""
+            db.create_relationship(dir_node[parent], dir_node[path], contains_type)
+        for concept_id, node_id in real_concepts.items():
+            parent = concept_id.rsplit("/", 1)[0] if "/" in concept_id else ""
+            db.create_relationship(dir_node[parent], node_id, contains_type)
+
+    # Optional: import log.md entries as LogEntry nodes + MENTIONS edges.
+    log_entries = 0
+    if import_log:
+        for log_path in sorted(root_path.rglob("log.md")):
+            scope = log_path.parent.relative_to(root_path).as_posix()
+            scope = "" if scope == "." else scope
+            source_id = f"{scope}/_log" if scope else "_log"
+            for date, kind, entry_text in parse_log_entries(log_path.read_text(encoding="utf-8")):
+                entry_node = db.create_node(
+                    labels=[log_label],
+                    properties={
+                        "date": date,
+                        "kind": kind,
+                        "text": entry_text,
+                        "scope": scope,
+                        "log": True,
+                    },
+                )
+                log_entries += 1
+                for _anchor, target_id in extract_links(entry_text, source_id):
+                    if target_id in concept_to_node:
+                        db.create_relationship(
+                            entry_node.id, concept_to_node[target_id], mentions_type
+                        )
+
     if configure_fts and db.has_fts5():
         # OKF `type` values are free-form (may contain spaces), so index across
         # all node labels rather than per-label.
@@ -360,4 +460,6 @@ def import_bundle(
         "stubs": stubs,
         "skipped": skipped,
         "embedded": embedded,
+        "directories": directories,
+        "log_entries": log_entries,
     }

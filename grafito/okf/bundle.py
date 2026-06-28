@@ -63,11 +63,15 @@ class OKFBundle:
         uri_prefix: str = "okf:",
         embed_index: str = "okf",
         embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
+        directory_nodes: bool = False,
+        import_log: bool = False,
         **import_kw: Any,
     ) -> "OKFBundle":
         """Import an OKF bundle and return a façade over it.
 
-        Creates an in-memory database when ``db`` is None.
+        Creates an in-memory database when ``db`` is None. Pass
+        ``directory_nodes=True`` / ``import_log=True`` to also materialize the
+        directory tree (``CONTAINS``) and ``log.md`` history in the graph.
         """
         from ..database import GrafitoDatabase
 
@@ -80,6 +84,8 @@ class OKFBundle:
             uri_prefix=uri_prefix,
             embed_index=embed_index,
             embed_fields=embed_fields,
+            directory_nodes=directory_nodes,
+            import_log=import_log,
             **import_kw,
         )
         return cls(
@@ -209,6 +215,51 @@ class OKFBundle:
                 )
         concepts.sort(key=lambda entry: entry["id"])
         return {"layer": path or None, "subdirs": subdirs, "concepts": concepts}
+
+    def children(self, path: str | None = None) -> dict:
+        """Immediate children of a directory via ``CONTAINS`` graph traversal.
+
+        Requires ``directory_nodes=True`` at load time. Returns
+        ``{"subdirs": [path, ...], "concepts": [Concept, ...]}``.
+        """
+        rows = self.execute(
+            "MATCH (d)-[:CONTAINS]->(c) WHERE d.path = $p AND d.directory = true RETURN c",
+            p=path or "",
+        )
+        subdirs: list[str] = []
+        concepts: list[Concept] = []
+        for row in rows:
+            node = self._node_from_row(row["c"])
+            if node.properties.get("directory"):
+                subdirs.append(node.properties.get("path"))
+            else:
+                concepts.append(Concept(self, node))
+        concepts.sort(key=lambda concept: concept.id)
+        return {"subdirs": sorted(subdirs), "concepts": concepts}
+
+    def log(self, concept_id: str | None = None) -> list[dict]:
+        """Log entries (newest first); optionally only those mentioning a concept.
+
+        Requires ``import_log=True`` at load time. Each entry is
+        ``{"date", "kind", "text", "scope"}``.
+        """
+        if concept_id is None:
+            rows = self.execute("MATCH (e) WHERE e.log = true RETURN e")
+        else:
+            rows = self.execute(
+                "MATCH (e)-[:MENTIONS]->(c) WHERE e.log = true AND c.concept_id = $cid RETURN e",
+                cid=concept_id,
+            )
+        entries = [
+            {
+                "date": row["e"]["properties"].get("date"),
+                "kind": row["e"]["properties"].get("kind"),
+                "text": row["e"]["properties"].get("text"),
+                "scope": row["e"]["properties"].get("scope"),
+            }
+            for row in rows
+        ]
+        return sorted(entries, key=lambda entry: entry["date"] or "", reverse=True)
 
     def references(self) -> list[dict]:
         """External citation sources as ``[{"url", "title"}, ...]``."""
@@ -381,8 +432,14 @@ class OKFBundle:
 
     @staticmethod
     def _is_concept(node: Node) -> bool:
-        """True for real concepts (not stubs or auto-created Reference nodes)."""
-        return not node.properties.get("stub") and not node.properties.get("okf_auto")
+        """True for real concepts (not stubs, Reference, Directory or LogEntry)."""
+        props = node.properties
+        return not (
+            props.get("stub")
+            or props.get("okf_auto")
+            or props.get("directory")
+            or props.get("log")
+        )
 
     def _has_vector_index(self) -> bool:
         try:

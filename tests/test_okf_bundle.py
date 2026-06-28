@@ -326,3 +326,78 @@ def test_save_without_path_uses_source(tmp_path):
     summary = bundle.save()  # defaults to the load path
     assert summary["concepts"] == 1
     bundle.db.close()
+
+
+# --- directory tree / log (Phase 3) -----------------------------------------
+
+
+def test_directory_nodes_and_contains_traversal():
+    bundle = OKFBundle.load(str(KB), directory_nodes=True, configure_fts=False)
+    try:
+        # root + 3 subdirectories; concepts unchanged.
+        assert bundle.summary["directories"] == 4
+        assert len(bundle) == 7
+
+        root = bundle.children()
+        assert root["subdirs"] == ["decisions", "glossary", "runbooks"]
+        assert root["concepts"] == []
+
+        decisions = bundle.children("decisions")
+        assert decisions["subdirs"] == []
+        assert {c.id for c in decisions["concepts"]} == {
+            "decisions/0001-use-sqlite",
+            "decisions/0002-cypher-subset",
+            "decisions/0003-vector-search",
+        }
+    finally:
+        bundle.db.close()
+
+
+def test_directory_nodes_not_exported_or_counted_as_concepts():
+    bundle = OKFBundle.load(str(KB), directory_nodes=True, configure_fts=False)
+    try:
+        # Directory nodes are not concepts and not iterated.
+        assert all(not c.node.properties.get("directory") for c in bundle)
+    finally:
+        bundle.db.close()
+
+
+def test_log_import_and_mentions(tmp_path):
+    (tmp_path / "log.md").write_text(
+        "# Log\n"
+        "## 2026-05-22\n"
+        "* **Creation**: Established [the note](/notes/a.md).\n"
+        "## 2026-05-10\n"
+        "* **Update**: Minor tweak.\n"
+    )
+    (tmp_path / "notes").mkdir()
+    (tmp_path / "notes" / "a.md").write_text("---\ntype: Note\ntitle: A\n---\nbody\n")
+
+    bundle = OKFBundle.load(str(tmp_path), import_log=True, configure_fts=False)
+    try:
+        assert bundle.summary["log_entries"] == 2
+        assert len(bundle) == 1  # only the note is a concept
+
+        entries = bundle.log()
+        assert [e["date"] for e in entries] == ["2026-05-22", "2026-05-10"]
+        assert entries[0]["kind"] == "Creation"
+
+        # The first entry mentions notes/a; the second mentions nothing.
+        about_a = bundle.log("notes/a")
+        assert len(about_a) == 1
+        assert about_a[0]["kind"] == "Creation"
+    finally:
+        bundle.db.close()
+
+
+def test_log_entries_not_exported(tmp_path):
+    (tmp_path / "log.md").write_text("# Log\n## 2026-05-22\n* **Creation**: Set up.\n")
+    (tmp_path / "a.md").write_text("---\ntype: Note\ntitle: A\n---\nbody\n")
+    bundle = OKFBundle.load(str(tmp_path), import_log=True, configure_fts=False)
+    try:
+        out = tmp_path / "out"
+        summary = bundle.save(str(out))
+        assert summary["concepts"] == 1
+        assert [p.name for p in out.rglob("*.md") if p.name != "index.md"] == ["a.md"]
+    finally:
+        bundle.db.close()

@@ -9,6 +9,7 @@ from grafito.importers.okf import (
     extract_citations,
     extract_links,
     parse_frontmatter,
+    parse_log_entries,
     split_citations,
 )
 
@@ -152,6 +153,22 @@ def test_split_citations_extracts_section():
     assert "# Schema" in main
     assert "# Citations" not in main
     assert "https://x.com" in cites
+
+
+def test_parse_log_entries():
+    log = (
+        "# Directory Update Log\n"
+        "## 2026-05-22\n"
+        "* **Update**: Added [Metrics](/tables/metrics.md).\n"
+        "* **Creation**: Established the playbook.\n"
+        "## 2026-05-15\n"
+        "* Plain entry without a kind.\n"
+    )
+    entries = parse_log_entries(log)
+    assert len(entries) == 3
+    assert entries[0] == ("2026-05-22", "Update", "**Update**: Added [Metrics](/tables/metrics.md).")
+    assert entries[1][1] == "Creation"
+    assert entries[2] == ("2026-05-15", None, "Plain entry without a kind.")
 
 
 def test_split_citations_absent():
