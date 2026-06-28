@@ -95,3 +95,27 @@ class Hit:
     concept: Concept
     score: float
     via: str  # "semantic" | "text"
+
+
+@dataclass
+class ContextPack:
+    """Grounded context assembled for an agent prompt, within a token budget.
+
+    The product of :meth:`OKFBundle.context`: a block of ``text`` ready to inject
+    into a prompt, the ``citations`` backing it (for grounding/attribution), the
+    ``concepts`` that were included, and the seed ``hits`` that started retrieval.
+    ``str(pack)`` returns ``pack.text`` so it drops straight into an f-string.
+    """
+
+    text: str
+    citations: list[dict]
+    concepts: list[Concept]
+    hits: list[Hit]
+    tokens: int
+    truncated: bool
+
+    def __str__(self) -> str:
+        return self.text
+
+    def __len__(self) -> int:
+        return len(self.concepts)

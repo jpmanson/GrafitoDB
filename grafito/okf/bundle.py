@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 from ..importers.okf import (
     DEFAULT_EMBED_FIELDS,
@@ -19,10 +19,11 @@ from ..importers.okf import (
     concept_document,
 )
 from ..models import Node
-from .concept import Concept, Hit
+from .concept import Concept, ContextPack, Hit
 
 if TYPE_CHECKING:
     from ..database import GrafitoDatabase
+    from .rerank import Reranker
 
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _RRF_K = 60  # reciprocal-rank-fusion constant for hybrid search
@@ -306,6 +307,94 @@ class OKFBundle:
             hits = [h for h in hits if self._layer_of(h.concept.id) == layer]
         return hits[:k]
 
+    def context(
+        self,
+        query: str,
+        *,
+        budget_tokens: int = 2000,
+        k: int = 8,
+        mode: str = "auto",
+        type: str | None = None,
+        layer: str | None = None,
+        expand_hops: int = 1,
+        include_citations: bool = True,
+        token_counter: Callable[[str], int] | None = None,
+        rerank: "Reranker | None" = None,
+    ) -> ContextPack:
+        """Retrieve, graph-expand, and pack grounded context within a token budget.
+
+        Seeds with :meth:`search` (semantic/text/hybrid), then follows the graph
+        — what each hit ``LINKS_TO`` within ``expand_hops`` — so the pack carries
+        context the embedding alone would miss. Concepts are rendered as titled,
+        cited blocks and greedily added in priority order (seeds first, by score;
+        then expanded neighbours) until the budget is reached. The top hit is
+        always included, truncated if it alone exceeds the budget.
+
+        ``rerank``: an optional :class:`~grafito.okf.rerank.Reranker` (any callable
+        ``(query, candidates) -> [(concept, score), ...]``). When given, the seed +
+        expanded pool is re-scored against the query text *before* budgeting — so
+        graph-expanded neighbours compete on relevance instead of insertion order.
+
+        ``budget_tokens`` is measured with ``token_counter`` (default: a ~4
+        chars/token heuristic — pass your model's tokenizer for exact budgeting).
+        Returns a :class:`ContextPack`; ``str(pack)`` is the prompt-ready text.
+        """
+        count = token_counter or self._estimate_tokens
+        hits = self.search(query, k=k, mode=mode, type=type, layer=layer)
+
+        # Candidate order: seed concepts first (ranked), then graph-expanded
+        # neighbours, de-duplicated by node identity.
+        candidates: list[Concept] = []
+        seen: set[int] = set()
+        for hit in hits:
+            if hit.concept.node.id not in seen:
+                seen.add(hit.concept.node.id)
+                candidates.append(hit.concept)
+        if expand_hops > 0:
+            for hit in hits:
+                for nbr in hit.concept.neighbors(depth=expand_hops):
+                    if nbr.node.id not in seen:
+                        seen.add(nbr.node.id)
+                        candidates.append(nbr)
+
+        # Optional precision step: let an injected reranker decide the order (and,
+        # if it has a top_n, the subset) the budget is then packed from.
+        if rerank is not None and candidates:
+            candidates = [concept for concept, _ in rerank(query, candidates)]
+
+        # Greedy pack: whole blocks while they fit; force-truncate the first one
+        # if even it overflows, so the top hit is never dropped silently.
+        blocks: list[str] = []
+        included: list[Concept] = []
+        remaining = budget_tokens
+        truncated = False
+        for concept in candidates:
+            block = self._render_block(concept, include_citations)
+            cost = count(block)
+            if cost <= remaining:
+                blocks.append(block)
+                included.append(concept)
+                remaining -= cost
+            elif not included:
+                blocks.append(self._truncate(block, remaining, count))
+                included.append(concept)
+                remaining = 0
+                truncated = True
+                break
+            else:
+                truncated = True
+
+        citations = self._collect_citations(included) if include_citations else []
+        text = "\n\n".join(blocks)
+        return ContextPack(
+            text=text,
+            citations=citations,
+            concepts=included,
+            hits=hits,
+            tokens=count(text) if text else 0,
+            truncated=truncated,
+        )
+
     # --- mutation ----------------------------------------------------------
 
     def add_concept(
@@ -529,6 +618,64 @@ class OKFBundle:
                 concepts.setdefault(cid, hit.concept)
         fused = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         return [Hit(concepts[cid], score, "hybrid") for cid, score in fused]
+
+    # --- context assembly --------------------------------------------------
+
+    @staticmethod
+    def _estimate_tokens(text: str) -> int:
+        """Default token estimate: ~4 characters per token (no tokenizer dep)."""
+        return max(1, len(text) // 4)
+
+    def _render_block(self, concept: Concept, include_citations: bool) -> str:
+        """Render one concept as a titled, optionally-cited context block."""
+        title = concept.title or concept.id
+        lines = [f"### {title}  ·  {concept.type}  ·  {concept.id}"]
+        if concept.description:
+            lines.append(concept.description)
+        body = concept.body.strip()
+        if body:
+            lines.append(body)
+        if include_citations:
+            sources = self._format_sources(concept.cites())
+            if sources:
+                lines.append(f"Sources: {sources}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_sources(cites: list[dict]) -> str:
+        parts: list[str] = []
+        for c in cites:
+            target = c.get("url") or c.get("concept")
+            if not target:
+                continue
+            anchor = c.get("anchor")
+            parts.append(f"{anchor} <{target}>" if anchor else str(target))
+        return "; ".join(parts)
+
+    @staticmethod
+    def _truncate(text: str, budget_tokens: int, count: Callable[[str], int]) -> str:
+        """Trim ``text`` to roughly ``budget_tokens``, by character ratio."""
+        if budget_tokens <= 0:
+            return ""
+        total = count(text)
+        if total <= budget_tokens:
+            return text
+        keep = max(1, int(len(text) * budget_tokens / total) - 1)
+        return text[:keep].rstrip() + " …"
+
+    def _collect_citations(self, concepts: list[Concept]) -> list[dict]:
+        """Citations of the included concepts, de-duplicated, with ``cited_by``."""
+        merged: dict[tuple, dict] = {}
+        for concept in concepts:
+            for c in concept.cites():
+                key = ("url", c["url"]) if c.get("url") else ("concept", c.get("concept"))
+                if key[1] is None:
+                    continue
+                entry = merged.setdefault(
+                    key, {key[0]: key[1], "anchor": c.get("anchor"), "cited_by": []}
+                )
+                entry["cited_by"].append(concept.id)
+        return list(merged.values())
 
     @staticmethod
     def _read_okf_version(path: str | Path, uri_prefix: str) -> str | None:

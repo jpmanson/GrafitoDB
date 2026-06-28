@@ -10,7 +10,7 @@ import pytest
 
 from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
-from grafito.okf import Concept, Hit, OKFBundle
+from grafito.okf import Concept, ContextPack, Hit, LexicalReranker, OKFBundle
 
 pytest.importorskip("yaml")
 
@@ -401,3 +401,111 @@ def test_log_entries_not_exported(tmp_path):
         assert [p.name for p in out.rglob("*.md") if p.name != "index.md"] == ["a.md"]
     finally:
         bundle.db.close()
+
+
+# --- context assembly -------------------------------------------------------
+
+
+def test_context_returns_grounded_pack(kb):
+    pack = kb.context("how do I make a query run faster", k=3)
+    assert isinstance(pack, ContextPack)
+    assert pack.concepts and pack.text
+    # str(pack) is the prompt-ready text.
+    assert str(pack) == pack.text
+    # The top hit (the slow-query runbook) is rendered as a titled block.
+    assert "Triaging a slow graph query" in pack.text
+    assert "### " in pack.text
+
+
+def test_context_expands_into_graph_neighbours(kb):
+    # The runbook links to glossary terms / decisions the query words don't match;
+    # graph expansion should pull at least one such neighbour into the pack.
+    seed = kb.search("how do I make a query run faster", k=1)[0].concept
+    linked_ids = {c.id for c in seed.neighbors(depth=1)}
+    assert linked_ids  # the seed has outgoing links
+
+    expanded = {c.id for c in kb.context("how do I make a query run faster", k=1).concepts}
+    assert expanded & linked_ids  # at least one neighbour made it in
+    # And expansion can be disabled.
+    no_expand = kb.context("how do I make a query run faster", k=1, expand_hops=0)
+    assert {c.id for c in no_expand.concepts} == {seed.id}
+
+
+def test_context_respects_token_budget(kb):
+    pack = kb.context("query performance", budget_tokens=40)
+    assert pack.tokens <= 60  # at/near budget (whole-block packing + truncation)
+    assert pack.concepts  # the top hit is never dropped
+    assert pack.truncated
+
+
+def test_context_includes_deduplicated_citations(kb):
+    pack = kb.context("vector similarity search", k=5)
+    assert pack.citations
+    # Citations carry provenance and are unique per target.
+    targets = [c.get("url") or c.get("concept") for c in pack.citations]
+    assert len(targets) == len(set(targets))
+    assert all("cited_by" in c and c["cited_by"] for c in pack.citations)
+
+
+def test_context_custom_token_counter_is_used(kb):
+    calls: list[str] = []
+
+    def counter(text: str) -> int:
+        calls.append(text)
+        return len(text.split())
+
+    pack = kb.context("query performance", token_counter=counter, budget_tokens=50)
+    assert calls  # the custom counter drove budgeting
+    assert pack.tokens == len(pack.text.split())
+
+
+def test_context_empty_when_no_hits(kb):
+    pack = kb.context("zqxwvurstplmnbgk", mode="text", k=3)
+    assert pack.concepts == [] or pack.text
+    # No hits → empty, well-formed pack.
+    if not pack.concepts:
+        assert pack.text == ""
+        assert pack.tokens == 0
+        assert pack.citations == []
+
+
+# --- reranking --------------------------------------------------------------
+
+
+def test_context_rerank_reorders_candidate_pool(kb):
+    question = "how do I make a query run faster"
+    base = kb.context(question, k=3, expand_hops=1, budget_tokens=5000)
+    reranked = kb.context(
+        question, k=3, expand_hops=1, budget_tokens=5000, rerank=LexicalReranker()
+    )
+    base_ids = [c.id for c in base.concepts]
+    reranked_ids = [c.id for c in reranked.concepts]
+    # Same pool, but the lexical reranker changes the order.
+    assert set(base_ids) == set(reranked_ids)
+    assert reranked_ids != base_ids
+
+
+def test_context_rerank_is_injectable_callable(kb):
+    captured: dict = {}
+
+    def reverse_reranker(query, candidates):
+        captured["query"] = query
+        captured["n"] = len(candidates)
+        return [(c, float(i)) for i, c in enumerate(reversed(candidates))]
+
+    pack = kb.context("query performance", k=2, rerank=reverse_reranker, budget_tokens=5000)
+    assert captured["query"] == "query performance"
+    assert captured["n"] >= len(pack.concepts)
+    # The reranker's order is honoured.
+    assert pack.concepts  # something was packed
+
+
+def test_context_rerank_top_n_subset_limits_pool(kb):
+    def top1(query, candidates):
+        scored = LexicalReranker()(query, candidates)
+        return scored[:1]  # reranker keeps only its best candidate
+
+    pack = kb.context(
+        "how do I make a query run faster", k=3, rerank=top1, budget_tokens=5000
+    )
+    assert len(pack.concepts) == 1

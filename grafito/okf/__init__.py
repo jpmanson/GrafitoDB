@@ -16,6 +16,16 @@ kb.db.execute("MATCH (n) RETURN count(n)")   # escape hatch
 """
 
 from .bundle import OKFBundle
-from .concept import Concept, Hit
+from .concept import Concept, ContextPack, Hit
+from .rerank import CohereReranker, LexicalReranker, Reranker, concept_text
 
-__all__ = ["OKFBundle", "Concept", "Hit"]
+__all__ = [
+    "OKFBundle",
+    "Concept",
+    "ContextPack",
+    "Hit",
+    "Reranker",
+    "LexicalReranker",
+    "CohereReranker",
+    "concept_text",
+]

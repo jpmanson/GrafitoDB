@@ -10,8 +10,10 @@ façade end to end:
 3. **Aggregation** — most-cited sources, via the ``kb.execute`` escape hatch.
 4. **Semantic search** — retrieval by meaning, results as a uniform ``Hit``.
 5. **Exploiting a hit** — a ``Hit`` carries a full ``Concept`` you can pivot from.
-6. **Agent-memory write path** — ``add_concept`` / ``link`` / ``cite`` / ``save``.
-7. **Visualization** — via ``kb.db`` (the full graph is always reachable).
+6. **Grounded context for an agent** — ``kb.context`` packs a token-budgeted,
+   graph-expanded, cited prompt fragment (framework-agnostic GraphRAG).
+7. **Agent-memory write path** — ``add_concept`` / ``link`` / ``cite`` / ``save``.
+8. **Visualization** — via ``kb.db`` (the full graph is always reachable).
 
 Run:  python examples/okf_knowledge_base.py
 """
@@ -172,9 +174,34 @@ def main() -> None:
     for c in top.links():
         print(f"    -> {c.title}")
 
+    # ── Grounded context for an agent ────────────────────────────────────────
+    # kb.context is the bridge to *any* agent loop: it seeds with search, follows
+    # the graph (so it pulls in linked context the embedding alone would miss),
+    # and packs the result into a token budget — returning prompt-ready text plus
+    # the citations that back it. No framework: drop `str(pack)` into your prompt.
+    #
+    # rerank is an optional, injectable precision step: the seed + graph-expanded
+    # pool is re-scored against the query text before budgeting. Here we use the
+    # dependency-free LexicalReranker; in production inject a cross-encoder
+    # (e.g. CohereReranker) — same one-line hook, no framework lock-in.
+    from grafito.okf import LexicalReranker
+
+    banner("6. Grounded context — retrieve + graph-expand + rerank + pack to a budget")
+    pack = kb.context(question, k=3, budget_tokens=600, rerank=LexicalReranker())
+    print(
+        f"  packed {len(pack.concepts)} concepts (~{pack.tokens} tokens, "
+        f"truncated={pack.truncated}) from {len(pack.hits)} seed hits"
+    )
+    print(f"  concepts: {[c.id for c in pack.concepts]}")
+    print(f"  citations backing the answer ({len(pack.citations)}):")
+    for cit in pack.citations[:3]:
+        print(f"    - {cit.get('url') or cit.get('concept')}  (cited_by {cit['cited_by']})")
+    print("\n  --- prompt-ready text (first 280 chars) ---")
+    print("  " + str(pack)[:280].replace("\n", "\n  ") + " …")
+
     # ── Agent-memory write path ──────────────────────────────────────────────
     # The same façade writes: add a concept, relate it, cite a source, persist.
-    banner("6. Agent memory — add knowledge and save it back to markdown")
+    banner("7. Agent memory — add knowledge and save it back to markdown")
     note = kb.add_concept(
         "decisions/0004-result-cache",
         type="ADR",
@@ -190,7 +217,7 @@ def main() -> None:
     print(f"  saved {kb.save(out)} to {out}")
 
     # ── Visualization ────────────────────────────────────────────────────────
-    banner("7. Visualizing the graph (via kb.db)")
+    banner("8. Visualizing the graph (via kb.db)")
     graph = kb.db.to_networkx()
     print(f"  NetworkX export: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
     try:
