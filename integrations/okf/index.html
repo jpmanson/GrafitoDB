@@ -3003,16 +3003,18 @@ concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked t
 <li>Captures <code>okf_version</code> from the root <code>index.md</code> (lost by the low-level import).</li>
 </ul>
 <h2 id="examples">Examples</h2>
-<p>A runnable end-to-end example (import → Cypher → full-text search → export with
-<code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the tabular sample bundle in
-<code>examples/okf_bundle/</code>:</p>
+<p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf_import.py</code> is a
+short intro (load → concept/links → search → save with <code>viz.html</code>) over the
+tabular sample bundle in <code>examples/okf_bundle/</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>examples/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf_knowledge_base/</code> is a small engineering knowledge base —
 architecture decision records, an on-call runbook, and glossary terms, all
-cross-linked with citations. The script shows relationship traversal and
-semantic retrieval over prose (it retrieves a "slow query" runbook for the
+cross-linked with citations. The script walks the full façade — index/traversal,
+the directory tree, aggregation via the <code>kb.execute</code> escape hatch, semantic
+search, the agent-memory write path, and visualization (it retrieves a "slow
+query" runbook for the
 query <em>"how do I make a query run faster"</em>, which never uses those words):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
 </span></code></pre></div>
