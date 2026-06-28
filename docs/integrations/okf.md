@@ -151,6 +151,43 @@ db.export_okf_bundle("bundle")
     exporter uses the first label as `type`. See `todo/okf/IMPROVEMENTS.md` for
     the open design question on representing multi-label nodes.
 
+## High-level API: `OKFBundle`
+
+The functions above are the low-level layer. `grafito.okf.OKFBundle` is an
+OKF-flavored façade over them: it speaks concepts/links/citations/layers instead
+of nodes/relationships, while exposing the full graph via `bundle.db`.
+
+```python
+from grafito.okf import OKFBundle
+
+kb = OKFBundle.load("examples/okf_knowledge_base", embed=embedder)
+
+kb.layers()                                  # {'decisions': 3, 'glossary': 3, 'runbooks': 1}
+kb.index()                                    # root index.md, in memory (subdirs)
+kb.index("decisions")                         # a directory's listing: title+description, no bodies
+c = kb.concept("decisions/0003-vector-search")
+c.title                                       # 'Add optional vector search'
+c.links()                                     # [Concept, ...] outgoing LINKS_TO
+c.cites()                                     # [{'url'|'concept', 'anchor'}, ...]
+
+kb.search("how do I make a query run faster", k=3)        # semantic / text / hybrid
+kb.search("make it faster", layer="decisions")            # scoped to a layer
+kb.search("vector similarity", mode="hybrid")             # RRF fusion of FTS + vector
+
+kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
+kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
+```
+
+Design notes:
+
+- **Delegates, never duplicates** — `load`/`save` call `import_okf_bundle` /
+  `export_okf_bundle`; the low-level API stays the canonical implementation.
+- **`search()` unifies** grafito's text and vector results into a single `Hit`
+  (`hit.concept`, `hit.score`, `hit.via`); `mode="auto"` uses vectors when the
+  bundle was loaded with `embed=`, else full-text.
+- **`Concept`** is a thin view; `concept.node` is the raw grafito node.
+- Captures `okf_version` from the root `index.md` (lost by the low-level import).
+
 ## Examples
 
 A runnable end-to-end example (import → Cypher → full-text search → export with
