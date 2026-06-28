@@ -1,30 +1,30 @@
-"""A *narrative* (non-tabular) Open Knowledge Format bundle in GrafitoDB.
+"""A *narrative* (non-tabular) OKF bundle through the high-level OKFBundle API.
 
 Where OKF shines is curated, cross-linked, evolving knowledge — not tabular
-data. This example imports a small engineering knowledge base (architecture
-decision records, an on-call runbook, and glossary terms) and walks through
-what you actually get back, and what you can do with it:
+data. This loads a small engineering knowledge base (architecture decision
+records, an on-call runbook, glossary terms) as an ``OKFBundle`` and shows the
+façade end to end:
 
-1. **What the import produced** — every `.md` file becomes a graph *node*; its
-   YAML frontmatter becomes node *properties*, the prose becomes a `body`
-   property, and every `[link](...)` in the text becomes a typed relationship
-   (`LINKS_TO` between docs, `CITES` to external `Reference` nodes).
-2. **Relationship traversal** with Cypher over that `LINKS_TO` / `CITES` graph.
-3. **Aggregation** over the graph (most-cited external sources).
-4. **Semantic search** over the prose — retrieval by meaning, not keywords.
-5. **Exploiting a hit** — a search result is a *full node*, so you can read its
-   metadata and prose, then pivot straight back into the graph from it.
+1. **Import + index** — concepts, and the in-memory ``index`` for triage.
+2. **Traversal** — ``concept.links()``, multi-hop, and the directory tree.
+3. **Aggregation** — most-cited sources, via the ``kb.execute`` escape hatch.
+4. **Semantic search** — retrieval by meaning, results as a uniform ``Hit``.
+5. **Exploiting a hit** — a ``Hit`` carries a full ``Concept`` you can pivot from.
+6. **Agent-memory write path** — ``add_concept`` / ``link`` / ``cite`` / ``save``.
+7. **Visualization** — via ``kb.db`` (the full graph is always reachable).
 
 Run:  python examples/okf_knowledge_base.py
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
+import tempfile
 from pathlib import Path
 
-from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
+from grafito.okf import OKFBundle
 
 BUNDLE = Path(__file__).parent / "okf_knowledge_base"
 
@@ -44,7 +44,9 @@ class HashingEmbeddingFunction(EmbeddingFunction):
         for text in input:
             vec = [0.0] * self._dim
             for token in re.findall(r"[a-z0-9]+", (text or "").lower()):
-                vec[hash(token) % self._dim] += 1.0
+                # md5, not Python's hash(): the latter is randomized per process.
+                bucket = int.from_bytes(hashlib.md5(token.encode()).digest()[:8], "little")
+                vec[bucket % self._dim] += 1.0
             norm = sum(v * v for v in vec) ** 0.5 or 1.0
             vectors.append([v / norm for v in vec])
         return vectors
@@ -93,71 +95,38 @@ def banner(text: str) -> None:
 
 
 def main() -> None:
-    db = GrafitoDatabase(":memory:")
-
     # ── Import ───────────────────────────────────────────────────────────────
-    # Each .md file under examples/okf_knowledge_base/ is read once and turned
-    # into a graph node. The summary tells you exactly what landed in the graph.
-    summary = db.import_okf_bundle(str(BUNDLE), embed=make_embedder())
-    banner("1. What the import produced")
-    print(
-        f"  nodes={summary['nodes']}  relationships={summary['relationships']}  "
-        f"citations={summary['citations']}  references={summary['references']}  "
-        f"embedded={summary['embedded']}"
-    )
-    print(
-        "\n  Reading that back: the 7 markdown documents became 7 graph nodes;\n"
-        "  their inline [links] became 21 typed relationships; 11 of those are\n"
-        "  CITES edges pointing at 9 distinct external Reference nodes; and all\n"
-        "  7 documents were embedded so they can be searched by meaning."
-    )
+    # OKFBundle.load delegates to the importer and returns a façade. We embed
+    # for semantic search and materialize the directory tree (CONTAINS edges).
+    kb = OKFBundle.load(BUNDLE, embed=make_embedder(), directory_nodes=True)
 
-    # Every node carries the doc's frontmatter as properties, PLUS the full
-    # markdown prose under `body`. A single query lists every document with its
-    # label (the OKF `type:` field — ADR / Term / Playbook — becomes the node
-    # label, read back with labels()), excluding the auto-created Reference nodes
-    # via the `NOT n:Reference` label predicate.
-    print("\n  Documents in the bundle (label · title · key metadata):")
-    rows = db.execute(
-        """
-        MATCH (n) WHERE NOT n:Reference
-        RETURN labels(n) AS labels, n.title AS title,
-               n.status AS status, n.tags AS tags
-        ORDER BY labels, title
-        """
+    banner("1. What the import produced")
+    s = kb.summary
+    print(
+        f"  concepts={len(kb)}  relationships={s['relationships']}  "
+        f"citations={s['citations']}  references={s['references']}  "
+        f"directories={s['directories']}"
     )
-    for r in rows:
-        label = r["labels"][0]
-        meta = f"tags={r['tags']}"
-        if r["status"]:
-            meta = f"status={r['status']}  " + meta
-        print(f"    [{label:<8}] {r['title']:<42} {meta}")
+    # index() is the in-memory equivalent of index.md: titles + descriptions,
+    # no bodies — exactly what you'd skim to decide what to open.
+    print("\n  Bundle index (group → concepts), no bodies loaded:")
+    for layer in kb.index()["subdirs"]:
+        for entry in kb.index(layer)["concepts"]:
+            print(f"    [{entry['type']:<8}] {entry['title']}")
 
     # ── Traversal ────────────────────────────────────────────────────────────
-    # The links plain markdown can only render, Cypher can now *query*.
-    banner("2. Relationship traversal — following the links")
+    banner("2. Traversal — following the links plain markdown can only render")
 
-    # 2a. Direct neighbours: which concepts does the vector-search ADR rely on?
-    print("The 'Add optional vector search' ADR links directly to:")
-    rows = db.execute(
-        """
-        MATCH (a {title: 'Add optional vector search'})-[:LINKS_TO]->(b)
-        RETURN DISTINCT b.title AS title, b.description AS description
-        ORDER BY title
-        """
-    )
-    for row in rows:
-        print(f"  -> {row['title']}: {row['description']}")
-    print(
-        "  (i.e. to understand this decision you'd read those documents next — the\n"
-        "   graph encodes that dependency explicitly, instead of you grepping links.)"
-    )
+    # 2a. Direct neighbours, in OKF vocabulary.
+    vec = kb.concept("decisions/0003-vector-search")
+    print(f"'{vec.title}' links directly to:")
+    for c in vec.links():
+        print(f"  -> {c.title}: {c.description}")
 
-    # 2b. Multi-hop: everything reachable from the runbook within 2 hops, with
-    #     the shortest distance to each — min(length(p)) over the named path tells
-    #     direct links (1 hop) apart from transitive ones (2 hops).
-    print("\nConcepts within 2 hops of the slow-query runbook (with hop distance):")
-    rows = db.execute(
+    # 2b. Multi-hop *with hop distance* — the façade doesn't hide the graph, so
+    #     we drop to Cypher via kb.execute for what needs it.
+    print("\nWithin 2 hops of the slow-query runbook (with distance):")
+    rows = kb.execute(
         """
         MATCH p=(r {title: 'Triaging a slow graph query'})-[:LINKS_TO*1..2]->(c)
         RETURN c.title AS title, min(length(p)) AS hops
@@ -166,115 +135,76 @@ def main() -> None:
     )
     for row in rows:
         print(f"  {row['hops']} hop{'s' if row['hops'] > 1 else ' '}  ~ {row['title']}")
-    print(
-        "  (transitive context: the runbook links to Cypher directly (1 hop), which\n"
-        "   in turn links to its decision record (2 hops) — variable-length traversal\n"
-        "   plus min(length(p)) surfaces both and how far each one is.)"
-    )
+
+    # 2c. The directory tree, traversed as a graph (CONTAINS edges).
+    print("\nDirectory tree (via CONTAINS):")
+    for layer in kb.children()["subdirs"]:
+        kids = [c.id.split("/")[-1] for c in kb.children(layer)["concepts"]]
+        print(f"  {layer}/  →  {kids}")
 
     # ── Aggregation ──────────────────────────────────────────────────────────
     banner("3. Aggregation — which external sources does this KB lean on?")
-    rows = db.execute(
+    rows = kb.execute(
         """
         MATCH (a)-[:CITES]->(r:Reference)
         RETURN r.url AS url, COUNT(*) AS citations
-        ORDER BY citations DESC
-        LIMIT 3
+        ORDER BY citations DESC LIMIT 3
         """
     )
     for row in rows:
         print(f"  [{row['citations']}x] {row['url']}")
-    print(
-        "  (a COUNT(*) with implicit GROUP BY over the CITES edges — the most-cited\n"
-        "   URLs are the load-bearing references behind the whole bundle.)"
-    )
 
     # ── Semantic search ──────────────────────────────────────────────────────
     banner("4. Semantic search — retrieval by meaning, not keywords")
     question = "how do I make a query run faster"
     print(f"Question (no keyword overlap with the docs): {question!r}\n")
-    hits = db.semantic_search(question, index="okf", k=3)
+    hits = kb.search(question, k=3)  # auto → semantic (we loaded with embeddings)
     for hit in hits:
-        node = hit["entity"] if "entity" in hit else hit["node"]
-        print(
-            f"  {node.properties['title']:<42} "
-            f"[{', '.join(node.labels)}]  score={hit['score']:.3f}"
-        )
+        print(f"  {hit.concept.title:<42} [{hit.concept.type}]  score={hit.score:.3f}  via={hit.via}")
 
     # ── Exploiting a hit ─────────────────────────────────────────────────────
-    # The key point: a search result is not a text snippet — it's a full graph
-    # node. You hold all of its properties AND its position in the graph.
-    banner("5. Exploiting the top hit — a result is a full node, not a snippet")
-    top = (hits[0]["entity"] if "entity" in hits[0] else hits[0]["node"])
-    props = top.properties
+    banner("5. Exploiting the top hit — a result is a full concept, not a snippet")
+    top = hits[0].concept
+    print(f"Top hit: {top.title!r}  (type {top.type}, id {top.id})")
+    print(f"  description : {top.description}")
+    print(f"  tags        : {top.tags}")
+    print("  pivot — what this concept relies on:")
+    for c in top.links():
+        print(f"    -> {c.title}")
 
-    print(f"Top hit: {props['title']!r}  (label {top.labels}, uri {top.uri})\n")
-
-    # 5a. You have every property the document carried.
-    print("  Available properties:", ", ".join(sorted(props)))
-    print(f"    description : {props['description']}")
-    print(f"    tags        : {props['tags']}")
-    print(f"    last edited : {props['timestamp']}")
-
-    # 5b. Including the full prose under `body` — ready to render or feed to an LLM.
-    first_lines = "\n      ".join(props["body"].strip().splitlines()[:3])
-    print(f"    body (head) :\n      {first_lines}")
-
-    # 5c. And because it's a node, you can pivot from the hit back into the graph:
-    #     "search found the right doc — now show me what it depends on."
-    #     The hit's title is passed as a $parameter (no string interpolation).
-    rows = db.execute(
-        """
-        MATCH (hit {title: $title})-[:LINKS_TO]->(c)
-        RETURN DISTINCT c.title AS title
-        ORDER BY title
-        """,
-        {"title": props["title"]},
+    # ── Agent-memory write path ──────────────────────────────────────────────
+    # The same façade writes: add a concept, relate it, cite a source, persist.
+    banner("6. Agent memory — add knowledge and save it back to markdown")
+    note = kb.add_concept(
+        "decisions/0004-result-cache",
+        type="ADR",
+        title="Cache hot query results",
+        description="Memoize expensive read queries.",
+        tags=["perf"],
+        body="# Context\nHot read queries recur and dominate latency.\n",
     )
-    print("\n  Pivoting from the hit into the graph — concepts this doc relies on:")
-    for row in rows:
-        print(f"    -> {row['title']}")
-    print(
-        "\n  That is the OKF payoff: semantic search lands you on the right node, and\n"
-        "  the graph lets you walk outward from it — meaning-based recall plus\n"
-        "  structured context, over the same plain markdown you authored."
-    )
+    kb.link(note, "decisions/0001-use-sqlite", anchor="builds on")
+    kb.cite(note, "https://www.sqlite.org/pragma.html", anchor="SQLite PRAGMA")
+    print(f"  added {note.id!r}; it now links to {[c.id for c in note.links()]}")
+    out = Path(tempfile.mkdtemp(prefix="okf_kb_"))
+    print(f"  saved {kb.save(out)} to {out}")
 
     # ── Visualization ────────────────────────────────────────────────────────
-    # Everything above *queried* the graph; here we *draw* it. GrafitoDB exports
-    # to NetworkX and bridges to visualization backends, so a few lines turn the
-    # bundle into a picture (nodes colored by label: ADR / Term / Playbook /
-    # Reference) and an interactive HTML you can drag around.
-    banner("6. Visualizing the graph")
-    graph = db.to_networkx()
+    banner("7. Visualizing the graph (via kb.db)")
+    graph = kb.db.to_networkx()
     print(f"  NetworkX export: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
     try:
-        from grafito.integrations import export_graph, save_pyvis_html
-
-        png_path = export_graph(
-            graph,
-            "okf_knowledge_graph.png",
-            backend="netgraph",
-            label_attr="title",      # show each doc's title (a node property)
-            color_by_label=True,     # ADR / Term / Playbook / Reference each get a color
-            node_size=7,
-            edge_layout="curved",    # route edges around nodes instead of through them
-            node_label_fontdict={"size": 7},
-        )
-        print(f"  Static image : {Path(png_path).resolve()}")
+        from grafito.integrations import save_pyvis_html
 
         html_path = save_pyvis_html(
-            graph,
-            path="okf_knowledge_graph.html",
-            label_attr="title",
-            color_by_label=True,
-            physics="spread",
+            graph, path=str(out / "okf_knowledge_graph.html"), label_attr="title",
+            color_by_label=True, physics="spread",
         )
-        print(f"  Interactive  : {Path(html_path).resolve()}  (open in a browser, drag the nodes)")
+        print(f"  Interactive  : {Path(html_path).resolve()}  (open in a browser)")
     except ImportError:
         print("  (visualization backends not installed — `pip install grafito[viz]`)")
 
-    db.close()
+    kb.db.close()
 
 
 if __name__ == "__main__":
