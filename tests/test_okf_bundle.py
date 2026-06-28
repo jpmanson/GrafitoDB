@@ -239,6 +239,86 @@ def test_save_round_trip(kb, tmp_path):
     reloaded.db.close()
 
 
+# --- mutation (Phase 2) -----------------------------------------------------
+
+
+def test_add_concept(kb):
+    before = len(kb)
+    c = kb.add_concept(
+        "decisions/0004-caching",
+        type="ADR",
+        title="Add a query cache",
+        description="Cache hot query results.",
+        tags=["perf"],
+        body="# Context\nHot queries repeat.\n",
+    )
+    assert c.type == "ADR"
+    assert c.title == "Add a query cache"
+    assert len(kb) == before + 1
+    assert kb.concept("decisions/0004-caching") is not None
+
+
+def test_add_concept_duplicate_raises(kb):
+    with pytest.raises(ValueError):
+        kb.add_concept("decisions/0001-use-sqlite", type="ADR")
+
+
+def test_add_concept_is_searchable(kb):
+    kb.add_concept(
+        "glossary/embedding",
+        type="Term",
+        title="Embedding",
+        body="A vector representation of text used for semantic similarity.",
+    )
+    hits = kb.search("vector representation similarity", mode="semantic", k=5)
+    assert "Embedding" in {h.concept.title for h in hits}
+
+
+def test_link_and_cite(kb):
+    kb.add_concept("notes/x", type="Note", title="X")
+    kb.link("notes/x", "decisions/0001-use-sqlite", anchor="see")
+    kb.cite("notes/x", "https://example.com/ref", anchor="ref")
+
+    x = kb.concept("notes/x")
+    assert {c.id for c in x.links()} == {"decisions/0001-use-sqlite"}
+    assert x.cites() == [{"url": "https://example.com/ref", "anchor": "ref"}]
+
+
+def test_cite_deduplicates_reference(kb):
+    kb.add_concept("notes/a", type="Note", title="A")
+    kb.add_concept("notes/b", type="Note", title="B")
+    before = len(kb.references())
+    kb.cite("notes/a", "https://example.com/shared")
+    kb.cite("notes/b", "https://example.com/shared")
+    after = [r for r in kb.references() if r["url"] == "https://example.com/shared"]
+    assert len(after) == 1
+    assert len(kb.references()) == before + 1
+
+
+def test_remove_concept(kb):
+    assert kb.remove_concept("glossary/cypher") is True
+    assert kb.concept("glossary/cypher") is None
+    assert kb.remove_concept("does/not/exist") is False
+
+
+def test_mutations_round_trip_for_bodyless_concept(kb, tmp_path):
+    # A concept with no body: links/citations must persist via export synthesis.
+    kb.add_concept("notes/seed", type="Note", title="Seed")
+    kb.link("notes/seed", "decisions/0001-use-sqlite", anchor="see")
+    kb.cite("notes/seed", "https://example.com/ref", anchor="ref")
+    kb.save(str(tmp_path))
+
+    reloaded = OKFBundle.load(str(tmp_path), configure_fts=False)
+    try:
+        seed = reloaded.concept("notes/seed")
+        assert {c.id for c in seed.links()} == {"decisions/0001-use-sqlite"}
+        assert reloaded.concept("notes/seed").cites() == [
+            {"url": "https://example.com/ref", "anchor": "ref"}
+        ]
+    finally:
+        reloaded.db.close()
+
+
 def test_save_without_path_uses_source(tmp_path):
     # Build a tiny bundle on disk, load it, mutate via the graph, save back.
     (tmp_path / "a.md").write_text("---\ntype: Note\ntitle: A\n---\nbody\n")

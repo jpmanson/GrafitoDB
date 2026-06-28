@@ -178,6 +178,23 @@ kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
 kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
 ```
 
+Mutating a bundle (agent-memory write path):
+
+```python
+kb.add_concept("notes/idea", type="Note", title="An idea",
+               body="# Notes\n...", tags=["draft"])   # embedded + FTS-indexed
+kb.link("notes/idea", "decisions/0001-use-sqlite", anchor="builds on")
+kb.cite("notes/idea", "https://example.com/paper", anchor="source")
+kb.remove_concept("notes/old")
+kb.save()                                              # persist to markdown
+```
+
+Round-trip note: `save()` writes each concept's stored `body` verbatim. For a
+concept created **without** a body, `link`/`cite` edges are synthesized into
+`# Links` / `# Citations` sections on export (so they round-trip). For a concept
+**with** a body, include the links/citations in that body if you want them in the
+markdown — the edges remain queryable in the graph regardless.
+
 Design notes:
 
 - **Delegates, never duplicates** — `load`/`save` call `import_okf_bundle` /

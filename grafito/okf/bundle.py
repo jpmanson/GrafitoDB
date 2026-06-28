@@ -13,6 +13,11 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator
 
+from ..importers.okf import (
+    DEFAULT_EMBED_FIELDS,
+    REFERENCE_LABEL,
+    concept_document,
+)
 from ..models import Node
 from .concept import Concept, Hit
 
@@ -32,6 +37,7 @@ class OKFBundle:
         *,
         uri_prefix: str = "okf:",
         embed_index: str = "okf",
+        embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
         source_path: str | None = None,
         okf_version: str | None = None,
         summary: dict | None = None,
@@ -39,6 +45,7 @@ class OKFBundle:
         self._db = db
         self._uri_prefix = uri_prefix
         self._embed_index = embed_index
+        self._embed_fields = embed_fields
         self._source_path = source_path
         self._okf_version = okf_version
         self._summary = summary or {}
@@ -55,6 +62,7 @@ class OKFBundle:
         configure_fts: bool = True,
         uri_prefix: str = "okf:",
         embed_index: str = "okf",
+        embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
         **import_kw: Any,
     ) -> "OKFBundle":
         """Import an OKF bundle and return a façade over it.
@@ -71,12 +79,14 @@ class OKFBundle:
             configure_fts=configure_fts,
             uri_prefix=uri_prefix,
             embed_index=embed_index,
+            embed_fields=embed_fields,
             **import_kw,
         )
         return cls(
             db,
             uri_prefix=uri_prefix,
             embed_index=embed_index,
+            embed_fields=embed_fields,
             source_path=str(path),
             okf_version=cls._read_okf_version(path, uri_prefix),
             summary=summary,
@@ -245,6 +255,88 @@ class OKFBundle:
             hits = [h for h in hits if self._layer_of(h.concept.id) == layer]
         return hits[:k]
 
+    # --- mutation ----------------------------------------------------------
+
+    def add_concept(
+        self,
+        concept_id: str,
+        *,
+        type: str,
+        title: str | None = None,
+        body: str = "",
+        description: str | None = None,
+        tags: list[str] | None = None,
+        **frontmatter: Any,
+    ) -> Concept:
+        """Create a new concept (and embed it if the bundle has a vector index).
+
+        Raises ``ValueError`` if a concept with this ID already exists. The new
+        node is auto-indexed for full-text search; ``save()`` persists it to
+        markdown. Use ``link``/``cite`` to relate it to other concepts.
+        """
+        if self.concept(concept_id) is not None:
+            raise ValueError(f"Concept already exists: {concept_id!r}")
+        props: dict[str, Any] = {"concept_id": concept_id, "body": body or ""}
+        if title is not None:
+            props["title"] = title
+        if description is not None:
+            props["description"] = description
+        if tags is not None:
+            props["tags"] = list(tags)
+        props.update(frontmatter)
+        node = self._db.create_node(
+            labels=[type], properties=props, uri=f"{self._uri_prefix}{concept_id}"
+        )
+        if self._has_vector_index():
+            self._db.upsert_embeddings(
+                [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
+            )
+        return Concept(self, node)
+
+    def link(
+        self,
+        src: "Concept | str",
+        dst: "Concept | str",
+        *,
+        type: str = "LINKS_TO",
+        anchor: str | None = None,
+    ) -> None:
+        """Create a relationship from ``src`` to ``dst`` (both concepts)."""
+        source = self._resolve(src)
+        target = self._resolve(dst)
+        self._db.create_relationship(
+            source.node.id, target.node.id, type, {"anchor": anchor} if anchor else {}
+        )
+
+    def cite(
+        self, src: "Concept | str", target: "Concept | str", *, anchor: str | None = None
+    ) -> None:
+        """Create a ``CITES`` edge from ``src`` to a URL or another concept.
+
+        A URL target resolves to a deduplicated ``Reference`` node.
+        """
+        source = self._resolve(src)
+        if isinstance(target, str) and target.startswith(("http://", "https://")):
+            target_id = self._reference_node(target, anchor).id
+        else:
+            target_id = self._resolve(target).node.id
+        self._db.create_relationship(
+            source.node.id, target_id, "CITES", {"anchor": anchor} if anchor else {}
+        )
+
+    def remove_concept(self, concept_id: str) -> bool:
+        """Delete a concept (and its relationships/embedding). Returns success."""
+        concept = self.concept(concept_id)
+        if concept is None:
+            return False
+        node_id = concept.node.id
+        if self._has_vector_index():
+            try:
+                self._db.remove_embedding(node_id, index=self._embed_index)
+            except Exception:
+                pass
+        return self._db.delete_node(node_id)
+
     # --- metadata ----------------------------------------------------------
 
     @property
@@ -264,6 +356,24 @@ class OKFBundle:
         return f"<OKFBundle {self._source_path!r} concepts={n}>"
 
     # --- internals ---------------------------------------------------------
+
+    def _resolve(self, value: "Concept | str") -> Concept:
+        if isinstance(value, Concept):
+            return value
+        concept = self.concept(value)
+        if concept is None:
+            raise ValueError(f"Unknown concept: {value!r}")
+        return concept
+
+    def _reference_node(self, url: str, anchor: str | None) -> Node:
+        for node in self._db.match_nodes(properties={"url": url}):
+            if node.properties.get("okf_auto"):
+                return node
+        return self._db.create_node(
+            labels=[REFERENCE_LABEL],
+            properties={"title": anchor or url, "url": url, "okf_auto": True},
+            uri=url,
+        )
 
     @staticmethod
     def _layer_of(concept_id: str) -> str | None:

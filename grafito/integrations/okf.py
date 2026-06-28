@@ -57,22 +57,41 @@ def _ordered_frontmatter(node) -> dict:
     return frontmatter
 
 
-def _synthesize_links_section(
-    db: "GrafitoDatabase", node, uri_prefix: str, heading: str
+def _synthesize_body(
+    db: "GrafitoDatabase", node, uri_prefix: str, links_heading: str
 ) -> str:
-    """Render outgoing relationships as an OKF ``# Links`` markdown section."""
-    rels = db.match_relationships(source_id=node.id)
-    lines: list[str] = []
-    for rel in rels:
+    """Synthesize a body for a node with none stored, from its outgoing edges.
+
+    ``LINKS_TO`` edges become a ``# {links_heading}`` section; ``CITES`` edges
+    become a ``# Citations`` section (external URLs for ``Reference`` targets,
+    bundle-relative links for concept targets).
+    """
+    link_lines: list[str] = []
+    cite_lines: list[str] = []
+    for rel in db.match_relationships(source_id=node.id):
         target = db.get_node(rel.target_id)
         if target is None:
             continue
-        target_id = _concept_id(target, uri_prefix)
-        anchor = rel.properties.get("anchor") or target.properties.get("title") or target_id
-        lines.append(f"- [{anchor}](/{target_id}.md)")
-    if not lines:
-        return ""
-    return f"# {heading}\n\n" + "\n".join(lines) + "\n"
+        anchor = rel.properties.get("anchor")
+        if rel.type == "CITES":
+            if target.properties.get("okf_auto"):
+                url = target.properties.get("url")
+                cite_lines.append(f"- [{anchor}]({url})" if anchor else f"- {url}")
+            else:
+                tid = _concept_id(target, uri_prefix)
+                label = anchor or target.properties.get("title") or tid
+                cite_lines.append(f"- [{label}](/{tid}.md)")
+        else:
+            tid = _concept_id(target, uri_prefix)
+            label = anchor or target.properties.get("title") or tid
+            link_lines.append(f"- [{label}](/{tid}.md)")
+
+    sections: list[str] = []
+    if link_lines:
+        sections.append(f"# {links_heading}\n\n" + "\n".join(link_lines) + "\n")
+    if cite_lines:
+        sections.append("# Citations\n\n" + "\n".join(cite_lines) + "\n")
+    return "\n".join(sections)
 
 
 def export_bundle(
@@ -124,13 +143,13 @@ def export_bundle(
 
         body = node.properties.get("body")
         if not isinstance(body, str) or not body.strip():
-            body = _synthesize_links_section(db, node, uri_prefix, links_heading)
+            body = _synthesize_body(db, node, uri_prefix, links_heading)
 
         fm_text = yaml.safe_dump(
             frontmatter,
             sort_keys=False,
             allow_unicode=True,
-            default_flow_style=None,  # scalar-only lists render inline: [a, b]
+            default_flow_style=False,  # block style throughout (matches real bundles)
         ).strip()
         document = f"---\n{fm_text}\n---\n\n{body}"
         if not document.endswith("\n"):
