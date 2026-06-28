@@ -2573,7 +2573,7 @@
 
 <h1 id="example-northwind">Example: Northwind</h1>
 <p>This example loads the classic Northwind dataset and runs verification checks.</p>
-<p>Source: <code>examples/northwind.py</code> and <code>examples/northwind.cypher</code>.</p>
+<p>Source: <code>examples/datasets/northwind.py</code> and <code>examples/datasets/northwind.cypher</code>.</p>
 <h2 id="what-it-loads">What It Loads</h2>
 <p>Labels:</p>
 <ul>
@@ -2591,10 +2591,10 @@
 <li><code>ORDERS</code> (Order -&gt; Product)</li>
 </ul>
 <h2 id="run-the-loader">Run the Loader</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/northwind.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/datasets/northwind.py
 </span></code></pre></div>
 <p>By default, the loader uses an in-memory database. You can also use a file:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/northwind.py<span class="w"> </span>--db<span class="w"> </span>northwind.db<span class="w"> </span>--clean
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/datasets/northwind.py<span class="w"> </span>--db<span class="w"> </span>northwind.db<span class="w"> </span>--clean
 </span></code></pre></div>
 <h2 id="what-it-checks">What It Checks</h2>
 <p>The loader validates:</p>

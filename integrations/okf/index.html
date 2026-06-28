@@ -3014,7 +3014,7 @@ OKF-flavored façade over them: it speaks concepts/links/citations/layers instea
 of nodes/relationships, while exposing the full graph via <code>bundle.db</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;examples/okf_knowledge_base&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;examples/okf/okf_knowledge_base&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">layers</span><span class="p">()</span>                                  <span class="c1"># {&#39;decisions&#39;: 3, &#39;glossary&#39;: 3, &#39;runbooks&#39;: 1}</span>
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">()</span>                                    <span class="c1"># root index.md, in memory (subdirs)</span>
@@ -3175,20 +3175,20 @@ concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked t
 <li>Captures <code>okf_version</code> from the root <code>index.md</code> (lost by the low-level import).</li>
 </ul>
 <h2 id="examples">Examples</h2>
-<p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf_import.py</code> is a
+<p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf/okf_import.py</code> is a
 short intro (load → concept/links → search → save with <code>viz.html</code>) over the
-tabular sample bundle in <code>examples/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>examples/okf_import.py
+tabular sample bundle in <code>examples/okf/okf_bundle/</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
-<code>examples/okf_knowledge_base/</code> is a small engineering knowledge base —
+<code>examples/okf/okf_knowledge_base/</code> is a small engineering knowledge base —
 architecture decision records, an on-call runbook, and glossary terms, all
 cross-linked with citations. The script walks the full façade — index/traversal,
 the directory tree, aggregation via the <code>kb.execute</code> escape hatch, semantic
 search, grounded <code>context()</code> assembly with a reranker, the agent-memory write
 path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
 
 
