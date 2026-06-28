@@ -11,6 +11,14 @@ import pytest
 from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
 from grafito.okf import Concept, ContextPack, Hit, LexicalReranker, OKFBundle
+from grafito.okf.rerank import (
+    DEFAULT_RERANK_FIELDS,
+    CohereReranker,
+    CrossEncoderReranker,
+    JinaReranker,
+    VoyageReranker,
+    _parse_rerank_results,
+)
 
 pytest.importorskip("yaml")
 
@@ -509,3 +517,90 @@ def test_context_rerank_top_n_subset_limits_pool(kb):
         "how do I make a query run faster", k=3, rerank=top1, budget_tokens=5000
     )
     assert len(pack.concepts) == 1
+
+
+# --- provider rerank adapters (offline: parsing + key resolution) -----------
+
+
+def test_parse_rerank_results_cohere_jina_shape(kb):
+    candidates = list(kb)[:3]
+    # Cohere/Jina return reordered items under "results"; order is honoured.
+    data = {"results": [
+        {"index": 2, "relevance_score": 0.9},
+        {"index": 0, "relevance_score": 0.4},
+    ]}
+    out = _parse_rerank_results(data, candidates, results_key="results", provider="Cohere")
+    assert [c.id for c, _ in out] == [candidates[2].id, candidates[0].id]
+    assert out[0][1] == 0.9
+
+
+def test_parse_rerank_results_voyage_shape(kb):
+    candidates = list(kb)[:3]
+    # Voyage returns items under "data".
+    data = {"data": [{"index": 1, "relevance_score": 0.7}]}
+    out = _parse_rerank_results(data, candidates, results_key="data", provider="Voyage")
+    assert [c.id for c, _ in out] == [candidates[1].id]
+
+
+def test_parse_rerank_results_error_payload_raises(kb):
+    with pytest.raises(ValueError, match="Voyage rerank API error"):
+        _parse_rerank_results(
+            {"message": "bad key"}, list(kb)[:1], results_key="data", provider="Voyage"
+        )
+
+
+@pytest.mark.parametrize(
+    "cls, env, default_model, url, top_param, results_key",
+    [
+        (CohereReranker, "COHERE_API_KEY", "rerank-english-v3.0",
+         "https://api.cohere.ai/v1/rerank", "top_n", "results"),
+        (VoyageReranker, "VOYAGE_API_KEY", "rerank-2",
+         "https://api.voyageai.com/v1/rerank", "top_k", "data"),
+        (JinaReranker, "JINA_API_KEY", "jina-reranker-v2-base-multilingual",
+         "https://api.jina.ai/v1/rerank", "top_n", "results"),
+    ],
+)
+def test_provider_reranker_config(monkeypatch, cls, env, default_model, url, top_param, results_key):
+    pytest.importorskip("httpx")
+    monkeypatch.setenv(env, "test-key")
+    rr = cls()
+    assert rr.model == default_model
+    assert rr._url == url
+    assert rr._top_param == top_param
+    assert rr._results_key == results_key
+
+
+def test_provider_reranker_missing_key_raises(monkeypatch):
+    pytest.importorskip("httpx")
+    monkeypatch.delenv("VOYAGE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="Voyage API key not provided"):
+        VoyageReranker()
+
+
+def test_cross_encoder_reranker_sorts_by_model_score(kb):
+    # Drive the scoring/ordering logic offline with a fake CrossEncoder model
+    # (the real one needs sentence-transformers + a model download).
+    rr = object.__new__(CrossEncoderReranker)
+    rr._fields = DEFAULT_RERANK_FIELDS
+    rr._max_chars = 2000
+
+    class _FakeModel:
+        def predict(self, pairs):
+            assert all(isinstance(p, tuple) and len(p) == 2 for p in pairs)
+            return [0.1, 0.9, 0.5][: len(pairs)]
+
+    rr._model = _FakeModel()
+    candidates = list(kb)[:3]
+    out = rr("how do I make a query run faster", candidates)
+    assert [c.id for c, _ in out] == [candidates[1].id, candidates[2].id, candidates[0].id]
+    assert out[0][1] == 0.9
+
+
+def test_cross_encoder_reranker_works_in_context(kb):
+    rr = object.__new__(CrossEncoderReranker)
+    rr._fields = DEFAULT_RERANK_FIELDS
+    rr._max_chars = 2000
+    rr._model = type("M", (), {"predict": lambda self, pairs: [1.0] * len(pairs)})()
+
+    pack = kb.context("query performance", k=3, rerank=rr, budget_tokens=5000)
+    assert pack.concepts  # the cross-encoder reranker is a valid injectable Reranker
