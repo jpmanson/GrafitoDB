@@ -1830,6 +1830,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#high-level-api-okfbundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level API: OKFBundle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2675,6 +2686,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#high-level-api-okfbundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-level API: OKFBundle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2922,11 +2944,44 @@ preserves unknown frontmatter keys:</p>
 exporter uses the first label as <code>type</code>. See <code>todo/okf/IMPROVEMENTS.md</code> for
 the open design question on representing multi-label nodes.</p>
 </div>
+<h2 id="high-level-api-okfbundle">High-level API: <code>OKFBundle</code></h2>
+<p>The functions above are the low-level layer. <code>grafito.okf.OKFBundle</code> is an
+OKF-flavored façade over them: it speaks concepts/links/citations/layers instead
+of nodes/relationships, while exposing the full graph via <code>bundle.db</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;examples/okf_knowledge_base&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">layers</span><span class="p">()</span>                                  <span class="c1"># {&#39;decisions&#39;: 3, &#39;glossary&#39;: 3, &#39;runbooks&#39;: 1}</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">()</span>                                    <span class="c1"># root index.md, in memory (subdirs)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>                         <span class="c1"># a directory&#39;s listing: title+description, no bodies</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">c</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0003-vector-search&quot;</span><span class="p">)</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">c</span><span class="o">.</span><span class="n">title</span>                                       <span class="c1"># &#39;Add optional vector search&#39;</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">c</span><span class="o">.</span><span class="n">links</span><span class="p">()</span>                                     <span class="c1"># [Concept, ...] outgoing LINKS_TO</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="n">c</span><span class="o">.</span><span class="n">cites</span><span class="p">()</span>                                     <span class="c1"># [{&#39;url&#39;|&#39;concept&#39;, &#39;anchor&#39;}, ...]</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># semantic / text / hybrid</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;make it faster&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>            <span class="c1"># scoped to a layer</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;vector similarity&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;hybrid&quot;</span><span class="p">)</span>             <span class="c1"># RRF fusion of FTS + vector</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
+</span></code></pre></div>
+<p>Design notes:</p>
+<ul>
+<li><strong>Delegates, never duplicates</strong> — <code>load</code>/<code>save</code> call <code>import_okf_bundle</code> /
+  <code>export_okf_bundle</code>; the low-level API stays the canonical implementation.</li>
+<li><strong><code>search()</code> unifies</strong> grafito's text and vector results into a single <code>Hit</code>
+  (<code>hit.concept</code>, <code>hit.score</code>, <code>hit.via</code>); <code>mode="auto"</code> uses vectors when the
+  bundle was loaded with <code>embed=</code>, else full-text.</li>
+<li><strong><code>Concept</code></strong> is a thin view; <code>concept.node</code> is the raw grafito node.</li>
+<li>Captures <code>okf_version</code> from the root <code>index.md</code> (lost by the low-level import).</li>
+</ul>
 <h2 id="examples">Examples</h2>
 <p>A runnable end-to-end example (import → Cypher → full-text search → export with
 <code>viz.html</code>) lives in <code>examples/okf_import.py</code>, using the tabular sample bundle in
 <code>examples/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>examples/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>examples/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf_knowledge_base/</code> is a small engineering knowledge base —
@@ -2934,7 +2989,7 @@ architecture decision records, an on-call runbook, and glossary terms, all
 cross-linked with citations. The script shows relationship traversal and
 semantic retrieval over prose (it retrieves a "slow query" runbook for the
 query <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>examples/okf_knowledge_base.py
 </span></code></pre></div>
 
 
