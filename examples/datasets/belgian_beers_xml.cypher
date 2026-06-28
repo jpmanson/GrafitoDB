@@ -1,4 +1,4 @@
-WITH "examples/belgian_beers.xml" AS path
+WITH "examples/datasets/belgian_beers.xml" AS path
 CALL apoc.load.xml(path, ".//beer") YIELD value
 WITH value.brand._text AS BeerBrand,
      value.type._text AS BeerType,

@@ -3,7 +3,7 @@
 This example builds a small social graph with users, interests, friendships,
 followers, and simple recommendations.
 
-Source: `examples/social_network.py`.
+Source: `examples/datasets/social_network.py`.
 
 ## Data Model
 
@@ -90,5 +90,5 @@ for friend in alice_friends:
 Run the full example:
 
 ```bash
-python examples/social_network.py
+python examples/datasets/social_network.py
 ```

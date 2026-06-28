@@ -7,7 +7,7 @@ export back to markdown — with the full graph one attribute away (``bundle.db`
 ```python
 from grafito.okf import OKFBundle
 
-kb = OKFBundle.load("examples/okf_knowledge_base")
+kb = OKFBundle.load("examples/okf/okf_knowledge_base")
 kb.layers()                       # {'decisions': 3, 'glossary': 3, 'runbooks': 1}
 kb.concept("decisions/0001-use-sqlite").links()
 kb.search("query performance", type="Playbook")

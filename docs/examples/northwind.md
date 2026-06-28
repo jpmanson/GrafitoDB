@@ -2,7 +2,7 @@
 
 This example loads the classic Northwind dataset and runs verification checks.
 
-Source: `examples/northwind.py` and `examples/northwind.cypher`.
+Source: `examples/datasets/northwind.py` and `examples/datasets/northwind.cypher`.
 
 ## What It Loads
 
@@ -24,13 +24,13 @@ Relationship types:
 ## Run the Loader
 
 ```bash
-python examples/northwind.py
+python examples/datasets/northwind.py
 ```
 
 By default, the loader uses an in-memory database. You can also use a file:
 
 ```bash
-python examples/northwind.py --db northwind.db --clean
+python examples/datasets/northwind.py --db northwind.db --clean
 ```
 
 ## What It Checks

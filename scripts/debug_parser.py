@@ -71,5 +71,5 @@ def debug_dump_parsing(dump_path: str, limit: int = 100):
 
 
 if __name__ == "__main__":
-    DUMP_FILE = "examples/recommendations-5.26.dump"
+    DUMP_FILE = "examples/datasets/recommendations-5.26.dump"
     debug_dump_parsing(DUMP_FILE)

@@ -49,7 +49,7 @@ def extract_dump(dump_path, output_dir):
             reader.close()
 
 if __name__ == "__main__":
-    dump_path = "examples/recommendations-5.26.dump"
+    dump_path = "examples/datasets/recommendations-5.26.dump"
     output_dir = "debug_neo4j"
     extract_dump(dump_path, output_dir)
     

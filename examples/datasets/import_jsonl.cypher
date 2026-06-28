@@ -1,4 +1,4 @@
-WITH "examples/people.jsonl" AS url
+WITH "examples/datasets/people.jsonl" AS url
 CALL apoc.import.json(url) YIELD nodes, relationships
 RETURN nodes, relationships;
 

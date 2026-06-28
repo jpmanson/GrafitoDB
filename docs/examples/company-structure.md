@@ -3,7 +3,7 @@
 This example models an organization with departments, employees, reporting
 lines, skills, and management hierarchy.
 
-Source: `examples/company_structure.py`.
+Source: `examples/datasets/company_structure.py`.
 
 ## Data Model
 
@@ -76,5 +76,5 @@ while True:
 Run the full example:
 
 ```bash
-python examples/company_structure.py
+python examples/datasets/company_structure.py
 ```

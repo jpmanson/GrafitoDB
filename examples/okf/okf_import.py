@@ -4,7 +4,7 @@ OKF is a directory of markdown files with YAML frontmatter. ``OKFBundle`` loads
 one into a queryable graph and speaks concepts/links/search instead of
 nodes/relationships — with the full graph one attribute away (``kb.db``).
 
-Run:  python examples/okf_import.py
+Run:  python examples/okf/okf_import.py
 """
 
 import tempfile

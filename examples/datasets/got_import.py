@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument("--db", default="got.db", help="SQLite database file path")
     parser.add_argument(
         "--cypher",
-        default=os.path.join("examples", "got-import.cypher"),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "got-import.cypher"),
         help="Path to the .cypher script",
     )
     parser.add_argument(

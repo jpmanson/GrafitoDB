@@ -53,7 +53,7 @@ print()
 print("Generating basic visualization...")
 save_matplotlib(
     graph,
-    'examples/output_matplotlib_basic.png',
+    'examples/visualization/output_matplotlib_basic.png',
     title="Basic Social Network",
     color_by_label=True,
     node_label='name',
@@ -61,7 +61,7 @@ save_matplotlib(
     label_offset="auto",
     show_edge_labels=True
 )
-print("OK - Saved: examples/output_matplotlib_basic.png")
+print("OK - Saved: examples/visualization/output_matplotlib_basic.png")
 
 # ============================================================
 # EXAMPLE 2: Color by group property
@@ -69,7 +69,7 @@ print("OK - Saved: examples/output_matplotlib_basic.png")
 print("\nGenerating visualization by group...")
 save_matplotlib(
     graph,
-    'examples/output_matplotlib_by_group.png',
+    'examples/visualization/output_matplotlib_by_group.png',
     title="Colored by Group",
     node_label='name',
     color_by_label=False,  # Don't color by label
@@ -89,7 +89,7 @@ save_matplotlib(
     label_offset="auto",
     show_edge_labels=True
 )
-print("OK - Saved: examples/output_matplotlib_by_group.png")
+print("OK - Saved: examples/visualization/output_matplotlib_by_group.png")
 
 # ============================================================
 # EXAMPLE 3: Circular layout with custom styles
@@ -97,7 +97,7 @@ print("OK - Saved: examples/output_matplotlib_by_group.png")
 print("\nGenerating circular visualization...")
 save_matplotlib(
     graph,
-    'examples/output_matplotlib_circular.png',
+    'examples/visualization/output_matplotlib_circular.png',
     title="Circular Layout",
     node_label='name',
     color_by_label=True,
@@ -117,7 +117,7 @@ save_matplotlib(
     label_offset="auto",
     show_edge_labels=True
 )
-print("OK - Saved: examples/output_matplotlib_circular.png")
+print("OK - Saved: examples/visualization/output_matplotlib_circular.png")
 
 # ============================================================
 # EXAMPLE 4: Node sizes based on property (score)
@@ -155,8 +155,8 @@ fig.axes[0].annotate(
     bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='#e74c4c', alpha=0.8)
 )
 
-fig.savefig('examples/output_matplotlib_sized.png', dpi=150, bbox_inches='tight')
-print("OK - Saved: examples/output_matplotlib_sized.png")
+fig.savefig('examples/visualization/output_matplotlib_sized.png', dpi=150, bbox_inches='tight')
+print("OK - Saved: examples/visualization/output_matplotlib_sized.png")
 
 # ============================================================
 # EXAMPLE 5: Using the generic export_graph backend
@@ -164,7 +164,7 @@ print("OK - Saved: examples/output_matplotlib_sized.png")
 print("\nGenerating visualization via export_graph...")
 export_graph(
     graph,
-    'examples/output_matplotlib_via_export.png',
+    'examples/visualization/output_matplotlib_via_export.png',
     backend='matplotlib',
     title="Via export_graph() API",
     node_label='name',
@@ -176,7 +176,7 @@ export_graph(
     show_edge_labels=True,
     dpi=120
 )
-print("OK - Saved: examples/output_matplotlib_via_export.png")
+print("OK - Saved: examples/visualization/output_matplotlib_via_export.png")
 
 print("\n" + "="*60)
 print("All visualizations generated successfully!")

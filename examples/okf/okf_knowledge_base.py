@@ -15,7 +15,7 @@ façade end to end:
 7. **Agent-memory write path** — ``add_concept`` / ``link`` / ``cite`` / ``save``.
 8. **Visualization** — via ``kb.db`` (the full graph is always reachable).
 
-Run:  python examples/okf_knowledge_base.py
+Run:  python examples/okf/okf_knowledge_base.py
 """
 
 from __future__ import annotations

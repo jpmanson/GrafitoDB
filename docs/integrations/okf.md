@@ -167,7 +167,7 @@ of nodes/relationships, while exposing the full graph via `bundle.db`.
 ```python
 from grafito.okf import OKFBundle
 
-kb = OKFBundle.load("examples/okf_knowledge_base", embed=embedder)
+kb = OKFBundle.load("examples/okf/okf_knowledge_base", embed=embedder)
 
 kb.layers()                                  # {'decisions': 3, 'glossary': 3, 'runbooks': 1}
 kb.index()                                    # root index.md, in memory (subdirs)
@@ -307,16 +307,16 @@ Design notes:
 
 ## Examples
 
-Both runnable examples use the `OKFBundle` façade. `examples/okf_import.py` is a
+Both runnable examples use the `OKFBundle` façade. `examples/okf/okf_import.py` is a
 short intro (load → concept/links → search → save with `viz.html`) over the
-tabular sample bundle in `examples/okf_bundle/`:
+tabular sample bundle in `examples/okf/okf_bundle/`:
 
 ```bash
-python examples/okf_import.py
+python examples/okf/okf_import.py
 ```
 
 OKF shines on *narrative*, cross-linked knowledge rather than tabular data.
-`examples/okf_knowledge_base/` is a small engineering knowledge base —
+`examples/okf/okf_knowledge_base/` is a small engineering knowledge base —
 architecture decision records, an on-call runbook, and glossary terms, all
 cross-linked with citations. The script walks the full façade — index/traversal,
 the directory tree, aggregation via the `kb.execute` escape hatch, semantic
@@ -325,5 +325,5 @@ path, and visualization (it retrieves a "slow query" runbook for the query
 *"how do I make a query run faster"*, which never uses those words):
 
 ```bash
-python examples/okf_knowledge_base.py
+python examples/okf/okf_knowledge_base.py
 ```

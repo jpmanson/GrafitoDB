@@ -142,7 +142,7 @@ export_graph(graph, "graph.dot", backend="graphviz", render="svg", engine="sfdp"
 Example script:
 
 ```bash
-python examples/graphviz_visualize.py
+python examples/visualization/graphviz_visualize.py
 ```
 
 Note: Graphviz rendering requires `dot` (`brew install graphviz`).
@@ -566,13 +566,13 @@ print(turtle)
 Typed RDF export example:
 
 ```bash
-python examples/rdf_export_typed.py
+python examples/rdf/rdf_export_typed.py
 ```
 
 Ontology + data export example:
 
 ```bash
-python examples/rdf_ontology_example.py
+python examples/rdf/rdf_ontology_example.py
 ```
 
 Visualization example (PyVis):
@@ -654,7 +654,7 @@ APOC-style loaders (HTML/XML):
 
 ```python
 results = db.execute("""
-    WITH "examples/belgian_beers.xml" AS path
+    WITH "examples/datasets/belgian_beers.xml" AS path
     CALL apoc.load.xml(path, ".//beer") YIELD value
     RETURN value.brand._text AS brand, value.brewery._text AS brewery
 """)
@@ -686,7 +686,7 @@ results = db.execute("""
 
 ```python
 results = db.execute("""
-    WITH "examples/belgian_beers.xml" AS path
+    WITH "examples/datasets/belgian_beers.xml" AS path
     CALL apoc.load.xmlParams(
         path,
         ".//beer",
@@ -723,7 +723,7 @@ Supported tar formats for `!member` loading: `.tar`, `.tgz`, `.tar.gz`, `.tar.bz
 
 ```python
 results = db.execute("""
-    WITH "examples/people.jsonl" AS url
+    WITH "examples/datasets/people.jsonl" AS url
     CALL apoc.import.json(url) YIELD nodes, relationships
     RETURN nodes, relationships
 """)
@@ -745,7 +745,7 @@ Compressed XML (same options across URL or local file):
 
 ```python
 results = db.execute("""
-    WITH "examples/beers.xml.gz" AS path
+    WITH "examples/datasets/beers.xml.gz" AS path
     CALL apoc.load.xml(path, ".//beer", {compression: "gzip"}) YIELD value
     RETURN value.name._text AS name
 """)
@@ -837,7 +837,7 @@ Neo4j dump import (programmatic):
 from grafito import GrafitoDatabase
 
 db = GrafitoDatabase(":memory:")
-db.import_neo4j_dump("examples/recommendations-5.26.dump")
+db.import_neo4j_dump("examples/datasets/recommendations-5.26.dump")
 ```
 
 Notes:
@@ -860,7 +860,7 @@ from grafito.okf import OKFBundle
 from grafito.embedding_functions import SentenceTransformerEmbeddingFunction
 
 # Load a bundle into an in-memory graph, embedding concepts for semantic search.
-kb = OKFBundle.load("examples/okf_knowledge_base",
+kb = OKFBundle.load("examples/okf/okf_knowledge_base",
                     embed=SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2"))
 
 # Navigate concepts, links, and citations in OKF vocabulary.
@@ -896,7 +896,7 @@ on `GrafitoDatabase` remain the canonical layer (`OKFBundle` delegates to them):
 from grafito import GrafitoDatabase
 
 db = GrafitoDatabase(":memory:")
-summary = db.import_okf_bundle("examples/okf_bundle")    # concept type -> label, ...
+summary = db.import_okf_bundle("examples/okf/okf_bundle")    # concept type -> label, ...
 db.text_search("customer", k=5)
 db.export_okf_bundle("out/bundle", write_viz=True)
 ```
@@ -905,7 +905,7 @@ Notes:
 - `PyYAML` is included by default; no extra needed.
 - `index.md`/`log.md` are skipped on import and regenerated on export.
 - Broken links and concepts without a `type` are tolerated (stub/`Concept`).
-- See `examples/okf_knowledge_base.py` and the [OKF docs](https://jpmanson.github.io/GrafitoDB/integrations/okf/).
+- See `examples/okf/okf_knowledge_base.py` and the [OKF docs](https://jpmanson.github.io/GrafitoDB/integrations/okf/).
 
 Note: `store_embeddings=True` persists raw vectors in SQLite (`vector_entries`). This is independent of FAISS
 `index_path`. You can enable both (FAISS index persistence + stored vectors) or just one, depending on your
@@ -1467,10 +1467,10 @@ The `examples/` directory contains complete demonstrations:
 Run examples:
 
 ```bash
-python examples/basic_usage.py
-python examples/social_network.py
-python examples/company_structure.py
-python examples/cypher_persistence.py
+python examples/basics/basic_usage.py
+python examples/datasets/social_network.py
+python examples/datasets/company_structure.py
+python examples/basics/cypher_persistence.py
 ```
 
 ## API Reference
