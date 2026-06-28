@@ -12,6 +12,13 @@ human-readable storage layer while GrafitoDB provides Cypher, full-text, and
 semantic search on top — a natural fit for **agent memory**: persist knowledge
 as markdown in git, index and query it at runtime.
 
+!!! tip "Start with `OKFBundle`"
+    [`OKFBundle`](#high-level-api-okfbundle) is the recommended high-level entry
+    point: load a bundle, navigate concepts/links/citations, search by meaning,
+    assemble grounded [`context()`](#grounded-context-for-agents-context) for an
+    agent prompt, and write memory back — with the raw graph one attribute away
+    via `bundle.db`. The functions below are the low-level layer it delegates to.
+
 ## Prerequisites
 
 ```bash
@@ -178,6 +185,81 @@ kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
 kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
 ```
 
+### Grounded context for agents: `context()`
+
+`search()` returns ranked hits; `context()` turns them into a prompt. It is the
+framework-agnostic bridge to *any* agent loop — no LangChain, LlamaIndex, or SDK
+required. Given a question it:
+
+1. **seeds** retrieval with `search()` (semantic / text / hybrid);
+2. **graph-expands** — follows each hit's outgoing `LINKS_TO` within
+   `expand_hops`, so the pack carries linked context the embedding alone would
+   miss (the GraphRAG edge over a flat vector store);
+3. **packs** the concepts into a token budget as titled, cited blocks, greedily
+   in priority order (the top hit is never dropped — it is truncated if it alone
+   exceeds the budget).
+
+```python
+pack = kb.context("how do I make a query run faster", budget_tokens=2000)
+
+str(pack)          # prompt-ready text (same as pack.text)
+pack.citations     # [{'url'|'concept', 'anchor', 'cited_by': [...]}, ...] — deduped
+pack.concepts      # the Concepts that made it into the budget, in order
+pack.hits          # the seed search Hits (scores/provenance)
+pack.tokens        # estimated token count of the packed text
+pack.truncated     # True if anything was dropped/cut to fit
+
+prompt = f"Answer using only this context:\n\n{pack}"   # drops straight into a prompt
+```
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `budget_tokens` | `2000` | Token budget for the packed text. |
+| `k` | `8` | Seed hits to retrieve before expansion. |
+| `mode` | `"auto"` | `"semantic"` / `"text"` / `"hybrid"` / `"auto"`. |
+| `type`, `layer` | `None` | Restrict retrieval to a concept type / directory layer. |
+| `expand_hops` | `1` | Outgoing `LINKS_TO` hops to graph-expand (`0` disables). |
+| `include_citations` | `True` | Render `Sources:` lines and collect `pack.citations`. |
+| `token_counter` | heuristic | Callable `str -> int`; default ≈ 4 chars/token. Pass your model's tokenizer for exact budgeting. |
+| `rerank` | `None` | An optional reranker (see below). |
+
+### Reranking
+
+A bi-encoder (embedding) retrieves cheaply but coarsely. A **reranker** re-scores
+candidates against the query *text* — the standard RAG precision step. In
+`context()` it matters most: graph expansion deliberately pulls in loosely
+related neighbours, and the reranker decides which of them deserve the token
+budget. It runs over the seed + expanded pool **before** packing.
+
+A `Reranker` is **any callable** `(query, candidates) -> [(concept, score), ...]`
+(most relevant first) — inject your own, or use one of the bundled ones:
+
+```python
+from grafito.okf import (
+    LexicalReranker,        # dependency-free (query-term overlap); offline default
+    CrossEncoderReranker,   # local HuggingFace cross-encoder (sentence-transformers)
+    CohereReranker,         # Cohere rerank API
+    VoyageReranker,         # Voyage AI rerank API
+    JinaReranker,           # Jina AI rerank API
+)
+
+kb.context(question, rerank=LexicalReranker())                          # offline, no deps
+kb.context(question, rerank=CrossEncoderReranker("BAAI/bge-reranker-base"))  # local HF
+kb.context(question, rerank=CohereReranker())                          # needs COHERE_API_KEY
+
+# Custom: any matching callable works — no subclassing required.
+def my_reranker(query, candidates):
+    return sorted(((c, score(query, c)) for c in candidates), key=lambda p: -p[1])
+
+kb.context(question, rerank=my_reranker)
+```
+
+The API rerankers (`Cohere`/`Voyage`/`Jina`) need `httpx` and read their API key
+from the matching environment variable (e.g. `COHERE_API_KEY`) or an explicit
+`api_key=`. `CrossEncoderReranker` needs `sentence-transformers` but runs
+offline. A reranker may return a subset (e.g. its own `top_n`); `context()` packs
+exactly the order and subset it returns.
+
 Mutating a bundle (agent-memory write path):
 
 ```python
@@ -218,6 +300,8 @@ Design notes:
 - **`search()` unifies** grafito's text and vector results into a single `Hit`
   (`hit.concept`, `hit.score`, `hit.via`); `mode="auto"` uses vectors when the
   bundle was loaded with `embed=`, else full-text.
+- **`context()` is framework-agnostic** — it returns prompt-ready text plus
+  citations, not a framework-specific object; the `rerank=` hook is any callable.
 - **`Concept`** is a thin view; `concept.node` is the raw grafito node.
 - Captures `okf_version` from the root `index.md` (lost by the low-level import).
 
@@ -236,9 +320,9 @@ OKF shines on *narrative*, cross-linked knowledge rather than tabular data.
 architecture decision records, an on-call runbook, and glossary terms, all
 cross-linked with citations. The script walks the full façade — index/traversal,
 the directory tree, aggregation via the `kb.execute` escape hatch, semantic
-search, the agent-memory write path, and visualization (it retrieves a "slow
-query" runbook for the
-query *"how do I make a query run faster"*, which never uses those words):
+search, grounded `context()` assembly with a reranker, the agent-memory write
+path, and visualization (it retrieves a "slow query" runbook for the query
+*"how do I make a query run faster"*, which never uses those words):
 
 ```bash
 python examples/okf_knowledge_base.py

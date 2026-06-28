@@ -15,7 +15,7 @@ GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 - **Vector/semantic search** (optional ANN backends)
 - **Full-text search** (FTS5) and hybrid workflows
 - **RDF/Turtle export** (optional)
-- **Open Knowledge Format (OKF)** import/export (agent-friendly markdown bundles)
+- **Open Knowledge Format (OKF)** import/export + the `OKFBundle` agent-memory façade (grounded retrieval, pluggable rerank)
 - **Visualization helpers** (optional, via PyVis)
 
 ## Documentation
@@ -844,29 +844,60 @@ Notes:
 - Requires `zstandard` (included by default).
 - Imports a Neo4j dump database file; no running Neo4j instance is needed.
 
-Open Knowledge Format (OKF) import/export:
+Open Knowledge Format (OKF) — agent memory as git-diffable markdown:
 
 [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf) is
 an agent-friendly knowledge format — a directory of markdown files with YAML
-frontmatter. GrafitoDB imports a bundle into a queryable graph and exports a
-graph back to a bundle, making OKF a durable, git-diffable storage layer for
-agent memory.
+frontmatter. GrafitoDB imports a bundle into a queryable graph and exports it
+back, making OKF a durable, git-diffable storage layer for agent memory.
+
+`OKFBundle` is the recommended entry point: a high-level façade that speaks
+concepts / links / citations / layers (the raw graph is always one attribute
+away via `bundle.db`).
+
+```python
+from grafito.okf import OKFBundle
+from grafito.embedding_functions import SentenceTransformerEmbeddingFunction
+
+# Load a bundle into an in-memory graph, embedding concepts for semantic search.
+kb = OKFBundle.load("examples/okf_knowledge_base",
+                    embed=SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2"))
+
+# Navigate concepts, links, and citations in OKF vocabulary.
+c = kb.concept("decisions/0003-vector-search")
+c.links()                                       # [Concept, ...] outgoing LINKS_TO
+c.cites()                                       # [{'url'|'concept', 'anchor'}, ...]
+
+# Retrieve by meaning (semantic / text / hybrid), results as a uniform Hit.
+kb.search("how do I make a query run faster", k=3)
+
+# Agent-ready context: retrieve, graph-expand, and pack into a token budget,
+# returning prompt-ready text plus the citations that back it. The optional
+# rerank= hook accepts any callable (here a dependency-free lexical reranker;
+# swap in CrossEncoderReranker / CohereReranker / VoyageReranker / JinaReranker).
+from grafito.okf import LexicalReranker
+
+pack = kb.context("how do I make a query run faster",
+                  budget_tokens=2000, rerank=LexicalReranker())
+prompt = f"Answer using only this context:\n\n{pack}"   # str(pack) == pack.text
+pack.citations                                  # sources, deduplicated, with cited_by
+
+# Agent-memory write path, then persist back to markdown (commit it to git).
+kb.add_concept("notes/idea", type="Note", title="An idea", body="# Notes\n...")
+kb.link("notes/idea", "decisions/0001-use-sqlite", anchor="builds on")
+kb.cite("notes/idea", "https://example.com/paper", anchor="source")
+kb.save("out/bundle", write_viz=True)
+```
+
+Prefer the raw graph? The low-level `import_okf_bundle` / `export_okf_bundle`
+on `GrafitoDatabase` remain the canonical layer (`OKFBundle` delegates to them):
 
 ```python
 from grafito import GrafitoDatabase
 
 db = GrafitoDatabase(":memory:")
-
-# Import: concept `type` -> label, frontmatter -> properties,
-# body -> `body` property, markdown links -> LINKS_TO relationships.
-summary = db.import_okf_bundle("examples/okf_bundle")
-# {'nodes': 3, 'relationships': 6, 'stubs': 0, 'skipped': 1}
-
-# Now query the knowledge with Cypher and full-text search
-db.execute("MATCH (a {title: 'Orders'})-[:LINKS_TO]->(b) RETURN b.title")
+summary = db.import_okf_bundle("examples/okf_bundle")    # concept type -> label, ...
 db.text_search("customer", k=5)
-
-# Export back to an OKF bundle (per-directory index.md + optional viz.html)
 db.export_okf_bundle("out/bundle", write_viz=True)
 ```
 
@@ -874,7 +905,7 @@ Notes:
 - `PyYAML` is included by default; no extra needed.
 - `index.md`/`log.md` are skipped on import and regenerated on export.
 - Broken links and concepts without a `type` are tolerated (stub/`Concept`).
-- See `examples/okf_import.py` and the [OKF docs](https://jpmanson.github.io/GrafitoDB/integrations/okf/).
+- See `examples/okf_knowledge_base.py` and the [OKF docs](https://jpmanson.github.io/GrafitoDB/integrations/okf/).
 
 Note: `store_embeddings=True` persists raw vectors in SQLite (`vector_entries`). This is independent of FAISS
 `index_path`. You can enable both (FAISS index persistence + stored vectors) or just one, depending on your
