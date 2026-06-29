@@ -22,7 +22,7 @@ from grafito.okf.rerank import (
 
 pytest.importorskip("yaml")
 
-KB = Path("examples") / "okf_knowledge_base"
+KB = Path("examples") / "okf" / "okf_knowledge_base"
 
 
 class _Embedder(EmbeddingFunction):

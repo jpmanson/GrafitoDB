@@ -15,8 +15,8 @@ from grafito.importers.okf import (
 
 pytest.importorskip("yaml")
 
-BUNDLE = Path("examples") / "okf_bundle"
-KB_BUNDLE = Path("examples") / "okf_knowledge_base"
+BUNDLE = Path("examples") / "okf" / "okf_bundle"
+KB_BUNDLE = Path("examples") / "okf" / "okf_knowledge_base"
 
 
 @pytest.fixture

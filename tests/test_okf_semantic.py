@@ -17,7 +17,7 @@ from grafito.embedding_functions import EmbeddingFunction
 
 pytest.importorskip("yaml")
 
-BUNDLE = Path("examples") / "okf_bundle"
+BUNDLE = Path("examples") / "okf" / "okf_bundle"
 
 
 class HashingEmbeddingFunction(EmbeddingFunction):

@@ -10,7 +10,7 @@ from grafito.importers.okf import parse_frontmatter
 
 pytest.importorskip("yaml")
 
-BUNDLE = Path("examples") / "okf_bundle"
+BUNDLE = Path("examples") / "okf" / "okf_bundle"
 
 
 @pytest.fixture
