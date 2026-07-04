@@ -164,6 +164,55 @@ def test_prune_removes_emptied_directories(db, tmp_path):
     assert (tmp_path / "tables").exists()
 
 
+def test_synthesized_body_groups_links_by_type(db, tmp_path):
+    a = db.create_node(labels=["Table"], properties={"title": "A"}, uri="okf:a")
+    b = db.create_node(labels=["Table"], properties={"title": "B"}, uri="okf:b")
+    c = db.create_node(labels=["Table"], properties={"title": "C"}, uri="okf:c")
+    db.create_relationship(a.id, b.id, "JOINS_WITH", properties={"anchor": "joined with B"})
+    db.create_relationship(a.id, c.id, "LINKS_TO", properties={"anchor": "see C"})
+    db.export_okf_bundle(str(tmp_path))
+    _, body = _read(tmp_path / "a.md")
+    assert body.index("# Links") < body.index("# Joins with")  # default section first
+    assert "[joined with B](/b.md)" in body.split("# Joins with")[1]
+
+    # Round-trip: typed re-import recovers the same relationship types.
+    db2 = GrafitoDatabase(":memory:")
+    db2.import_okf_bundle(str(tmp_path), typed_links=True, configure_fts=False)
+    rows = db2.execute("MATCH (x {title: 'A'})-[r]->(y) RETURN type(r) AS t, y.title AS n")
+    assert {(row["t"], row["n"]) for row in rows} == {("JOINS_WITH", "B"), ("LINKS_TO", "C")}
+    db2.close()
+
+
+# --- log.md synthesis -----------------------------------------------------------
+
+
+def test_write_log_groups_by_scope_and_date(db, tmp_path):
+    db.create_node(labels=["Note"], properties={"title": "A"}, uri="okf:decisions/a")
+    for date, kind, text, scope in [
+        ("2026-07-01", "Creation", "**Creation**: Set up.", ""),
+        ("2026-07-03", "Update", "**Update**: Tweaked [A](/decisions/a.md).", "decisions"),
+        ("2026-07-02", "Update", "**Update**: Older tweak.", "decisions"),
+    ]:
+        db.create_node(
+            labels=["LogEntry"],
+            properties={"date": date, "kind": kind, "text": text, "scope": scope, "log": True},
+        )
+    summary = db.export_okf_bundle(str(tmp_path))
+    assert summary["logs"] == 2
+    root_log = (tmp_path / "log.md").read_text(encoding="utf-8")
+    assert "## 2026-07-01" in root_log and "Set up." in root_log
+    scoped = (tmp_path / "decisions" / "log.md").read_text(encoding="utf-8")
+    assert scoped.index("## 2026-07-03") < scoped.index("## 2026-07-02")  # newest first
+
+
+def test_write_log_never_blanks_existing_log(db, tmp_path):
+    (tmp_path / "log.md").write_text("# Log\n## 2026-01-01\n* **Update**: history\n")
+    db.create_node(labels=["Note"], properties={"title": "A"}, uri="okf:a")
+    summary = db.export_okf_bundle(str(tmp_path))  # no LogEntry nodes in the graph
+    assert summary["logs"] == 0
+    assert "history" in (tmp_path / "log.md").read_text(encoding="utf-8")
+
+
 def test_prune_off_by_default(db, tmp_path):
     db.import_okf_bundle(str(BUNDLE), configure_fts=False)
     db.export_okf_bundle(str(tmp_path))

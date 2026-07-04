@@ -9,6 +9,7 @@ implementations — it does not duplicate them.
 
 from __future__ import annotations
 
+import datetime
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Iterator
@@ -68,6 +69,7 @@ class OKFBundle:
         source_path: str | None = None,
         okf_version: str | None = None,
         summary: dict | None = None,
+        autolog: bool = False,
     ) -> None:
         self._db = db
         self._uri_prefix = uri_prefix
@@ -76,6 +78,7 @@ class OKFBundle:
         self._source_path = source_path
         self._okf_version = okf_version
         self._summary = summary or {}
+        self.autolog = autolog
 
     # --- lifecycle ---------------------------------------------------------
 
@@ -92,6 +95,7 @@ class OKFBundle:
         embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
         directory_nodes: bool = False,
         import_log: bool = False,
+        autolog: bool = False,
         **import_kw: Any,
     ) -> "OKFBundle":
         """Import an OKF bundle and return a façade over it.
@@ -99,6 +103,10 @@ class OKFBundle:
         Creates an in-memory database when ``db`` is None. Pass
         ``directory_nodes=True`` / ``import_log=True`` to also materialize the
         directory tree (``CONTAINS``) and ``log.md`` history in the graph.
+        ``autolog=True`` makes ``add_concept``/``update_concept``/
+        ``remove_concept`` append changelog entries automatically (see
+        :meth:`log_entry`); combine with ``import_log=True`` so new entries
+        extend the existing history instead of replacing it on ``save()``.
         """
         from ..database import GrafitoDatabase
 
@@ -123,6 +131,7 @@ class OKFBundle:
             source_path=str(path),
             okf_version=cls._read_okf_version(path, uri_prefix),
             summary=summary,
+            autolog=autolog,
         )
 
     @classmethod
@@ -135,6 +144,7 @@ class OKFBundle:
         embed_index: str = "okf",
         embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
         source_path: str | Path | None = None,
+        autolog: bool = False,
     ) -> "OKFBundle":
         """Wrap an already-imported database without re-importing the bundle.
 
@@ -165,6 +175,7 @@ class OKFBundle:
                 if source_path is not None
                 else None
             ),
+            autolog=autolog,
         )
         bundle._summary = {"nodes": len(bundle)}
         return bundle
@@ -175,6 +186,7 @@ class OKFBundle:
         *,
         write_index: bool = True,
         write_viz: bool = False,
+        write_log: bool = True,
         prune: bool = True,
     ) -> dict:
         """Export the graph back to an OKF bundle (defaults to the load path).
@@ -184,6 +196,10 @@ class OKFBundle:
         are deleted, so removals round-trip. Only non-reserved markdown files
         are ever pruned — ``log.md``, images, ``viz.html`` etc. are untouched.
         Pass ``prune=False`` to only add/overwrite files.
+
+        ``write_log`` regenerates per-scope ``log.md`` from the graph's
+        ``LogEntry`` nodes (imported history plus :meth:`log_entry` /
+        ``autolog`` additions); scopes without entries are left alone.
         """
         target = str(path) if path is not None else self._source_path
         if target is None:
@@ -193,6 +209,7 @@ class OKFBundle:
             uri_prefix=self._uri_prefix,
             write_index=write_index,
             write_viz=write_viz,
+            write_log=write_log,
             prune=prune,
         )
 
@@ -423,8 +440,9 @@ class OKFBundle:
         """Retrieve, graph-expand, and pack grounded context within a token budget.
 
         Seeds with :meth:`search` (semantic/text/hybrid), then follows the graph
-        — what each hit ``LINKS_TO`` within ``expand_hops`` — so the pack carries
-        context the embedding alone would miss. Concepts are rendered as titled,
+        — what each hit links to (any relationship type except ``CITES``) within
+        ``expand_hops`` — so the pack carries context the embedding alone would
+        miss. Concepts are rendered as titled,
         cited blocks and greedily added in priority order (seeds first, by score;
         then expanded neighbours) until the budget is reached. The top hit is
         always included, truncated if it alone exceeds the budget.
@@ -496,6 +514,45 @@ class OKFBundle:
 
     # --- mutation ----------------------------------------------------------
 
+    def log_entry(
+        self,
+        text: str,
+        *,
+        kind: str = "Update",
+        date: str | None = None,
+        scope: str = "",
+        concepts: "list[Concept | str] | None" = None,
+    ) -> dict:
+        """Append a changelog entry (a ``LogEntry`` node, SPEC sec. 7).
+
+        ``save()`` serializes entries back to the scope's ``log.md``; entries
+        mentioning ``concepts`` are linked via ``MENTIONS`` so ``log(cid)``
+        finds them. ``date`` defaults to today (ISO ``YYYY-MM-DD``); ``kind``
+        is the conventional leading bold word (``Creation``/``Update``/...).
+        Set ``autolog=True`` at load time to have concept mutations call this
+        automatically.
+
+        Round-trip note: on re-import, ``MENTIONS`` edges are re-derived from
+        markdown links in the entry *text* — include ``[Title](/id.md)`` in
+        ``text`` (as autolog entries do) if the mention should survive
+        markdown round-trips.
+        """
+        date = date or datetime.date.today().isoformat()
+        entry_text = text if text.startswith("**") else f"**{kind}**: {text}"
+        node = self._db.create_node(
+            labels=["LogEntry"],
+            properties={
+                "date": date,
+                "kind": kind,
+                "text": entry_text,
+                "scope": scope,
+                "log": True,
+            },
+        )
+        for target in concepts or []:
+            self._db.create_relationship(node.id, self._resolve(target).node.id, "MENTIONS")
+        return {"date": date, "kind": kind, "text": entry_text, "scope": scope}
+
     def add_concept(
         self,
         concept_id: str,
@@ -530,7 +587,14 @@ class OKFBundle:
             self._db.upsert_embeddings(
                 [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
             )
-        return Concept(self, node)
+        concept = Concept(self, node)
+        if self.autolog:
+            self.log_entry(
+                f"Created [{title or concept_id}](/{concept_id}.md).",
+                kind="Creation",
+                concepts=[concept],
+            )
+        return concept
 
     def update_concept(
         self,
@@ -586,7 +650,20 @@ class OKFBundle:
             self._db.upsert_embeddings(
                 [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
             )
-        return Concept(self, self._db.get_node(node.id))
+        updated = Concept(self, self._db.get_node(node.id))
+        if self.autolog:
+            changed = [k for k, v in {**named, **frontmatter}.items() if v is not _UNSET]
+            if body is not _UNSET:
+                changed.append("body")
+            if type is not _UNSET:
+                changed.append("type")
+            self.log_entry(
+                f"Updated [{updated.title or concept_id}](/{concept_id}.md)"
+                f" ({', '.join(sorted(changed))}).",
+                kind="Update",
+                concepts=[updated],
+            )
+        return updated
 
     def link(
         self,
@@ -630,7 +707,10 @@ class OKFBundle:
                 self._db.remove_embedding(node_id, index=self._embed_index)
             except Exception:
                 pass
-        return self._db.delete_node(node_id)
+        deleted = self._db.delete_node(node_id)
+        if deleted and self.autolog:
+            self.log_entry(f"Removed {concept_id}.", kind="Removal")
+        return deleted
 
     # --- metadata ----------------------------------------------------------
 
@@ -724,28 +804,50 @@ class OKFBundle:
         )
 
     def _neighbors(
-        self, concept_id: str, rel_type: str, direction: str, *, depth: int = 1
+        self, concept_id: str, rel_type: str | None, direction: str, *, depth: int = 1
     ) -> list[Concept]:
-        if not _IDENTIFIER_RE.fullmatch(rel_type):
+        """Concepts within ``depth`` hops. ``rel_type=None`` follows any
+        relationship type except ``CITES`` (citations have their own accessor)."""
+        if rel_type is not None and not _IDENTIFIER_RE.fullmatch(rel_type):
             raise ValueError(f"Invalid relationship type: {rel_type!r}")
-        hops = f"*1..{int(depth)}" if depth > 1 else ""
+        start_rows = self._db.conn.execute(
+            "SELECT n.id FROM nodes n WHERE json_extract(n.properties, '$.concept_id') = ?",
+            (concept_id,),
+        ).fetchall()
+        frontier = {row["id"] for row in start_rows}
+        if not frontier:
+            return []
+        src_col, dst_col = ("source_node_id", "target_node_id")
         if direction == "in":
-            pattern = f"(a)<-[:{rel_type}{hops}]-(b)"
-        else:
-            pattern = f"(a)-[:{rel_type}{hops}]->(b)"
-        rows = self.execute(
-            f"MATCH {pattern} WHERE a.concept_id = $cid AND b.concept_id IS NOT NULL "
-            f"RETURN DISTINCT b",
-            cid=concept_id,
-        )
+            src_col, dst_col = dst_col, src_col
+        seen: set[int] = set(frontier)
+        reached: list[int] = []
+        for _ in range(max(1, int(depth))):
+            if not frontier:
+                break
+            placeholders = ",".join("?" * len(frontier))
+            sql = (
+                f"SELECT DISTINCT r.{dst_col} AS nid FROM relationships r"
+                f" WHERE r.{src_col} IN ({placeholders})"
+            )
+            params: list[Any] = sorted(frontier)
+            if rel_type is not None:
+                sql += " AND r.type = ?"
+                params.append(rel_type)
+            else:
+                sql += " AND r.type != 'CITES'"
+            frontier = set()
+            for row in self._db.conn.execute(sql + " ORDER BY nid", params).fetchall():
+                if row["nid"] not in seen:
+                    seen.add(row["nid"])
+                    frontier.add(row["nid"])
+                    reached.append(row["nid"])
         out: list[Concept] = []
-        seen: set[int] = set()
-        for row in rows:
-            node = self._node_from_row(row["b"])
-            if node.id in seen or node.properties.get("concept_id") == concept_id:
-                continue
-            seen.add(node.id)
-            out.append(Concept(self, node))
+        for node_id in reached:
+            node = self._db.get_node(node_id)
+            cid = node.properties.get("concept_id") if node else None
+            if isinstance(cid, str) and cid != concept_id:
+                out.append(Concept(self, node))
         return out
 
     def _citations_of(self, concept_id: str) -> list[dict]:

@@ -3092,6 +3092,7 @@ class GrafitoDatabase:
         path: str,
         *,
         link_type: str = "LINKS_TO",
+        typed_links: bool = False,
         citations: bool = True,
         citation_type: str = "CITES",
         configure_fts: bool = True,
@@ -3132,6 +3133,7 @@ class GrafitoDatabase:
             self,
             path,
             link_type=link_type,
+            typed_links=typed_links,
             citations=citations,
             citation_type=citation_type,
             configure_fts=configure_fts,
@@ -3154,15 +3156,18 @@ class GrafitoDatabase:
         uri_prefix: str = "okf:",
         write_index: bool = True,
         write_viz: bool = False,
+        write_log: bool = True,
         prune: bool = False,
     ) -> dict:
         """Export this database to an Open Knowledge Format (OKF) bundle.
 
         Writes a directory tree of markdown files with YAML frontmatter (the
         inverse of :meth:`import_okf_bundle`), with per-directory ``index.md``
-        files and an optional self-contained ``viz.html``. ``prune=True``
-        deletes concept ``.md`` files that no longer correspond to a node.
-        Returns a summary dict with concept/skipped/pruned/viz counts.
+        files, per-scope ``log.md`` files regenerated from ``LogEntry`` nodes
+        (``write_log``), and an optional self-contained ``viz.html``.
+        ``prune=True`` deletes concept ``.md`` files that no longer correspond
+        to a node. Returns a summary dict with
+        concept/skipped/pruned/logs/viz counts.
         """
         from .integrations.okf import export_bundle
 
@@ -3172,6 +3177,7 @@ class GrafitoDatabase:
             uri_prefix=uri_prefix,
             write_index=write_index,
             write_viz=write_viz,
+            write_log=write_log,
             prune=prune,
         )
 

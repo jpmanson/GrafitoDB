@@ -398,15 +398,18 @@ def test_log_import_and_mentions(tmp_path):
         bundle.db.close()
 
 
-def test_log_entries_not_exported(tmp_path):
+def test_log_entries_export_as_log_not_concepts(tmp_path):
     (tmp_path / "log.md").write_text("# Log\n## 2026-05-22\n* **Creation**: Set up.\n")
     (tmp_path / "a.md").write_text("---\ntype: Note\ntitle: A\n---\nbody\n")
     bundle = OKFBundle.load(str(tmp_path), import_log=True, configure_fts=False)
     try:
         out = tmp_path / "out"
         summary = bundle.save(str(out))
-        assert summary["concepts"] == 1
-        assert [p.name for p in out.rglob("*.md") if p.name != "index.md"] == ["a.md"]
+        assert summary["concepts"] == 1  # LogEntry nodes are not concept documents
+        assert summary["logs"] == 1  # ... but the changelog regenerates as log.md
+        names = sorted(p.name for p in out.rglob("*.md") if p.name != "index.md")
+        assert names == ["a.md", "log.md"]
+        assert "* **Creation**: Set up." in (out / "log.md").read_text(encoding="utf-8")
     finally:
         bundle.db.close()
 
@@ -745,3 +748,74 @@ def test_concepts_layer_accepts_nested_paths():
 def test_concepts_are_ordered_by_id(kb):
     ids = [c.id for c in kb.concepts()]
     assert ids == sorted(ids)
+
+
+# --- typed links in the façade ---------------------------------------------------
+
+
+def test_links_follow_any_type_and_filter_by_type(kb):
+    kb.add_concept("notes/t", type="Note", title="T")
+    kb.link("notes/t", "decisions/0001-use-sqlite", type="DEPENDS_ON", anchor="core")
+    kb.link("notes/t", "glossary/cypher", anchor="see")
+
+    t = kb.concept("notes/t")
+    assert {c.id for c in t.links()} == {"decisions/0001-use-sqlite", "glossary/cypher"}
+    assert {c.id for c in t.links(type="DEPENDS_ON")} == {"decisions/0001-use-sqlite"}
+    sqlite = kb.concept("decisions/0001-use-sqlite")
+    assert "notes/t" in {c.id for c in sqlite.linked_by()}
+
+
+def test_context_expands_across_typed_links(kb):
+    kb.add_concept("notes/u", type="Note", title="U",
+                   body="Unrelated topic: gardening and greenhouses.")
+    kb.link("runbooks/slow-queries", "notes/u", type="ESCALATES_TO")
+
+    pack = kb.context("how do I make a query run faster", k=2, budget_tokens=100000)
+    assert "notes/u" in {c.id for c in pack.concepts}  # pulled in via the typed edge
+
+
+# --- changelog: log_entry + autolog ----------------------------------------------
+
+
+def test_log_entry_round_trips_to_log_md(kb, tmp_path):
+    kb.log_entry("Reviewed the vector search ADR.", kind="Update",
+                 concepts=["decisions/0003-vector-search"], date="2026-07-04")
+    out = tmp_path / "bundle"
+    summary = kb.save(out)
+    assert summary["logs"] == 1
+    log_text = (out / "log.md").read_text(encoding="utf-8")
+    assert "## 2026-07-04" in log_text
+    assert "* **Update**: Reviewed the vector search ADR." in log_text
+
+    again = OKFBundle.load(str(out), import_log=True, configure_fts=False)
+    entries = again.log("decisions/0003-vector-search")
+    assert entries == []  # the entry text has no markdown link -> no MENTIONS
+    assert any("Reviewed the vector search ADR." in e["text"] for e in again.log())
+    again.db.close()
+
+
+def test_autolog_records_concept_mutations(tmp_path):
+    bundle = OKFBundle.load(str(KB), autolog=True, configure_fts=False)
+    try:
+        bundle.add_concept("notes/x", type="Note", title="An idea", body="...")
+        bundle.update_concept("notes/x", description="Refined.")
+        bundle.remove_concept("notes/x")
+
+        kinds = [e["kind"] for e in bundle.log()]
+        assert sorted(kinds) == ["Creation", "Removal", "Update"]
+        texts = " | ".join(e["text"] for e in bundle.log())
+        assert "[An idea](/notes/x.md)" in texts
+        assert "(description)" in texts
+
+        out = tmp_path / "out"
+        assert bundle.save(out)["logs"] == 1
+        assert "**Creation**: Created [An idea](/notes/x.md)." in (
+            (out / "log.md").read_text(encoding="utf-8")
+        )
+    finally:
+        bundle.db.close()
+
+
+def test_autolog_off_by_default(kb):
+    kb.add_concept("notes/quiet", type="Note", title="Quiet")
+    assert kb.log() == []

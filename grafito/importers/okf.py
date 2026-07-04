@@ -53,6 +53,11 @@ _EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "ftp://", "//")
 _CITATIONS_HEADING_RE = re.compile(r"^(#{1,6})\s+Citations\s*$", re.IGNORECASE | re.MULTILINE)
 _HEADING_RE = re.compile(r"^(#{1,6})\s+", re.MULTILINE)
 
+# Heading with its text, for typed-link extraction.
+_HEADING_TEXT_RE = re.compile(r"^#{1,6}\s+(.*\S)\s*$", re.MULTILINE)
+
+_REL_TYPE_RE = re.compile(r"[A-Z_][A-Z0-9_]*")
+
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Split a markdown document into (frontmatter dict, body).
@@ -129,13 +134,45 @@ def _posix_join(base: PurePosixPath, rel: str) -> str:
 
 def extract_links(body: str, source_id: str) -> list[tuple[str, str]]:
     """Return [(anchor, target_concept_id), ...] for intra-bundle links."""
-    links: list[tuple[str, str]] = []
+    return [(anchor, target) for anchor, target, _ in extract_typed_links(body, source_id)]
+
+
+def extract_typed_links(body: str, source_id: str) -> list[tuple[str, str, str | None]]:
+    """Return [(anchor, target_concept_id, heading), ...] for intra-bundle links.
+
+    ``heading`` is the text of the closest markdown heading above the link, or
+    ``None`` for links before any heading.
+    """
+    headings = [(m.start(), m.group(1)) for m in _HEADING_TEXT_RE.finditer(body)]
+    links: list[tuple[str, str, str | None]] = []
     for match in _LINK_RE.finditer(body):
         anchor, raw_target = match.group(1), match.group(2)
         classified = classify_target(raw_target, source_id)
-        if classified is not None and classified[0] == "concept":
-            links.append((anchor, classified[1]))
+        if classified is None or classified[0] != "concept":
+            continue
+        heading = None
+        for pos, text in headings:
+            if pos > match.start():
+                break
+            heading = text
+        links.append((anchor, classified[1], heading))
     return links
+
+
+def rel_type_from_heading(heading: str | None) -> str | None:
+    """Normalize a heading into a relationship type (``Joins with`` -> ``JOINS_WITH``).
+
+    Returns ``None`` when the heading is absent or does not normalize to a valid
+    type identifier — callers fall back to the generic link type. ``Links`` (the
+    conventional heading synthesized by the exporter) also maps to ``None`` so
+    the default section round-trips to the default ``link_type``.
+    """
+    if heading is None:
+        return None
+    rel_type = re.sub(r"[^A-Za-z0-9]+", "_", heading).strip("_").upper()
+    if rel_type == "LINKS" or not _REL_TYPE_RE.fullmatch(rel_type):
+        return None
+    return rel_type
 
 
 def split_citations(body: str) -> tuple[str, str]:
@@ -235,6 +272,7 @@ def import_bundle(
     root: str | Path,
     *,
     link_type: str = "LINKS_TO",
+    typed_links: bool = False,
     citations: bool = True,
     citation_type: str = "CITES",
     configure_fts: bool = True,
@@ -259,6 +297,11 @@ def import_bundle(
         db: Target database.
         root: Path to the bundle root directory.
         link_type: Relationship type created for intra-bundle markdown links.
+        typed_links: Derive the relationship type from the markdown heading a
+            link sits under (a link under ``# Joins with`` becomes a
+            ``JOINS_WITH`` relationship). Links before any heading, under
+            ``# Links``, or under headings that do not normalize to a valid
+            type keep ``link_type``. Off by default.
         citations: Parse the ``# Citations`` section into ``citation_type``
             relationships (to concepts or auto-created ``Reference`` nodes).
         citation_type: Relationship type created for citations.
@@ -305,7 +348,8 @@ def import_bundle(
 
     concept_to_node: dict[str, int] = {}
     real_concepts: dict[str, int] = {}  # concept_id -> node_id (file concepts only)
-    pending_links: list[tuple[str, str, str]] = []  # (source_id, anchor, target_id)
+    # (source_id, anchor, target_id, rel_type)
+    pending_links: list[tuple[str, str, str, str]] = []
     # (source_id, anchor, kind, value)
     pending_citations: list[tuple[str, str, str, str]] = []
     embed_docs: list[tuple[int, str]] = []  # (node_id, document) for real concepts
@@ -373,8 +417,9 @@ def import_bundle(
 
             # Citation links are excluded from LINKS_TO so they only yield CITES.
             main_body, citations_block = split_citations(body) if citations else (body, "")
-            for anchor, target_id in extract_links(main_body, concept_id):
-                pending_links.append((concept_id, anchor, target_id))
+            for anchor, target_id, heading in extract_typed_links(main_body, concept_id):
+                rel_type = (rel_type_from_heading(heading) if typed_links else None) or link_type
+                pending_links.append((concept_id, anchor, target_id, rel_type))
             for anchor, kind, value in extract_citations(citations_block, concept_id):
                 pending_citations.append((concept_id, anchor, kind, value))
 
@@ -397,11 +442,11 @@ def import_bundle(
                 stubs += 1
             return concept_to_node[target_id]
 
-        for source_id, anchor, target_id in pending_links:
+        for source_id, anchor, target_id, rel_type in pending_links:
             db.create_relationship(
                 concept_to_node[source_id],
                 resolve_concept(target_id),
-                link_type,
+                rel_type,
                 properties={"anchor": anchor} if anchor else {},
             )
             relationships += 1

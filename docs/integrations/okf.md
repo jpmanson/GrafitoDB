@@ -104,6 +104,7 @@ bundle — useful for hybrid agent-memory workflows.
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `link_type` | `"LINKS_TO"` | Relationship type created for intra-bundle markdown links. |
+| `typed_links` | `False` | Derive the relationship type from the heading a link sits under — a link under `# Joins with` becomes a `JOINS_WITH` relationship. Links before any heading, under `# Links`, or under headings that don't normalize to a valid type keep `link_type`. |
 | `configure_fts` | `True` | Configure full-text search over `title`/`description`/`body` (best-effort; skipped if SQLite lacks FTS5). |
 | `uri_prefix` | `"okf:"` | Prefix prepended to each concept ID to form the node `uri`. |
 | `progress_every` | `None` | Print a progress line every N concept files (and per phase) — for large bundles. |
@@ -157,8 +158,11 @@ This writes:
 - an optional self-contained `viz.html` graph viewer (`write_viz=True`).
 
 Stub nodes (created for broken links during import) are **not** exported. Nodes
-created programmatically without a stored `body` get a synthesized `# Links`
-section listing their outgoing relationships.
+created programmatically without a stored `body` get synthesized link sections
+from their outgoing relationships: `LINKS_TO` edges under `# Links`, and every
+other type under a heading derived from it (`JOINS_WITH` → `# Joins with`), so
+typed relationships round-trip through markdown when re-imported with
+`typed_links=True`.
 
 ### Options
 
@@ -167,6 +171,7 @@ section listing their outgoing relationships.
 | `uri_prefix` | `"okf:"` | Prefix used to recover concept IDs from node URIs. Should match the import value. |
 | `write_index` | `True` | Generate per-directory `index.md` files. |
 | `write_viz` | `False` | Also emit a self-contained `viz.html` at the bundle root. |
+| `write_log` | `True` | Regenerate per-scope `log.md` files from the graph's `LogEntry` nodes (imported history plus `log_entry`/autolog additions). Scopes without entries are left alone — an existing `log.md` is never blanked. |
 | `prune` | `False` | Delete concept `.md` files that no longer correspond to a node (directories left empty are removed). `log.md` and non-markdown files are never touched. `OKFBundle.save()` prunes by default so removals round-trip. |
 
 ## Round-trip and agent memory
@@ -206,7 +211,8 @@ kb.index()                                    # root index.md, in memory (subdir
 kb.index("decisions")                         # a directory's listing: title+description, no bodies
 c = kb.concept("decisions/0003-vector-search")
 c.title                                       # 'Add optional vector search'
-c.links()                                     # [Concept, ...] outgoing LINKS_TO
+c.links()                                     # [Concept, ...] any outgoing link type
+c.links(type="JOINS_WITH")                    # restrict to one type (typed_links bundles)
 c.cites()                                     # [{'url'|'concept', 'anchor'}, ...]
 
 kb.search("how do I make a query run faster", k=3)        # semantic / text / hybrid
@@ -225,9 +231,10 @@ framework-agnostic bridge to *any* agent loop — no LangChain, LlamaIndex, or S
 required. Given a question it:
 
 1. **seeds** retrieval with `search()` (semantic / text / hybrid);
-2. **graph-expands** — follows each hit's outgoing `LINKS_TO` within
-   `expand_hops`, so the pack carries linked context the embedding alone would
-   miss (the GraphRAG edge over a flat vector store);
+2. **graph-expands** — follows each hit's outgoing links (any relationship
+   type except `CITES`, including typed links) within `expand_hops`, so the
+   pack carries linked context the embedding alone would miss (the GraphRAG
+   edge over a flat vector store);
 3. **packs** the concepts into a token budget as titled, cited blocks, greedily
    in priority order (the top hit is never dropped — it is truncated if it alone
    exceeds the budget).
@@ -251,7 +258,7 @@ prompt = f"Answer using only this context:\n\n{pack}"   # drops straight into a 
 | `k` | `8` | Seed hits to retrieve before expansion. |
 | `mode` | `"auto"` | `"semantic"` / `"text"` / `"hybrid"` / `"auto"`. |
 | `type`, `layer` | `None` | Restrict retrieval to a concept type / directory layer. |
-| `expand_hops` | `1` | Outgoing `LINKS_TO` hops to graph-expand (`0` disables). |
+| `expand_hops` | `1` | Outgoing link hops to graph-expand (`0` disables); follows any relationship type except `CITES`. |
 | `include_citations` | `True` | Render `Sources:` lines and collect `pack.citations`. |
 | `token_counter` | heuristic | Callable `str -> int`; default ≈ 4 chars/token. Pass your model's tokenizer for exact budgeting. |
 | `rerank` | `None` | An optional reranker (see below). |
@@ -314,6 +321,31 @@ relabels the node, and any producer-defined frontmatter key); the FTS index and
 the vector embedding follow automatically. `save()` mirrors the graph to disk:
 files for removed concepts are pruned so `remove_concept` round-trips (pass
 `prune=False` to only add/overwrite).
+
+### Changelog: `log_entry()` and autolog
+
+An agent that writes memory should also leave a history. `log_entry()` appends
+a changelog entry (a `LogEntry` node, SPEC §7) that `save()` serializes to the
+scope's `log.md` — and `autolog=True` at load time does it automatically for
+every `add_concept` / `update_concept` / `remove_concept`:
+
+```python
+kb = OKFBundle.load("bundle", import_log=True, autolog=True)
+
+kb.add_concept("notes/idea", type="Note", title="An idea", body="...")
+kb.update_concept("notes/idea", description="Refined.")
+kb.log_entry("Consolidated duplicate notes.", kind="Update",
+             concepts=["notes/idea"])          # manual entry, MENTIONS the concept
+
+kb.log()                    # entries newest first, including the imported history
+kb.save()                   # regenerates log.md per scope (git-diffable history)
+```
+
+Autolog entries embed a markdown link to the concept
+(`**Creation**: Created [An idea](/notes/idea.md).`), so `MENTIONS` edges
+survive markdown round-trips. Load with `import_log=True` when the bundle
+already has a `log.md` so new entries extend the history instead of replacing
+it on `save()`.
 
 Round-trip note: `save()` writes each concept's stored `body` verbatim. For a
 concept created **without** a body, `link`/`cite` edges are synthesized into

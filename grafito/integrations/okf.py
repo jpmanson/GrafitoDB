@@ -57,16 +57,23 @@ def _ordered_frontmatter(node) -> dict:
     return frontmatter
 
 
+def _heading_from_rel_type(rel_type: str) -> str:
+    """Inverse of the importer's heading normalization (``JOINS_WITH`` -> ``Joins with``)."""
+    return rel_type.replace("_", " ").capitalize()
+
+
 def _synthesize_body(
     db: "GrafitoDatabase", node, uri_prefix: str, links_heading: str
 ) -> str:
     """Synthesize a body for a node with none stored, from its outgoing edges.
 
-    ``LINKS_TO`` edges become a ``# {links_heading}`` section; ``CITES`` edges
-    become a ``# Citations`` section (external URLs for ``Reference`` targets,
-    bundle-relative links for concept targets).
+    ``LINKS_TO`` edges become a ``# {links_heading}`` section; other typed
+    edges each get a heading derived from their type (``JOINS_WITH`` ->
+    ``# Joins with``), so bundles imported with ``typed_links=True`` round-trip.
+    ``CITES`` edges become a ``# Citations`` section (external URLs for
+    ``Reference`` targets, bundle-relative links for concept targets).
     """
-    link_lines: list[str] = []
+    link_sections: dict[str, list[str]] = {}  # rel type -> lines
     cite_lines: list[str] = []
     for rel in db.match_relationships(source_id=node.id):
         target = db.get_node(rel.target_id)
@@ -84,11 +91,14 @@ def _synthesize_body(
         else:
             tid = _concept_id(target, uri_prefix)
             label = anchor or target.properties.get("title") or tid
-            link_lines.append(f"- [{label}](/{tid}.md)")
+            link_sections.setdefault(rel.type, []).append(f"- [{label}](/{tid}.md)")
 
     sections: list[str] = []
-    if link_lines:
-        sections.append(f"# {links_heading}\n\n" + "\n".join(link_lines) + "\n")
+    # The default link type first (under the conventional heading), then the
+    # typed sections alphabetically, citations last.
+    for rel_type in sorted(link_sections, key=lambda t: (t != "LINKS_TO", t)):
+        heading = links_heading if rel_type == "LINKS_TO" else _heading_from_rel_type(rel_type)
+        sections.append(f"# {heading}\n\n" + "\n".join(link_sections[rel_type]) + "\n")
     if cite_lines:
         sections.append("# Citations\n\n" + "\n".join(cite_lines) + "\n")
     return "\n".join(sections)
@@ -101,6 +111,7 @@ def export_bundle(
     uri_prefix: str = "okf:",
     write_index: bool = True,
     write_viz: bool = False,
+    write_log: bool = True,
     prune: bool = False,
     links_heading: str = "Links",
 ) -> dict:
@@ -117,6 +128,11 @@ def export_bundle(
             directory index grouping its concepts by ``type``.
         write_viz: Also emit a self-contained ``viz.html`` graph viewer at the
             bundle root (best-effort; mirrors the reference bundles).
+        write_log: Regenerate per-scope ``log.md`` files (SPEC sec. 7) from the
+            ``LogEntry`` nodes in the graph (present when the bundle was
+            imported with ``import_log=True`` or entries were added via
+            ``OKFBundle.log_entry``). Scopes without entries are left alone —
+            an existing ``log.md`` is never deleted or blanked.
         prune: Delete concept ``.md`` files under ``root`` that no longer
             correspond to a node — so deleting a concept from the graph deletes
             its file on re-export. Reserved files (``log.md``), ``index.md``
@@ -126,7 +142,7 @@ def export_bundle(
             node has no stored ``body``.
 
     Returns:
-        Summary dict: ``{"concepts", "skipped", "pruned", "viz"}``.
+        Summary dict: ``{"concepts", "skipped", "pruned", "logs", "viz"}``.
     """
     root_path = Path(root)
     root_path.mkdir(parents=True, exist_ok=True)
@@ -189,11 +205,51 @@ def export_bundle(
     if write_index:
         _write_indexes(root_path, index_entries)
 
+    logs = 0
+    if write_log:
+        logs = _write_logs(db, root_path)
+
     viz_written = False
     if write_viz:
         viz_written = _write_viz(db, root_path)
 
-    return {"concepts": concepts, "skipped": skipped, "pruned": pruned, "viz": viz_written}
+    return {
+        "concepts": concepts,
+        "skipped": skipped,
+        "pruned": pruned,
+        "logs": logs,
+        "viz": viz_written,
+    }
+
+
+def _write_logs(db: "GrafitoDatabase", root_path: Path) -> int:
+    """Serialize ``LogEntry`` nodes to per-scope ``log.md`` files (SPEC sec. 7).
+
+    Entries are grouped by scope (the directory the log belongs to) and date,
+    newest date first; within a date, creation order is kept. Returns the number
+    of ``log.md`` files written. Scopes without entries are not touched.
+    """
+    # scope -> date -> [(node_id, text)]
+    scopes: dict[str, dict[str, list[tuple[int, str]]]] = {}
+    for node in db.match_nodes(properties={"log": True}):
+        props = node.properties
+        date, text = props.get("date"), props.get("text")
+        if not isinstance(date, str) or not date or not isinstance(text, str) or not text:
+            continue
+        scope = props.get("scope") or ""
+        scopes.setdefault(scope, {}).setdefault(date, []).append((node.id, text))
+
+    for scope, by_date in scopes.items():
+        lines = ["# Update Log", ""]
+        for date in sorted(by_date, reverse=True):
+            lines.append(f"## {date}")
+            for _node_id, text in sorted(by_date[date]):
+                lines.append(f"* {text}")
+            lines.append("")
+        target = root_path / scope / "log.md" if scope else root_path / "log.md"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    return len(scopes)
 
 
 def _prune_orphans(root_path: Path, written: set[Path]) -> int:

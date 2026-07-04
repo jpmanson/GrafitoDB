@@ -336,6 +336,56 @@ def test_validate_missing_bundle_raises(tmp_path):
         validate_okf_bundle(str(tmp_path / "nope"))
 
 
+# --- Typed links from headings --------------------------------------------------
+
+
+def _typed_bundle(tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Table\ntitle: A\n---\n"
+        "Intro link to [b](/b.md).\n\n"
+        "# Joins with\n\nJoined with [b](/b.md) on id.\n\n"
+        "# Links\n\nAlso see [c](/c.md).\n\n"
+        "# Depends on!\n\n[c](/c.md)\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Table\ntitle: B\n---\nx\n", encoding="utf-8")
+    (tmp_path / "c.md").write_text("---\ntype: Table\ntitle: C\n---\nx\n", encoding="utf-8")
+
+
+def test_typed_links_from_headings(db, tmp_path):
+    _typed_bundle(tmp_path)
+    db.import_okf_bundle(str(tmp_path), typed_links=True, configure_fts=False)
+    rows = db.execute(
+        "MATCH (a {title: 'A'})-[r]->(b) RETURN type(r) AS t, b.title AS target ORDER BY t"
+    )
+    pairs = {(row["t"], row["target"]) for row in rows}
+    # Before any heading and under `# Links` -> the default type; headings
+    # normalize (`Joins with` -> JOINS_WITH, `Depends on!` -> DEPENDS_ON).
+    assert pairs == {
+        ("LINKS_TO", "B"),
+        ("JOINS_WITH", "B"),
+        ("LINKS_TO", "C"),
+        ("DEPENDS_ON", "C"),
+    }
+
+
+def test_typed_links_off_by_default(db, tmp_path):
+    _typed_bundle(tmp_path)
+    db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    rows = db.execute("MATCH (a {title: 'A'})-[r]->(b) RETURN type(r) AS t")
+    assert {row["t"] for row in rows} == {"LINKS_TO"}
+
+
+def test_rel_type_from_heading_normalization():
+    from grafito.importers.okf import rel_type_from_heading
+
+    assert rel_type_from_heading("Joins with") == "JOINS_WITH"
+    assert rel_type_from_heading("Depends on!") == "DEPENDS_ON"
+    assert rel_type_from_heading("Links") is None  # conventional default section
+    assert rel_type_from_heading(None) is None
+    assert rel_type_from_heading("123") is None  # not a valid type identifier
+
+
 # --- Progress reporting -------------------------------------------------------
 
 

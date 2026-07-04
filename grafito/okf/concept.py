@@ -62,15 +62,20 @@ class Concept:
 
     # --- navigation --------------------------------------------------------
 
-    def links(self, *, type: str = "LINKS_TO") -> list["Concept"]:
-        """Concepts this concept links to (outgoing ``LINKS_TO`` by default)."""
+    def links(self, *, type: str | None = None) -> list["Concept"]:
+        """Concepts this concept links to.
+
+        Follows every outgoing relationship type except ``CITES`` (see
+        :meth:`cites`); pass ``type=`` to restrict to one type — useful for
+        bundles imported with ``typed_links=True`` (e.g. ``type="JOINS_WITH"``).
+        """
         return self._bundle._neighbors(self.id, type, "out")
 
-    def linked_by(self, *, type: str = "LINKS_TO") -> list["Concept"]:
-        """Concepts that link to this one (incoming)."""
+    def linked_by(self, *, type: str | None = None) -> list["Concept"]:
+        """Concepts that link to this one (incoming; any type except ``CITES``)."""
         return self._bundle._neighbors(self.id, type, "in")
 
-    def neighbors(self, *, depth: int = 1, type: str = "LINKS_TO") -> list["Concept"]:
+    def neighbors(self, *, depth: int = 1, type: str | None = None) -> list["Concept"]:
         """Concepts reachable within ``depth`` outgoing hops."""
         return self._bundle._neighbors(self.id, type, "out", depth=depth)
 
