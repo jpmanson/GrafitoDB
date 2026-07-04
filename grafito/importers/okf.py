@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from contextlib import nullcontext
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import yaml
 
@@ -242,6 +242,9 @@ def import_bundle(
     embed_index: str = "okf",
     embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
     embed_backend: str = "bruteforce",
+    embed_options: dict | None = None,
+    progress_every: int | None = None,
+    progress: Callable[[str, int], None] | None = None,
     directory_nodes: bool = False,
     directory_label: str = "Directory",
     contains_type: str = "CONTAINS",
@@ -268,6 +271,17 @@ def import_bundle(
         embed_fields: Concept fields concatenated into the embedded document.
         embed_backend: Vector index backend (default ``bruteforce``, no extra
             dependencies).
+        embed_options: Extra options forwarded to ``create_vector_index`` —
+            e.g. ``{"store_embeddings": True}`` persists the vectors in the
+            database so a file-backed db reuses them across sessions without
+            re-embedding, and ``{"index_path": ...}`` sets the on-disk location
+            for file-backed backends (faiss/hnswlib/...).
+        progress_every: Print a progress line every N concept files (and at
+            the end of each phase). Mirrors ``import_neo4j_dump``.
+        progress: Optional callback ``(phase, count)`` invoked at the same
+            cadence instead of printing — for programmatic progress reporting.
+            Phases: ``concepts``, ``links``, ``citations``, ``embedded``,
+            ``done``.
         directory_nodes: Synthesize ``directory_label`` nodes + ``contains_type``
             edges from concept paths, enabling top-down graph traversal
             (root -> subdir -> concept). Off by default.
@@ -298,6 +312,23 @@ def import_bundle(
     nodes = 0
     skipped = 0
     malformed: list[str] = []
+
+    def report(phase: str, count: int, *, end: bool = False) -> None:
+        if progress is not None:
+            progress(phase, count)
+        elif progress_every:
+            if end:
+                print(f"\rImported {count} {phase}." + " " * 20)
+            else:
+                print(f"\rImporting {phase}: {count}", end="", flush=True)
+
+    # In-loop reporting cadence: every `progress_every` files, or every file
+    # when only a callback is given.
+    stride = progress_every or (1 if progress is not None else 0)
+
+    # Concept lookups (`concept_id`) are served by an expression index. Created
+    # before the transaction because index creation commits unconditionally.
+    db.create_node_index(None, "concept_id")
 
     # One transaction for the whole import: per-node autocommit dominates load
     # time on large bundles. Respect a transaction the caller already opened.
@@ -334,6 +365,8 @@ def import_bundle(
             concept_to_node[concept_id] = node.id
             real_concepts[concept_id] = node.id
             nodes += 1
+            if stride and nodes % stride == 0:
+                report("concepts", nodes)
 
             if embed is not None:
                 embed_docs.append((node.id, concept_document(properties, embed_fields)))
@@ -344,6 +377,9 @@ def import_bundle(
                 pending_links.append((concept_id, anchor, target_id))
             for anchor, kind, value in extract_citations(citations_block, concept_id):
                 pending_citations.append((concept_id, anchor, kind, value))
+
+        if stride:
+            report("concepts", nodes, end=True)
 
         # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
         relationships = 0
@@ -369,6 +405,8 @@ def import_bundle(
                 properties={"anchor": anchor} if anchor else {},
             )
             relationships += 1
+        if stride:
+            report("links", relationships, end=True)
 
         # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
         reference_nodes: dict[str, int] = {}  # url -> node_id
@@ -392,6 +430,8 @@ def import_bundle(
                 properties={"anchor": anchor} if anchor else {},
             )
             citation_count += 1
+        if stride:
+            report("citations", citation_count, end=True)
 
         # Optional: synthesize a directory tree (Directory nodes + CONTAINS edges).
         directories = 0
@@ -465,11 +505,17 @@ def import_bundle(
                 embed_index,
                 dim=dim,
                 backend=embed_backend,
+                options=dict(embed_options) if embed_options else None,
                 embedding_function=embed,
                 if_not_exists=True,
             )
             db.upsert_embeddings(node_ids, documents, index=embed_index)
             embedded = len(embed_docs)
+            if stride:
+                report("embedded", embedded, end=True)
+
+    if progress is not None:
+        progress("done", nodes)
 
     return {
         "nodes": nodes,

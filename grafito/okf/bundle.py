@@ -34,6 +34,26 @@ _UNSET: Any = object()
 # Node properties that are grafito/OKF bookkeeping, not editable frontmatter.
 _PROTECTED_PROPS = frozenset({"concept_id", "stub", "okf_auto", "directory", "log"})
 
+# SQL predicate selecting real concept rows (the SQL twin of `_is_concept`).
+# `concept_id` is served by the expression index created at import time.
+_CONCEPT_SQL = (
+    "json_extract(n.properties, '$.concept_id') IS NOT NULL"
+    " AND json_extract(n.properties, '$.stub') IS NULL"
+    " AND json_extract(n.properties, '$.okf_auto') IS NULL"
+    " AND json_extract(n.properties, '$.directory') IS NULL"
+    " AND json_extract(n.properties, '$.log') IS NULL"
+)
+
+# First (alphabetical) label of a node — matches Node.labels ordering.
+_FIRST_LABEL_SQL = (
+    "(SELECT MIN(l.name) FROM node_labels nl JOIN labels l ON l.id = nl.label_id"
+    " WHERE nl.node_id = n.id)"
+)
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 class OKFBundle:
     """An OKF knowledge bundle backed by a GrafitoDB graph."""
@@ -105,6 +125,50 @@ class OKFBundle:
             summary=summary,
         )
 
+    @classmethod
+    def open(
+        cls,
+        db: "GrafitoDatabase",
+        *,
+        embed: Any = None,
+        uri_prefix: str = "okf:",
+        embed_index: str = "okf",
+        embed_fields: tuple[str, ...] = DEFAULT_EMBED_FIELDS,
+        source_path: str | Path | None = None,
+    ) -> "OKFBundle":
+        """Wrap an already-imported database without re-importing the bundle.
+
+        The durable-reuse path: ``load(path, db=GrafitoDatabase("kb.db"),
+        embed=..., embed_options={"store_embeddings": True})`` once, then in
+        later sessions ``open(GrafitoDatabase("kb.db"))`` — concepts, FTS, and
+        the persisted vector index are all served from the database file, with
+        no markdown parsing and no re-embedding.
+
+        ``embed``: pass the bundle's embedding function when it is a custom one
+        the registry cannot rebuild by name; built-in functions (e.g.
+        SentenceTransformer) are rehydrated automatically from the index
+        metadata. ``source_path`` (optional) sets the default ``save()`` target
+        and lets ``okf_version`` be read from the bundle's root ``index.md``.
+        """
+        if embed is not None:
+            db.register_embedding_function(embed.name(), embed)
+        # Idempotent; present already for bundles imported by recent versions.
+        db.create_node_index(None, "concept_id")
+        bundle = cls(
+            db,
+            uri_prefix=uri_prefix,
+            embed_index=embed_index,
+            embed_fields=embed_fields,
+            source_path=str(source_path) if source_path is not None else None,
+            okf_version=(
+                cls._read_okf_version(source_path, uri_prefix)
+                if source_path is not None
+                else None
+            ),
+        )
+        bundle._summary = {"nodes": len(bundle)}
+        return bundle
+
     def save(
         self,
         path: str | Path | None = None,
@@ -159,21 +223,13 @@ class OKFBundle:
         layer: str | None = None,
         tag: str | None = None,
     ) -> list[Concept]:
-        """List concepts, optionally filtered by type/layer/tag."""
-        nodes = self._db.match_nodes(labels=[type] if type else None)
-        out: list[Concept] = []
-        for node in nodes:
-            if not self._is_concept(node):
-                continue
-            cid = node.properties.get("concept_id")
-            if not isinstance(cid, str):
-                continue
-            if layer is not None and self._layer_of(cid) != layer:
-                continue
-            if tag is not None and tag not in (node.properties.get("tags") or []):
-                continue
-            out.append(Concept(self, node))
-        return out
+        """List concepts (ordered by ID), optionally filtered by type/layer/tag.
+
+        Filtering runs in SQL — only matching nodes are hydrated, so this stays
+        fast on large bundles.
+        """
+        rows = self._concept_query("n.id", type=type, layer=layer, tag=tag)
+        return [Concept(self, self._db.get_node(row["id"])) for row in rows]
 
     def __getitem__(self, concept_id: str) -> Concept:
         concept = self.concept(concept_id)
@@ -185,17 +241,27 @@ class OKFBundle:
         return iter(self.concepts())
 
     def __len__(self) -> int:
-        return len(self.concepts())
+        row = self._db.conn.execute(
+            f"SELECT COUNT(*) AS n FROM nodes n WHERE {_CONCEPT_SQL}"
+        ).fetchone()
+        return int(row["n"])
 
     # --- topology ----------------------------------------------------------
 
     def layers(self) -> dict[str, int]:
         """Top-level concept-id segments and their concept counts."""
-        counts: dict[str, int] = {}
-        for concept in self.concepts():
-            top = self._layer_of(concept.id) or "."
-            counts[top] = counts.get(top, 0) + 1
-        return counts
+        rows = self._db.conn.execute(
+            f"""
+            SELECT CASE WHEN instr(cid, '/') > 0
+                        THEN substr(cid, 1, instr(cid, '/') - 1)
+                        ELSE '.' END AS layer,
+                   COUNT(*) AS n
+            FROM (SELECT json_extract(n.properties, '$.concept_id') AS cid
+                  FROM nodes n WHERE {_CONCEPT_SQL})
+            GROUP BY layer ORDER BY layer
+            """
+        ).fetchall()
+        return {row["layer"]: int(row["n"]) for row in rows}
 
     def index(self, layer: str | None = None) -> dict:
         """Reconstruct the OKF index view for a directory (progressive disclosure).
@@ -210,26 +276,39 @@ class OKFBundle:
         """
         path = (layer or "").strip("/")
         prefix = f"{path}/" if path else ""
+        params: list[Any] = []
+        where = _CONCEPT_SQL
+        if prefix:
+            where += " AND json_extract(n.properties, '$.concept_id') LIKE ? ESCAPE '\\'"
+            params.append(f"{_escape_like(prefix)}%")
+        # Listing needs only id/title/description/type — bodies stay on disk.
+        rows = self._db.conn.execute(
+            f"""
+            SELECT json_extract(n.properties, '$.concept_id') AS cid,
+                   json_extract(n.properties, '$.title') AS title,
+                   json_extract(n.properties, '$.description') AS description,
+                   {_FIRST_LABEL_SQL} AS type
+            FROM nodes n WHERE {where}
+            ORDER BY cid
+            """,
+            params,
+        ).fetchall()
         subdirs: dict[str, int] = {}
         concepts: list[dict] = []
-        for concept in self.concepts():
-            cid = concept.id
-            if prefix and not cid.startswith(prefix):
-                continue
-            rest = cid[len(prefix):]
+        for row in rows:
+            rest = row["cid"][len(prefix):]
             if "/" in rest:
                 child = rest.split("/", 1)[0]
                 subdirs[child] = subdirs.get(child, 0) + 1
             elif rest:
                 concepts.append(
                     {
-                        "id": cid,
-                        "title": concept.title or rest,
-                        "description": concept.description,
-                        "type": concept.type,
+                        "id": row["cid"],
+                        "title": row["title"] or rest,
+                        "description": row["description"],
+                        "type": row["type"] or "Concept",
                     }
                 )
-        concepts.sort(key=lambda entry: entry["id"])
         return {"layer": path or None, "subdirs": subdirs, "concepts": concepts}
 
     def children(self, path: str | None = None) -> dict:
@@ -323,7 +402,8 @@ class OKFBundle:
             raise ValueError(f"Unknown search mode: {mode!r}")
 
         if layer is not None:
-            hits = [h for h in hits if self._layer_of(h.concept.id) == layer]
+            prefix = f"{layer.strip('/')}/"
+            hits = [h for h in hits if h.concept.id.startswith(prefix)]
         return hits[:k]
 
     def context(
@@ -572,6 +652,34 @@ class OKFBundle:
 
     # --- internals ---------------------------------------------------------
 
+    def _concept_query(
+        self,
+        columns: str,
+        *,
+        type: str | None = None,
+        layer: str | None = None,
+        tag: str | None = None,
+    ) -> list:
+        """Select concept rows with SQL-side type/layer/tag filtering."""
+        sql = f"SELECT {columns} FROM nodes n"
+        params: list[Any] = []
+        conds = [_CONCEPT_SQL]
+        if type is not None:
+            sql += " JOIN node_labels nl ON nl.node_id = n.id JOIN labels l ON l.id = nl.label_id"
+            conds.append("l.name = ?")
+            params.append(type)
+        if layer is not None:
+            conds.append("json_extract(n.properties, '$.concept_id') LIKE ? ESCAPE '\\'")
+            params.append(f"{_escape_like(layer)}/%")
+        if tag is not None:
+            conds.append(
+                "EXISTS (SELECT 1 FROM json_each(n.properties, '$.tags') jt WHERE jt.value = ?)"
+            )
+            params.append(tag)
+        sql += " WHERE " + " AND ".join(conds)
+        sql += " ORDER BY json_extract(n.properties, '$.concept_id')"
+        return self._db.conn.execute(sql, params).fetchall()
+
     def _resolve(self, value: "Concept | str") -> Concept:
         if isinstance(value, Concept):
             return value
@@ -589,10 +697,6 @@ class OKFBundle:
             properties={"title": anchor or url, "url": url, "okf_auto": True},
             uri=url,
         )
-
-    @staticmethod
-    def _layer_of(concept_id: str) -> str | None:
-        return concept_id.split("/", 1)[0] if "/" in concept_id else None
 
     @staticmethod
     def _is_concept(node: Node) -> bool:

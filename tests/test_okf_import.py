@@ -334,3 +334,45 @@ def test_validate_missing_bundle_raises(tmp_path):
 
     with pytest.raises(NotADirectoryError):
         validate_okf_bundle(str(tmp_path / "nope"))
+
+
+# --- Progress reporting -------------------------------------------------------
+
+
+def test_progress_every_prints(db, capsys):
+    db.import_okf_bundle(str(KB_BUNDLE), configure_fts=False, progress_every=2)
+    out = capsys.readouterr().out
+    assert "Importing concepts: 2" in out
+    assert "Imported 7 concepts." in out
+    assert "links." in out
+    assert "citations." in out
+
+
+def test_progress_callback_receives_phases(db):
+    events: list[tuple[str, int]] = []
+    db.import_okf_bundle(
+        str(KB_BUNDLE), configure_fts=False, progress=lambda phase, n: events.append((phase, n))
+    )
+    phases = [phase for phase, _ in events]
+    assert phases.count("concepts") == 8  # 7 per-file ticks + the phase-end report
+    assert ("concepts", 7) in events
+    assert phases[-1] == "done"
+    assert "links" in phases and "citations" in phases
+
+
+def test_progress_callback_silent_on_stdout(db, capsys):
+    db.import_okf_bundle(str(KB_BUNDLE), configure_fts=False, progress=lambda *_: None)
+    assert capsys.readouterr().out == ""
+
+
+# --- concept_id expression index ----------------------------------------------
+
+
+def test_import_creates_concept_id_index(db):
+    db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    plan = db.conn.execute(
+        "EXPLAIN QUERY PLAN SELECT n.id FROM nodes n "
+        "WHERE json_extract(n.properties, '$.concept_id') = ?",
+        ("tables/orders",),
+    ).fetchall()
+    assert any("INDEX" in row["detail"].upper() for row in plan)

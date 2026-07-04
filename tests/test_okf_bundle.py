@@ -684,3 +684,64 @@ def test_hybrid_search_degrades_to_text_without_embeddings():
     assert hits
     assert all(h.via == "text" for h in hits)
     bundle.db.close()
+
+
+# --- persistent reuse: store_embeddings + open() -------------------------------
+
+
+def test_open_reuses_persistent_db_without_reimport(tmp_path):
+    db_path = str(tmp_path / "kb.db")
+
+    # Session 1: import once, persisting the embeddings alongside the graph.
+    kb1 = OKFBundle.load(
+        str(KB),
+        db=GrafitoDatabase(db_path),
+        embed=_Embedder(),
+        embed_options={"store_embeddings": True},
+    )
+    assert kb1.summary["embedded"] == 7
+    kb1.db.close()
+
+    # Session 2: no markdown parsing, no re-embedding — just open the file.
+    kb2 = OKFBundle.open(GrafitoDatabase(db_path), embed=_Embedder(), source_path=str(KB))
+    assert len(kb2) == 7  # not re-imported (no duplicates)
+    assert kb2.summary["nodes"] == 7
+    assert kb2.okf_version is None  # this bundle's root index.md has no frontmatter
+    assert kb2.concept("decisions/0001-use-sqlite").title == "Use SQLite as the storage engine"
+
+    # The vector index rehydrates from the stored embeddings.
+    hits = kb2.search("how do I make a query run faster", mode="semantic", k=3)
+    assert "Triaging a slow graph query" in {h.concept.title for h in hits}
+    kb2.db.close()
+
+
+def test_open_without_source_path_requires_save_target(tmp_path):
+    db_path = str(tmp_path / "kb.db")
+    OKFBundle.load(str(KB), db=GrafitoDatabase(db_path)).db.close()
+
+    kb = OKFBundle.open(GrafitoDatabase(db_path))
+    with pytest.raises(ValueError, match="No path to save"):
+        kb.save()
+    out = tmp_path / "out"
+    assert kb.save(out)["concepts"] == 7
+    kb.db.close()
+
+
+# --- SQL-side filtering ---------------------------------------------------------
+
+
+def test_concepts_layer_accepts_nested_paths():
+    bundle = OKFBundle.load(str(Path("tests") / "res" / "okf_gcp_ga4"), configure_fts=False)
+    try:
+        nested = bundle.concepts(layer="references/joins")
+        assert nested
+        assert all(c.id.startswith("references/joins/") for c in nested)
+        top = bundle.concepts(layer="references")
+        assert {c.id for c in nested} <= {c.id for c in top}
+    finally:
+        bundle.db.close()
+
+
+def test_concepts_are_ordered_by_id(kb):
+    ids = [c.id for c in kb.concepts()]
+    assert ids == sorted(ids)

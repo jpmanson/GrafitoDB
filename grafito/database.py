@@ -5,7 +5,7 @@ import os
 import re
 import sqlite3
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from .exceptions import (
     DatabaseError,
@@ -3099,6 +3099,9 @@ class GrafitoDatabase:
         embed_index: str = "okf",
         embed_fields: tuple[str, ...] = ("title", "description", "body"),
         embed_backend: str = "bruteforce",
+        embed_options: dict | None = None,
+        progress_every: int | None = None,
+        progress: "Callable[[str, int], None] | None" = None,
         directory_nodes: bool = False,
         import_log: bool = False,
         uri_prefix: str = "okf:",
@@ -3114,7 +3117,11 @@ class GrafitoDatabase:
 
         Pass ``embed=<EmbeddingFunction>`` to also embed each concept into a
         vector index (``embed_index``) for semantic search; query it later with
-        ``db.semantic_search("text", index=embed_index)``.
+        ``db.semantic_search("text", index=embed_index)``. ``embed_options``
+        (e.g. ``{"store_embeddings": True}``) is forwarded to
+        ``create_vector_index`` for durable reuse across sessions. Use
+        ``progress_every=N`` (prints) or ``progress=callback`` for progress
+        reporting on large bundles.
 
         Returns a summary dict with
         node/relationship/citation/reference/stub/skipped/embedded counts.
@@ -3132,6 +3139,9 @@ class GrafitoDatabase:
             embed_index=embed_index,
             embed_fields=embed_fields,
             embed_backend=embed_backend,
+            embed_options=embed_options,
+            progress_every=progress_every,
+            progress=progress,
             directory_nodes=directory_nodes,
             import_log=import_log,
             uri_prefix=uri_prefix,

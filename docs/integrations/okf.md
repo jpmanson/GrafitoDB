@@ -93,6 +93,7 @@ Relevant import options:
 | `embed_index` | `"okf"` | Name of the vector index created for concept embeddings. |
 | `embed_fields` | `("title", "description", "body")` | Concept fields concatenated into the embedded document. |
 | `embed_backend` | `"bruteforce"` | Vector index backend (the default needs no extra dependencies). |
+| `embed_options` | `None` | Extra options for the vector index — `{"store_embeddings": True}` persists the vectors in the database for reuse across sessions; `{"index_path": ...}` places a file-backed index (faiss/hnswlib/...). |
 
 The summary dict reports the number of `embedded` concepts. This pairs full-text
 (`text_search`) and vector (`semantic_search`) retrieval over the same imported
@@ -105,6 +106,11 @@ bundle — useful for hybrid agent-memory workflows.
 | `link_type` | `"LINKS_TO"` | Relationship type created for intra-bundle markdown links. |
 | `configure_fts` | `True` | Configure full-text search over `title`/`description`/`body` (best-effort; skipped if SQLite lacks FTS5). |
 | `uri_prefix` | `"okf:"` | Prefix prepended to each concept ID to form the node `uri`. |
+| `progress_every` | `None` | Print a progress line every N concept files (and per phase) — for large bundles. |
+| `progress` | `None` | Callback `(phase, count)` invoked instead of printing; phases are `concepts`, `links`, `citations`, `embedded`, `done`. |
+
+The import runs in a single transaction and creates an expression index on
+`concept_id`, so concept lookups stay fast as bundles grow.
 
 The returned summary dict reports `nodes`, `relationships`, `stubs` (nodes
 created for links whose target is not in the bundle), `skipped`
@@ -315,6 +321,34 @@ concept created **without** a body, `link`/`cite` edges are synthesized into
 **with** a body, include the links/citations in that body if you want them in the
 markdown — the edges remain queryable in the graph regardless.
 
+### Persistent reuse across sessions
+
+`load()` parses markdown and (optionally) embeds every concept — work you only
+want to do once. Back the bundle with a database *file* and persist the
+embeddings, then later sessions `open()` the file directly: no markdown
+parsing, no re-embedding.
+
+```python
+# Session 1 — import once, persist graph + embeddings.
+kb = OKFBundle.load(
+    "path/to/bundle",
+    db=GrafitoDatabase("kb.db"),
+    embed=embedder,
+    embed_options={"store_embeddings": True},
+)
+
+# Session 2+ — open the database file; the vector index rehydrates from it.
+kb = OKFBundle.open(GrafitoDatabase("kb.db"), source_path="path/to/bundle")
+kb.search("how do I make a query run faster")   # semantic, no re-embedding
+```
+
+Pass `embed=` to `open()` only when the embedding function is a custom one the
+registry cannot rebuild by name (built-ins such as the SentenceTransformer
+function are rehydrated automatically from the index metadata). `source_path`
+is optional; it sets the default `save()` target. For very large indexes,
+prefer a file-backed ANN backend via `embed_backend="hnswlib"` (or `faiss`)
+plus `embed_options={"index_path": "kb.hnswlib"}`.
+
 Materializing the directory tree and history (opt-in) lets you traverse the
 hierarchy as a graph and query the changelog:
 
@@ -341,6 +375,10 @@ Design notes:
 - **`context()` is framework-agnostic** — it returns prompt-ready text plus
   citations, not a framework-specific object; the `rerank=` hook is any callable.
 - **`Concept`** is a thin view; `concept.node` is the raw grafito node.
+- **Lookups scale** — `concept()`, `concepts()`, `layers()`, `index()` and
+  `len()` filter in SQL (backed by an expression index on `concept_id`); only
+  matching nodes are hydrated. `layer=` accepts nested paths
+  (`"references/joins"`), matching any concept below that directory.
 - Captures `okf_version` from the root `index.md` (lost by the low-level import).
 
 ## Examples
