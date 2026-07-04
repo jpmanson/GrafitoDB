@@ -3371,6 +3371,22 @@ path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
+<p><code>examples/okf/okf_agent.py</code> is the <strong>agentic GraphRAG</strong> variant: where
+<code>context()</code> packs context in one shot, here the <em>model drives the exploration</em>
+through OpenAI-style tool calls — <code>browse</code> (progressive disclosure), <code>search</code>
+(hybrid), <code>open</code> (full concept + typed edges), <code>follow</code> (graph traversal),
+<code>history</code> (changelog), and <code>remember</code> (write a linked, embedded, autologged
+note back into the bundle). It answers with concept citations and <code>save()</code>s
+both the new knowledge and its changelog to markdown. Works against any
+OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, ...); needs
+<code>httpx</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+</span></code></pre></div>
+<p>The loop is deliberately framework-free (~80 lines): <code>run_agent(kb, question,
+chat=...)</code> takes any <code>(messages, tools) -&gt; message</code> callable, so the same
+<code>BundleTools</code> drop into LangGraph, CrewAI, or a future MCP server unchanged.</p>
 
 
 
