@@ -3411,6 +3411,13 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
 <li><strong><code>OpenAIChat</code></strong> — the bundled convenience for any OpenAI-compatible
   endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs <code>httpx</code>,
   reads <code>OPENAI_BASE_URL</code> / <code>OPENAI_API_KEY</code> / <code>OPENAI_MODEL</code>.</li>
+<li><strong><code>AnthropicChat</code></strong> — Claude via the official <code>anthropic</code> SDK
+  (<code>pip install grafito[anthropic]</code>). Translates the loop's OpenAI format to
+  the Anthropic Messages API (system prompt, <code>input_schema</code> tools,
+  <code>tool_use</code>/<code>tool_result</code> blocks), runs with adaptive thinking and preserves
+  thinking blocks across turns. Defaults to <code>claude-opus-4-8</code>; credentials
+  resolve from <code>ANTHROPIC_API_KEY</code> (or an <code>ant auth login</code> profile), and
+  <code>ANTHROPIC_MODEL</code> overrides the model.</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span><span class="p">,</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">run_agent</span>
 </span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
