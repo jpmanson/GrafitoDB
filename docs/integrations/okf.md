@@ -455,6 +455,13 @@ drive the exploration itself** through OpenAI-style tool calls:
 - **`OpenAIChat`** — the bundled convenience for any OpenAI-compatible
   endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs `httpx`,
   reads `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`.
+- **`AnthropicChat`** — Claude via the official `anthropic` SDK
+  (`pip install grafito[anthropic]`). Translates the loop's OpenAI format to
+  the Anthropic Messages API (system prompt, `input_schema` tools,
+  `tool_use`/`tool_result` blocks), runs with adaptive thinking and preserves
+  thinking blocks across turns. Defaults to `claude-opus-4-8`; credentials
+  resolve from `ANTHROPIC_API_KEY` (or an `ant auth login` profile), and
+  `ANTHROPIC_MODEL` overrides the model.
 
 ```python
 from grafito.okf import OKFBundle, OpenAIChat, run_agent

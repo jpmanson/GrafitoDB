@@ -132,3 +132,86 @@ def test_openai_chat_requires_httpx_or_builds():
         assert chat.base_url == "http://localhost:1/v1"
         assert chat.model == "m"
         assert isinstance(chat, Chat)
+
+
+# --- Anthropic adapter: format conversion (pure, no SDK required) ---------------
+
+
+def test_anthropic_message_conversion():
+    from grafito.okf.agent import _anthropic_messages, _anthropic_tools
+
+    system, converted = _anthropic_messages(
+        [
+            {"role": "system", "content": "You are a KB assistant."},
+            {"role": "user", "content": "query got slow"},
+            {"role": "assistant", "content": "Let me look.", "tool_calls": [
+                _tool_call("search", "t1", query="slow"),
+                _tool_call("browse", "t2"),
+            ]},
+            {"role": "tool", "tool_call_id": "t1", "content": "[hits]"},
+            {"role": "tool", "tool_call_id": "t2", "content": "{index}"},
+        ]
+    )
+    assert system == "You are a KB assistant."
+    assert [m["role"] for m in converted] == ["user", "assistant", "user"]
+    assistant = converted[1]["content"]
+    assert assistant[0] == {"type": "text", "text": "Let me look."}
+    assert assistant[1]["type"] == "tool_use"
+    assert assistant[1]["input"] == {"query": "slow"}
+    # Parallel tool results merge into ONE user message.
+    results = converted[2]["content"]
+    assert [b["type"] for b in results] == ["tool_result", "tool_result"]
+    assert {b["tool_use_id"] for b in results} == {"t1", "t2"}
+
+    tools = _anthropic_tools([{
+        "type": "function",
+        "function": {"name": "search", "description": "d", "parameters": {"type": "object"}},
+    }])
+    assert tools == [{"name": "search", "description": "d", "input_schema": {"type": "object"}}]
+
+
+def test_anthropic_response_conversion_and_replay():
+    from types import SimpleNamespace
+
+    from grafito.okf.agent import _anthropic_messages, _openai_message
+
+    response = SimpleNamespace(
+        stop_reason="tool_use",
+        content=[
+            SimpleNamespace(type="thinking", thinking="", signature="sig",
+                            model_dump=lambda: {"type": "thinking", "thinking": "", "signature": "sig"}),
+            SimpleNamespace(type="text", text="Checking the runbook.",
+                            model_dump=lambda: {"type": "text", "text": "Checking the runbook."}),
+            SimpleNamespace(type="tool_use", id="tu1", name="open",
+                            input={"concept_id": "runbooks/slow-queries"},
+                            model_dump=lambda: {"type": "tool_use", "id": "tu1", "name": "open",
+                                                "input": {"concept_id": "runbooks/slow-queries"}}),
+        ],
+    )
+    message = _openai_message(response)
+    assert message["content"] == "Checking the runbook."
+    assert message["tool_calls"][0]["id"] == "tu1"
+    assert json.loads(message["tool_calls"][0]["function"]["arguments"]) == {
+        "concept_id": "runbooks/slow-queries"
+    }
+
+    # Replay: the raw blocks (thinking included) echo back verbatim.
+    _, converted = _anthropic_messages([
+        {"role": "user", "content": "q"},
+        message,
+        {"role": "tool", "tool_call_id": "tu1", "content": "{...}"},
+    ])
+    assert converted[1]["content"][0]["type"] == "thinking"
+    assert converted[1]["content"][2] == {
+        "type": "tool_use", "id": "tu1", "name": "open",
+        "input": {"concept_id": "runbooks/slow-queries"},
+    }
+
+
+def test_anthropic_chat_requires_sdk_or_builds():
+    pytest.importorskip("anthropic")
+    from grafito.okf import AnthropicChat
+
+    with AnthropicChat(api_key="x", model="m") as chat:
+        assert chat.model == "m"
+        assert isinstance(chat, Chat)

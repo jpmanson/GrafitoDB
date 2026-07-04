@@ -15,7 +15,13 @@ Ollama, vLLM, LM Studio, OpenRouter, llama.cpp server, ...:
     export OPENAI_API_KEY=sk-...                       # if the endpoint needs one
     python examples/okf/okf_agent.py
 
-Requires ``httpx`` (``pip install httpx``). Retrieval runs on the
+— or against Claude via the official SDK (``pip install anthropic``), picked
+automatically when only Anthropic credentials are configured:
+
+    export ANTHROPIC_API_KEY=sk-ant-...
+    python examples/okf/okf_agent.py                   # claude-opus-4-8 by default
+
+Requires ``httpx`` for the OpenAI-compatible path. Retrieval runs on the
 dependency-free hashing embedder, so the knowledge side works fully offline.
 
 The model is injected: ``run_agent(kb, question, chat=...)`` takes any
@@ -38,7 +44,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from grafito.okf import OKFBundle, OpenAIChat, run_agent
+from grafito.okf import AnthropicChat, OKFBundle, OpenAIChat, run_agent
 
 sys.path.insert(0, str(Path(__file__).parent))
 from okf_knowledge_base import HashingEmbeddingFunction  # noqa: E402  (demo embedder)
@@ -46,17 +52,26 @@ from okf_knowledge_base import HashingEmbeddingFunction  # noqa: E402  (demo emb
 BUNDLE = Path(__file__).parent / "okf_knowledge_base"
 
 
+def pick_chat():
+    """OpenAI-compatible endpoint when configured; else Claude; else explain."""
+    if os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_BASE_URL"):
+        return OpenAIChat()
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return AnthropicChat()
+    print(
+        "Configure a model endpoint first, e.g.\n"
+        "  export OPENAI_BASE_URL=http://localhost:11434/v1   # Ollama\n"
+        "  export OPENAI_MODEL=llama3.1\n"
+        "or\n"
+        "  export OPENAI_API_KEY=sk-...                        # OpenAI\n"
+        "or\n"
+        "  export ANTHROPIC_API_KEY=sk-ant-...                 # Claude"
+    )
+    sys.exit(0)
+
+
 def main() -> None:
-    if not os.environ.get("OPENAI_API_KEY") and not os.environ.get("OPENAI_BASE_URL"):
-        print(
-            "Configure an OpenAI-compatible endpoint first, e.g.\n"
-            "  export OPENAI_BASE_URL=http://localhost:11434/v1   # Ollama\n"
-            "  export OPENAI_MODEL=llama3.1\n"
-            "or\n"
-            "  export OPENAI_API_KEY=sk-...                        # OpenAI\n"
-            "  export OPENAI_MODEL=gpt-4o-mini"
-        )
-        sys.exit(0)
+    chat = pick_chat()
 
     # The bundle is the agent's memory: embedded for search, autologged writes.
     kb = OKFBundle.load(str(BUNDLE), embed=HashingEmbeddingFunction(), autolog=True)
@@ -67,7 +82,7 @@ def main() -> None:
         "linked to the concepts you used."
     )
     print(f"Q: {question}\n")
-    answer = run_agent(kb, question, chat=OpenAIChat(), verbose=True)
+    answer = run_agent(kb, question, chat=chat, verbose=True)
     print(f"\nA: {answer}\n")
 
     # Persist knowledge + changelog to a scratch copy (markdown, git-ready).

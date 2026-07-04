@@ -12,12 +12,14 @@ OpenAI-style tool calls:
   tool calls against the bundle, feed results back, until it answers.
 * :class:`Chat` — the model contract: **any callable**
   ``(messages, tools) -> assistant message`` in OpenAI chat format. Bring your
-  own provider; :class:`OpenAIChat` is the bundled convenience for any
-  OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...).
+  own provider; two conveniences are bundled: :class:`OpenAIChat` for any
+  OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...)
+  and :class:`AnthropicChat` for Claude via the official ``anthropic`` SDK.
 
 Grafito stays model-agnostic on purpose — the LLM client is injected, never
-imported by the core (the same pattern as :mod:`grafito.okf.rerank`). Adapters
-for other providers are one-liners; e.g. via litellm::
+imported by the core (the same pattern as :mod:`grafito.okf.rerank`); the
+bundled clients import their dependency lazily. Adapters for other providers
+are one-liners; e.g. via litellm::
 
     import litellm
 
@@ -300,6 +302,174 @@ class OpenAIChat:
         self._client.close()
 
     def __enter__(self) -> "OpenAIChat":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+
+# --- Anthropic adapter: OpenAI chat format <-> Anthropic Messages API ----------
+
+
+def _anthropic_tools(tools: list[dict]) -> list[dict]:
+    """OpenAI function-tool schemas -> Anthropic tool definitions."""
+    return [
+        {
+            "name": tool["function"]["name"],
+            "description": tool["function"].get("description", ""),
+            "input_schema": tool["function"].get(
+                "parameters", {"type": "object", "properties": {}}
+            ),
+        }
+        for tool in tools
+    ]
+
+
+def _anthropic_messages(messages: list[dict]) -> tuple[str | None, list[dict]]:
+    """OpenAI-format history -> (system prompt, Anthropic messages).
+
+    Assistant turns produced by :class:`AnthropicChat` carry the raw Anthropic
+    content under ``_anthropic_content`` and are replayed verbatim — this
+    preserves ``thinking`` blocks, which must be echoed back unchanged.
+    Consecutive ``role="tool"`` results merge into a single user message
+    (parallel tool results must not be split across messages).
+    """
+    system: str | None = None
+    out: list[dict] = []
+    for message in messages:
+        role = message.get("role")
+        if role == "system":
+            system = message.get("content")
+        elif role == "assistant":
+            if message.get("_anthropic_content"):
+                out.append({"role": "assistant", "content": message["_anthropic_content"]})
+                continue
+            blocks: list[dict] = []
+            if message.get("content"):
+                blocks.append({"type": "text", "text": message["content"]})
+            for call in message.get("tool_calls") or []:
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": call["id"],
+                        "name": call["function"]["name"],
+                        "input": json.loads(call["function"]["arguments"] or "{}"),
+                    }
+                )
+            if blocks:
+                out.append({"role": "assistant", "content": blocks})
+        elif role == "tool":
+            block = {
+                "type": "tool_result",
+                "tool_use_id": message.get("tool_call_id"),
+                "content": message.get("content") or "",
+            }
+            last = out[-1] if out else None
+            if (
+                last is not None
+                and last["role"] == "user"
+                and isinstance(last["content"], list)
+                and last["content"]
+                and last["content"][-1].get("type") == "tool_result"
+            ):
+                last["content"].append(block)
+            else:
+                out.append({"role": "user", "content": [block]})
+        else:  # user
+            out.append({"role": "user", "content": message.get("content") or ""})
+    return system, out
+
+
+def _openai_message(response: Any) -> dict:
+    """Anthropic Messages API response -> OpenAI-format assistant message.
+
+    The raw content blocks ride along under ``_anthropic_content`` so the next
+    request can echo them back exactly (thinking blocks included).
+    """
+    text_parts: list[str] = []
+    tool_calls: list[dict] = []
+    raw_blocks: list[dict] = []
+    for block in response.content:
+        raw_blocks.append(block.model_dump() if hasattr(block, "model_dump") else dict(block))
+        if block.type == "text":
+            text_parts.append(block.text)
+        elif block.type == "tool_use":
+            tool_calls.append(
+                {
+                    "id": block.id,
+                    "type": "function",
+                    "function": {"name": block.name, "arguments": json.dumps(block.input)},
+                }
+            )
+    message: dict = {
+        "role": "assistant",
+        "content": "\n".join(text_parts) or None,
+        "_anthropic_content": raw_blocks,
+    }
+    if tool_calls:
+        message["tool_calls"] = tool_calls
+    if getattr(response, "stop_reason", None) == "refusal" and not tool_calls:
+        message["content"] = message["content"] or "(request declined by safety classifiers)"
+    return message
+
+
+class AnthropicChat:
+    """:class:`Chat` for Claude, via the official ``anthropic`` SDK.
+
+    Translates between the loop's OpenAI chat format and the Anthropic
+    Messages API — system prompt as the ``system`` parameter, tool schemas as
+    ``input_schema`` definitions, ``tool_calls``/``role="tool"`` as
+    ``tool_use``/``tool_result`` blocks — so ``run_agent`` works unchanged.
+    Runs with adaptive thinking; thinking blocks are preserved across turns.
+
+    Requires ``pip install anthropic`` (or ``grafito[anthropic]``). With no
+    ``api_key``, the SDK resolves credentials from the environment
+    (``ANTHROPIC_API_KEY`` or an ``ant auth login`` profile); ``ANTHROPIC_MODEL``
+    overrides the default model.
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        max_tokens: int = 16000,
+        timeout: float = 300.0,
+    ) -> None:
+        try:
+            import anthropic
+        except ImportError as exc:
+            raise ValueError(
+                "anthropic is not installed. "
+                "Install with `pip install anthropic` (or `grafito[anthropic]`)."
+            ) from exc
+
+        self.model = model or os.environ.get("ANTHROPIC_MODEL") or "claude-opus-4-8"
+        self.max_tokens = max_tokens
+        client_kwargs: dict[str, Any] = {"timeout": timeout}
+        if api_key is not None:
+            client_kwargs["api_key"] = api_key
+        self._client = anthropic.Anthropic(**client_kwargs)
+
+    def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
+        system, converted = _anthropic_messages(messages)
+        request: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "thinking": {"type": "adaptive"},
+            "messages": converted,
+            "tools": _anthropic_tools(tools),
+        }
+        if system:
+            request["system"] = system
+        response = self._client.messages.create(**request)
+        return _openai_message(response)
+
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._client.close()
+
+    def __enter__(self) -> "AnthropicChat":
         return self
 
     def __exit__(self, *exc: Any) -> None:
