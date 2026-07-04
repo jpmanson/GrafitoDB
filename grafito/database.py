@@ -3144,13 +3144,15 @@ class GrafitoDatabase:
         uri_prefix: str = "okf:",
         write_index: bool = True,
         write_viz: bool = False,
+        prune: bool = False,
     ) -> dict:
         """Export this database to an Open Knowledge Format (OKF) bundle.
 
         Writes a directory tree of markdown files with YAML frontmatter (the
         inverse of :meth:`import_okf_bundle`), with per-directory ``index.md``
-        files and an optional self-contained ``viz.html``. Returns a summary
-        dict with concept/skipped/viz counts.
+        files and an optional self-contained ``viz.html``. ``prune=True``
+        deletes concept ``.md`` files that no longer correspond to a node.
+        Returns a summary dict with concept/skipped/pruned/viz counts.
         """
         from .integrations.okf import export_bundle
 
@@ -3160,6 +3162,7 @@ class GrafitoDatabase:
             uri_prefix=uri_prefix,
             write_index=write_index,
             write_viz=write_viz,
+            prune=prune,
         )
 
     def _split_cypher_statements(self, script: str) -> list[str]:

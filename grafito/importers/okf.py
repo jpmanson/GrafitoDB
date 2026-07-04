@@ -21,6 +21,7 @@ See ``todo/okf/SPEC.md`` for the format specification.
 from __future__ import annotations
 
 import re
+from contextlib import nullcontext
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
@@ -56,7 +57,10 @@ _HEADING_RE = re.compile(r"^(#{1,6})\s+", re.MULTILINE)
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Split a markdown document into (frontmatter dict, body).
 
-    Returns an empty dict when no frontmatter block is present.
+    Returns an empty dict when no frontmatter block is present. Raises
+    ``yaml.YAMLError`` when a block is present but is not valid YAML — callers
+    that want permissive consumption (SPEC sec. 9) catch it and fall back to
+    treating the whole file as body (see ``import_bundle``).
     """
     if not text.startswith("---"):
         return {}, text
@@ -277,8 +281,9 @@ def import_bundle(
 
     Returns:
         Summary dict with ``nodes``, ``relationships``, ``citations``,
-        ``references``, ``stubs``, ``skipped``, ``embedded``, ``directories``
-        and ``log_entries`` counts.
+        ``references``, ``stubs``, ``skipped``, ``embedded``, ``directories``,
+        ``log_entries`` and ``malformed`` (concept IDs whose frontmatter was
+        not valid YAML and was treated as body text).
     """
     root_path = Path(root)
     if not root_path.is_dir():
@@ -292,165 +297,179 @@ def import_bundle(
     embed_docs: list[tuple[int, str]] = []  # (node_id, document) for real concepts
     nodes = 0
     skipped = 0
+    malformed: list[str] = []
 
-    for path in sorted(root_path.rglob("*.md")):
-        if path.name in RESERVED_FILENAMES:
-            skipped += 1
-            continue
-        text = path.read_text(encoding="utf-8")
-        frontmatter, body = parse_frontmatter(text)
-        concept_id = _concept_id_for(path, root_path)
+    # One transaction for the whole import: per-node autocommit dominates load
+    # time on large bundles. Respect a transaction the caller already opened.
+    txn = nullcontext(db) if getattr(db, "_in_transaction", False) else db
+    with txn:
+        for path in sorted(root_path.rglob("*.md")):
+            if path.name in RESERVED_FILENAMES:
+                skipped += 1
+                continue
+            text = path.read_text(encoding="utf-8")
+            concept_id = _concept_id_for(path, root_path)
+            try:
+                frontmatter, body = parse_frontmatter(text)
+            except yaml.YAMLError:
+                # Permissive consumption (SPEC sec. 9): one bad file must not
+                # abort the bundle. Keep the full text as body and report it.
+                frontmatter, body = {}, text
+                malformed.append(concept_id)
 
-        concept_type = frontmatter.get("type")
-        label = concept_type if isinstance(concept_type, str) and concept_type else DEFAULT_LABEL
-
-        properties = {k: v for k, v in frontmatter.items() if k != "type"}
-        properties["body"] = body
-        properties.setdefault("concept_id", concept_id)
-
-        node = db.create_node(
-            labels=[label],
-            properties=properties,
-            uri=f"{uri_prefix}{concept_id}",
-        )
-        concept_to_node[concept_id] = node.id
-        real_concepts[concept_id] = node.id
-        nodes += 1
-
-        if embed is not None:
-            embed_docs.append((node.id, concept_document(properties, embed_fields)))
-
-        # Citation links are excluded from LINKS_TO so they only yield CITES.
-        main_body, citations_block = split_citations(body) if citations else (body, "")
-        for anchor, target_id in extract_links(main_body, concept_id):
-            pending_links.append((concept_id, anchor, target_id))
-        for anchor, kind, value in extract_citations(citations_block, concept_id):
-            pending_citations.append((concept_id, anchor, kind, value))
-
-    # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
-    relationships = 0
-    stubs = 0
-
-    def resolve_concept(target_id: str) -> int:
-        nonlocal stubs
-        if target_id not in concept_to_node:
-            stub = db.create_node(
-                labels=[DEFAULT_LABEL],
-                properties={"concept_id": target_id, "stub": True},
-                uri=f"{uri_prefix}{target_id}",
+            concept_type = frontmatter.get("type")
+            label = (
+                concept_type if isinstance(concept_type, str) and concept_type else DEFAULT_LABEL
             )
-            concept_to_node[target_id] = stub.id
-            stubs += 1
-        return concept_to_node[target_id]
 
-    for source_id, anchor, target_id in pending_links:
-        db.create_relationship(
-            concept_to_node[source_id],
-            resolve_concept(target_id),
-            link_type,
-            properties={"anchor": anchor} if anchor else {},
-        )
-        relationships += 1
+            properties = {k: v for k, v in frontmatter.items() if k != "type"}
+            properties["body"] = body
+            properties.setdefault("concept_id", concept_id)
 
-    # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
-    reference_nodes: dict[str, int] = {}  # url -> node_id
-    citation_count = 0
-    for source_id, anchor, kind, value in pending_citations:
-        if kind == "concept":
-            target = resolve_concept(value)
-        else:
-            if value not in reference_nodes:
-                ref = db.create_node(
-                    labels=[REFERENCE_LABEL],
-                    properties={"title": anchor or value, "url": value, "okf_auto": True},
-                    uri=value,
-                )
-                reference_nodes[value] = ref.id
-            target = reference_nodes[value]
-        db.create_relationship(
-            concept_to_node[source_id],
-            target,
-            citation_type,
-            properties={"anchor": anchor} if anchor else {},
-        )
-        citation_count += 1
-
-    # Optional: synthesize a directory tree (Directory nodes + CONTAINS edges).
-    directories = 0
-    if directory_nodes:
-        dir_paths: set[str] = set()
-        for concept_id in real_concepts:
-            parts = concept_id.split("/")
-            for i in range(1, len(parts)):
-                dir_paths.add("/".join(parts[:i]))
-        dir_node: dict[str, int] = {}
-        root_node = db.create_node(
-            labels=[directory_label],
-            properties={"path": "", "name": "", "directory": True},
-            uri=uri_prefix,
-        )
-        dir_node[""] = root_node.id
-        directories += 1
-        for path in sorted(dir_paths):
             node = db.create_node(
-                labels=[directory_label],
-                properties={"path": path, "name": path.rsplit("/", 1)[-1], "directory": True},
-                uri=f"{uri_prefix}{path}/",
+                labels=[label],
+                properties=properties,
+                uri=f"{uri_prefix}{concept_id}",
             )
-            dir_node[path] = node.id
-            directories += 1
-        for path in sorted(dir_paths):
-            parent = path.rsplit("/", 1)[0] if "/" in path else ""
-            db.create_relationship(dir_node[parent], dir_node[path], contains_type)
-        for concept_id, node_id in real_concepts.items():
-            parent = concept_id.rsplit("/", 1)[0] if "/" in concept_id else ""
-            db.create_relationship(dir_node[parent], node_id, contains_type)
+            concept_to_node[concept_id] = node.id
+            real_concepts[concept_id] = node.id
+            nodes += 1
 
-    # Optional: import log.md entries as LogEntry nodes + MENTIONS edges.
-    log_entries = 0
-    if import_log:
-        for log_path in sorted(root_path.rglob("log.md")):
-            scope = log_path.parent.relative_to(root_path).as_posix()
-            scope = "" if scope == "." else scope
-            source_id = f"{scope}/_log" if scope else "_log"
-            for date, kind, entry_text in parse_log_entries(log_path.read_text(encoding="utf-8")):
-                entry_node = db.create_node(
-                    labels=[log_label],
-                    properties={
-                        "date": date,
-                        "kind": kind,
-                        "text": entry_text,
-                        "scope": scope,
-                        "log": True,
-                    },
+            if embed is not None:
+                embed_docs.append((node.id, concept_document(properties, embed_fields)))
+
+            # Citation links are excluded from LINKS_TO so they only yield CITES.
+            main_body, citations_block = split_citations(body) if citations else (body, "")
+            for anchor, target_id in extract_links(main_body, concept_id):
+                pending_links.append((concept_id, anchor, target_id))
+            for anchor, kind, value in extract_citations(citations_block, concept_id):
+                pending_citations.append((concept_id, anchor, kind, value))
+
+        # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
+        relationships = 0
+        stubs = 0
+
+        def resolve_concept(target_id: str) -> int:
+            nonlocal stubs
+            if target_id not in concept_to_node:
+                stub = db.create_node(
+                    labels=[DEFAULT_LABEL],
+                    properties={"concept_id": target_id, "stub": True},
+                    uri=f"{uri_prefix}{target_id}",
                 )
-                log_entries += 1
-                for _anchor, target_id in extract_links(entry_text, source_id):
-                    if target_id in concept_to_node:
-                        db.create_relationship(
-                            entry_node.id, concept_to_node[target_id], mentions_type
-                        )
+                concept_to_node[target_id] = stub.id
+                stubs += 1
+            return concept_to_node[target_id]
 
-    if configure_fts and db.has_fts5():
-        # OKF `type` values are free-form (may contain spaces), so index across
-        # all node labels rather than per-label.
-        db.create_text_index("node", None, ["title", "description", "body"])
-        db.rebuild_text_index()
+        for source_id, anchor, target_id in pending_links:
+            db.create_relationship(
+                concept_to_node[source_id],
+                resolve_concept(target_id),
+                link_type,
+                properties={"anchor": anchor} if anchor else {},
+            )
+            relationships += 1
 
-    embedded = 0
-    if embed is not None and embed_docs:
-        node_ids = [node_id for node_id, _ in embed_docs]
-        documents = [doc for _, doc in embed_docs]
-        dim = getattr(embed, "dimension", None) or len(embed([documents[0] or " "])[0])
-        db.create_vector_index(
-            embed_index,
-            dim=dim,
-            backend=embed_backend,
-            embedding_function=embed,
-            if_not_exists=True,
-        )
-        db.upsert_embeddings(node_ids, documents, index=embed_index)
-        embedded = len(embed_docs)
+        # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
+        reference_nodes: dict[str, int] = {}  # url -> node_id
+        citation_count = 0
+        for source_id, anchor, kind, value in pending_citations:
+            if kind == "concept":
+                target = resolve_concept(value)
+            else:
+                if value not in reference_nodes:
+                    ref = db.create_node(
+                        labels=[REFERENCE_LABEL],
+                        properties={"title": anchor or value, "url": value, "okf_auto": True},
+                        uri=value,
+                    )
+                    reference_nodes[value] = ref.id
+                target = reference_nodes[value]
+            db.create_relationship(
+                concept_to_node[source_id],
+                target,
+                citation_type,
+                properties={"anchor": anchor} if anchor else {},
+            )
+            citation_count += 1
+
+        # Optional: synthesize a directory tree (Directory nodes + CONTAINS edges).
+        directories = 0
+        if directory_nodes:
+            dir_paths: set[str] = set()
+            for concept_id in real_concepts:
+                parts = concept_id.split("/")
+                for i in range(1, len(parts)):
+                    dir_paths.add("/".join(parts[:i]))
+            dir_node: dict[str, int] = {}
+            root_node = db.create_node(
+                labels=[directory_label],
+                properties={"path": "", "name": "", "directory": True},
+                uri=uri_prefix,
+            )
+            dir_node[""] = root_node.id
+            directories += 1
+            for path in sorted(dir_paths):
+                node = db.create_node(
+                    labels=[directory_label],
+                    properties={"path": path, "name": path.rsplit("/", 1)[-1], "directory": True},
+                    uri=f"{uri_prefix}{path}/",
+                )
+                dir_node[path] = node.id
+                directories += 1
+            for path in sorted(dir_paths):
+                parent = path.rsplit("/", 1)[0] if "/" in path else ""
+                db.create_relationship(dir_node[parent], dir_node[path], contains_type)
+            for concept_id, node_id in real_concepts.items():
+                parent = concept_id.rsplit("/", 1)[0] if "/" in concept_id else ""
+                db.create_relationship(dir_node[parent], node_id, contains_type)
+
+        # Optional: import log.md entries as LogEntry nodes + MENTIONS edges.
+        log_entries = 0
+        if import_log:
+            for log_path in sorted(root_path.rglob("log.md")):
+                scope = log_path.parent.relative_to(root_path).as_posix()
+                scope = "" if scope == "." else scope
+                source_id = f"{scope}/_log" if scope else "_log"
+                log_text = log_path.read_text(encoding="utf-8")
+                for date, kind, entry_text in parse_log_entries(log_text):
+                    entry_node = db.create_node(
+                        labels=[log_label],
+                        properties={
+                            "date": date,
+                            "kind": kind,
+                            "text": entry_text,
+                            "scope": scope,
+                            "log": True,
+                        },
+                    )
+                    log_entries += 1
+                    for _anchor, target_id in extract_links(entry_text, source_id):
+                        if target_id in concept_to_node:
+                            db.create_relationship(
+                                entry_node.id, concept_to_node[target_id], mentions_type
+                            )
+
+        if configure_fts and db.has_fts5():
+            # OKF `type` values are free-form (may contain spaces), so index across
+            # all node labels rather than per-label.
+            db.create_text_index("node", None, ["title", "description", "body"])
+            db.rebuild_text_index()
+
+        embedded = 0
+        if embed is not None and embed_docs:
+            node_ids = [node_id for node_id, _ in embed_docs]
+            documents = [doc for _, doc in embed_docs]
+            dim = getattr(embed, "dimension", None) or len(embed([documents[0] or " "])[0])
+            db.create_vector_index(
+                embed_index,
+                dim=dim,
+                backend=embed_backend,
+                embedding_function=embed,
+                if_not_exists=True,
+            )
+            db.upsert_embeddings(node_ids, documents, index=embed_index)
+            embedded = len(embed_docs)
 
     return {
         "nodes": nodes,
@@ -462,4 +481,83 @@ def import_bundle(
         "embedded": embedded,
         "directories": directories,
         "log_entries": log_entries,
+        "malformed": malformed,
+    }
+
+
+def validate_bundle(root: str | Path) -> dict:
+    """Validate a bundle against the OKF v0.1 conformance rules (SPEC sec. 9).
+
+    Reports problems without importing anything and without aborting on the
+    first bad file — the linter counterpart to the importer's permissive
+    consumption.
+
+    Errors (conformance failures):
+
+    - a non-reserved ``.md`` file with no frontmatter block;
+    - a frontmatter block that is not parseable YAML;
+    - a missing, empty, or non-string ``type`` field.
+
+    Warnings (soft guidance a consumer must tolerate):
+
+    - intra-bundle links whose target concept does not exist (not-yet-written
+      knowledge, SPEC sec. 5.3);
+    - frontmatter in a non-root ``index.md`` (only the root index may carry
+      frontmatter, SPEC sec. 11).
+
+    Returns:
+        ``{"conformant": bool, "files": int, "errors": [{"path", "error"}],
+        "warnings": [{"path", "warning"}]}`` — ``files`` counts the concept
+        documents examined; ``path`` values are bundle-relative.
+    """
+    root_path = Path(root)
+    if not root_path.is_dir():
+        raise NotADirectoryError(f"OKF bundle root not found: {root_path}")
+
+    errors: list[dict] = []
+    warnings: list[dict] = []
+    concept_ids: set[str] = set()
+    pending_links: list[tuple[str, str]] = []  # (path, target_concept_id)
+    files = 0
+
+    for path in sorted(root_path.rglob("*.md")):
+        rel = path.relative_to(root_path).as_posix()
+        text = path.read_text(encoding="utf-8")
+
+        if path.name in RESERVED_FILENAMES:
+            if path.name == "index.md" and rel != "index.md" and text.startswith("---"):
+                warnings.append(
+                    {"path": rel, "warning": "frontmatter is only permitted in the root index.md"}
+                )
+            continue
+
+        files += 1
+        concept_id = _concept_id_for(path, root_path)
+        concept_ids.add(concept_id)
+
+        try:
+            frontmatter, body = parse_frontmatter(text)
+        except yaml.YAMLError as exc:
+            errors.append({"path": rel, "error": f"frontmatter is not valid YAML: {exc}"})
+            continue
+
+        if not text.startswith("---"):
+            errors.append({"path": rel, "error": "missing frontmatter block"})
+        else:
+            concept_type = frontmatter.get("type")
+            if not isinstance(concept_type, str) or not concept_type.strip():
+                errors.append({"path": rel, "error": "missing or empty required field: type"})
+
+        for _anchor, target_id in extract_links(body, concept_id):
+            pending_links.append((rel, target_id))
+
+    for rel, target_id in pending_links:
+        if target_id not in concept_ids:
+            warnings.append({"path": rel, "warning": f"broken link to unknown concept: {target_id}"})
+
+    return {
+        "conformant": not errors,
+        "files": files,
+        "errors": errors,
+        "warnings": warnings,
     }

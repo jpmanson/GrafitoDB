@@ -28,6 +28,12 @@ if TYPE_CHECKING:
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _RRF_K = 60  # reciprocal-rank-fusion constant for hybrid search
 
+# Sentinel distinguishing "not passed" from an explicit None in update_concept.
+_UNSET: Any = object()
+
+# Node properties that are grafito/OKF bookkeeping, not editable frontmatter.
+_PROTECTED_PROPS = frozenset({"concept_id", "stub", "okf_auto", "directory", "log"})
+
 
 class OKFBundle:
     """An OKF knowledge bundle backed by a GrafitoDB graph."""
@@ -105,8 +111,16 @@ class OKFBundle:
         *,
         write_index: bool = True,
         write_viz: bool = False,
+        prune: bool = True,
     ) -> dict:
-        """Export the graph back to an OKF bundle (defaults to the load path)."""
+        """Export the graph back to an OKF bundle (defaults to the load path).
+
+        By default the written bundle *mirrors* the graph: concept ``.md`` files
+        that no longer correspond to a concept (e.g. after ``remove_concept``)
+        are deleted, so removals round-trip. Only non-reserved markdown files
+        are ever pruned — ``log.md``, images, ``viz.html`` etc. are untouched.
+        Pass ``prune=False`` to only add/overwrite files.
+        """
         target = str(path) if path is not None else self._source_path
         if target is None:
             raise ValueError("No path to save to; pass one or load the bundle from a path.")
@@ -115,6 +129,7 @@ class OKFBundle:
             uri_prefix=self._uri_prefix,
             write_index=write_index,
             write_viz=write_viz,
+            prune=prune,
         )
 
     # --- graph escape hatch ------------------------------------------------
@@ -287,9 +302,13 @@ class OKFBundle:
 
         ``mode``: ``"auto"`` (semantic if embeddings exist, else text),
         ``"semantic"``, ``"text"``, or ``"hybrid"`` (reciprocal-rank fusion).
+        ``"hybrid"`` degrades to text-only when the bundle has no embeddings;
+        ``"semantic"`` requires them (load with ``embed=``).
         """
         if mode == "auto":
             mode = "semantic" if self._has_vector_index() else "text"
+        elif mode == "hybrid" and not self._has_vector_index():
+            mode = "text"
 
         # When filtering by layer we post-filter, so over-fetch to keep k results.
         fetch = k * 4 if layer else k
@@ -432,6 +451,62 @@ class OKFBundle:
                 [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
             )
         return Concept(self, node)
+
+    def update_concept(
+        self,
+        concept_id: str,
+        *,
+        type: Any = _UNSET,
+        title: Any = _UNSET,
+        description: Any = _UNSET,
+        body: Any = _UNSET,
+        tags: Any = _UNSET,
+        **frontmatter: Any,
+    ) -> Concept:
+        """Update a concept's fields in place (re-embedding and re-indexing it).
+
+        Only the fields you pass change; passing ``None`` removes an optional
+        field (``body=None`` clears it to ``""``). ``type`` relabels the node.
+        Extra keyword arguments update producer-defined frontmatter keys the
+        same way. Raises ``ValueError`` for an unknown concept.
+
+        The full-text index follows automatically; the vector embedding is
+        recomputed when the bundle has one. ``save()`` persists the new state.
+        """
+        concept = self._resolve(concept_id)
+        node = concept.node
+        props = dict(node.properties)
+
+        named = {"title": title, "description": description, "tags": tags}
+        for key, value in {**named, **frontmatter}.items():
+            if value is _UNSET:
+                continue
+            if key in _PROTECTED_PROPS:
+                raise ValueError(f"Cannot update reserved property: {key!r}")
+            if value is None:
+                props.pop(key, None)
+            elif key == "tags":
+                props[key] = list(value)
+            else:
+                props[key] = value
+        if body is not _UNSET:
+            props["body"] = body or ""
+
+        self._db.replace_node_properties(node.id, props)
+
+        if type is not _UNSET:
+            if not isinstance(type, str) or not type:
+                raise ValueError("type must be a non-empty string")
+            if node.labels != [type]:
+                if node.labels:
+                    self._db.remove_labels(node.id, node.labels)
+                self._db.add_labels(node.id, [type])
+
+        if self._has_vector_index():
+            self._db.upsert_embeddings(
+                [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
+            )
+        return Concept(self, self._db.get_node(node.id))
 
     def link(
         self,
@@ -679,11 +754,16 @@ class OKFBundle:
 
     @staticmethod
     def _read_okf_version(path: str | Path, uri_prefix: str) -> str | None:
+        import yaml
+
         from ..importers.okf import parse_frontmatter
 
         index = Path(path) / "index.md"
         if not index.exists():
             return None
-        frontmatter, _ = parse_frontmatter(index.read_text(encoding="utf-8"))
+        try:
+            frontmatter, _ = parse_frontmatter(index.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            return None
         version = frontmatter.get("okf_version")
         return str(version) if version is not None else None

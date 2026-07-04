@@ -271,3 +271,66 @@ def test_knowledge_base_cross_links_resolve(db):
     titles = {row["title"] for row in rows}
     assert "Semantic search" in titles
     assert "Use SQLite as the storage engine" in titles
+
+
+# --- Permissive consumption: malformed frontmatter ---------------------------
+
+
+def test_malformed_frontmatter_does_not_abort_import(db, tmp_path):
+    (tmp_path / "good.md").write_text(
+        "---\ntype: Doc\ntitle: Good\n---\nBody.\n", encoding="utf-8"
+    )
+    (tmp_path / "bad.md").write_text(
+        "---\ntype: Doc\ntitle: [unclosed\n---\nStill useful text.\n", encoding="utf-8"
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    assert summary["nodes"] == 2
+    assert summary["malformed"] == ["bad"]
+    # The bad file falls back to the generic label with its full text as body.
+    bad = _node_by_uri(db, "okf:bad")
+    assert bad.labels == ["Concept"]
+    assert "Still useful text." in bad.properties["body"]
+
+
+# --- Conformance validation (SPEC sec. 9) ------------------------------------
+
+
+def test_validate_conformant_bundle():
+    from grafito.okf import validate_okf_bundle
+
+    report = validate_okf_bundle(str(KB_BUNDLE))
+    assert report["conformant"] is True
+    assert report["files"] == 7
+    assert report["errors"] == []
+
+
+def test_validate_reports_errors_and_warnings(tmp_path):
+    from grafito.okf import validate_okf_bundle
+
+    (tmp_path / "ok.md").write_text(
+        "---\ntype: Doc\n---\nSee [missing](/nowhere.md).\n", encoding="utf-8"
+    )
+    (tmp_path / "no-type.md").write_text("---\ntitle: X\n---\nBody.\n", encoding="utf-8")
+    (tmp_path / "bad-yaml.md").write_text("---\ntitle: [oops\n---\nBody.\n", encoding="utf-8")
+    (tmp_path / "no-frontmatter.md").write_text("# Just markdown\n", encoding="utf-8")
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / "index.md").write_text("---\nokf_version: '0.1'\n---\n# Index\n", encoding="utf-8")
+
+    report = validate_okf_bundle(str(tmp_path))
+    assert report["conformant"] is False
+    assert report["files"] == 4
+    errors = {e["path"]: e["error"] for e in report["errors"]}
+    assert "missing or empty required field: type" in errors["no-type.md"]
+    assert "not valid YAML" in errors["bad-yaml.md"]
+    assert errors["no-frontmatter.md"] == "missing frontmatter block"
+    warnings = {w["path"]: w["warning"] for w in report["warnings"]}
+    assert "broken link to unknown concept: nowhere" in warnings["ok.md"]
+    assert "root index.md" in warnings["sub/index.md"]
+
+
+def test_validate_missing_bundle_raises(tmp_path):
+    from grafito.okf import validate_okf_bundle
+
+    with pytest.raises(NotADirectoryError):
+        validate_okf_bundle(str(tmp_path / "nope"))

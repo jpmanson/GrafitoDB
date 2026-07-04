@@ -41,7 +41,10 @@ pip install grafito
 
 Concepts without a `type` and links to not-yet-written concepts fall back to the
 generic `Concept` label (permissive consumption — broken links are tolerated,
-not errors).
+not errors). A file whose frontmatter is not valid YAML does not abort the
+import either: its full text is kept as the body and its ID is reported under
+the summary's `malformed` key. The whole import runs in a single transaction,
+so large bundles load fast and a hard failure leaves the database untouched.
 
 ## Importing a bundle
 
@@ -104,8 +107,30 @@ bundle — useful for hybrid agent-memory workflows.
 | `uri_prefix` | `"okf:"` | Prefix prepended to each concept ID to form the node `uri`. |
 
 The returned summary dict reports `nodes`, `relationships`, `stubs` (nodes
-created for links whose target is not in the bundle), and `skipped`
-(`index.md`/`log.md` files).
+created for links whose target is not in the bundle), `skipped`
+(`index.md`/`log.md` files), and `malformed` (concept IDs whose frontmatter
+was not valid YAML and was imported as plain body text).
+
+## Validating a bundle
+
+`validate_okf_bundle` is the linter counterpart to the importer's permissive
+consumption: it checks a bundle against the OKF v0.1 conformance rules
+(SPEC §9) without importing anything and without stopping at the first bad
+file:
+
+```python
+from grafito.okf import validate_okf_bundle
+
+report = validate_okf_bundle("path/to/bundle")
+report["conformant"]   # True when there are no errors
+report["errors"]       # [{'path', 'error'}]  — missing frontmatter block,
+                       # unparseable YAML, missing/empty required `type`
+report["warnings"]     # [{'path', 'warning'}] — broken intra-bundle links,
+                       # frontmatter in a non-root index.md
+```
+
+Errors are conformance failures; warnings are soft guidance a consumer must
+tolerate (a broken link may simply be not-yet-written knowledge).
 
 ## Exporting a bundle
 
@@ -136,6 +161,7 @@ section listing their outgoing relationships.
 | `uri_prefix` | `"okf:"` | Prefix used to recover concept IDs from node URIs. Should match the import value. |
 | `write_index` | `True` | Generate per-directory `index.md` files. |
 | `write_viz` | `False` | Also emit a self-contained `viz.html` at the bundle root. |
+| `prune` | `False` | Delete concept `.md` files that no longer correspond to a node (directories left empty are removed). `log.md` and non-markdown files are never touched. `OKFBundle.save()` prunes by default so removals round-trip. |
 
 ## Round-trip and agent memory
 
@@ -180,6 +206,7 @@ c.cites()                                     # [{'url'|'concept', 'anchor'}, ..
 kb.search("how do I make a query run faster", k=3)        # semantic / text / hybrid
 kb.search("make it faster", layer="decisions")            # scoped to a layer
 kb.search("vector similarity", mode="hybrid")             # RRF fusion of FTS + vector
+# hybrid degrades to text-only when the bundle was loaded without embed=
 
 kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
 kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
@@ -256,20 +283,31 @@ kb.context(question, rerank=my_reranker)
 
 The API rerankers (`Cohere`/`Voyage`/`Jina`) need `httpx` and read their API key
 from the matching environment variable (e.g. `COHERE_API_KEY`) or an explicit
-`api_key=`. `CrossEncoderReranker` needs `sentence-transformers` but runs
-offline. A reranker may return a subset (e.g. its own `top_n`); `context()` packs
-exactly the order and subset it returns.
+`api_key=`. Requests use a 30s timeout (`timeout=`), and the instances are
+context managers (`close()` releases the HTTP client). `CrossEncoderReranker`
+needs `sentence-transformers` but runs offline. A reranker may return a subset
+(e.g. its own `top_n`); `context()` packs exactly the order and subset it
+returns.
 
 Mutating a bundle (agent-memory write path):
 
 ```python
 kb.add_concept("notes/idea", type="Note", title="An idea",
                body="# Notes\n...", tags=["draft"])   # embedded + FTS-indexed
+kb.update_concept("notes/idea", body="# Notes\nRevised…",
+                  status="reviewed")                   # partial update; re-embeds
+kb.update_concept("notes/idea", description=None)      # None removes a field
 kb.link("notes/idea", "decisions/0001-use-sqlite", anchor="builds on")
 kb.cite("notes/idea", "https://example.com/paper", anchor="source")
 kb.remove_concept("notes/old")
 kb.save()                                              # persist to markdown
 ```
+
+`update_concept` changes only the fields you pass (including `type`, which
+relabels the node, and any producer-defined frontmatter key); the FTS index and
+the vector embedding follow automatically. `save()` mirrors the graph to disk:
+files for removed concepts are pruned so `remove_concept` round-trips (pass
+`prune=False` to only add/overwrite).
 
 Round-trip note: `save()` writes each concept's stored `body` verbatim. For a
 concept created **without** a body, `link`/`cite` edges are synthesized into

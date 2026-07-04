@@ -604,3 +604,83 @@ def test_cross_encoder_reranker_works_in_context(kb):
 
     pack = kb.context("query performance", k=3, rerank=rr, budget_tokens=5000)
     assert pack.concepts  # the cross-encoder reranker is a valid injectable Reranker
+
+
+# --- update_concept -----------------------------------------------------------
+
+
+def test_update_concept_changes_only_passed_fields(kb):
+    cid = "decisions/0003-vector-search"
+    before = kb[cid]
+    updated = kb.update_concept(cid, title="Vector search (revised)")
+    assert updated.title == "Vector search (revised)"
+    assert updated.description == before.description
+    assert updated.body == before.body
+    assert kb[cid].title == "Vector search (revised)"
+
+
+def test_update_concept_none_removes_field(kb):
+    cid = "decisions/0003-vector-search"
+    assert kb[cid].description
+    updated = kb.update_concept(cid, description=None)
+    assert updated.description is None
+    assert "description" not in kb[cid].properties
+
+
+def test_update_concept_relabels_type(kb):
+    cid = "decisions/0003-vector-search"
+    updated = kb.update_concept(cid, type="Decision")
+    assert updated.type == "Decision"
+    assert kb.concepts(type="Decision")
+
+
+def test_update_concept_body_is_reindexed(kb):
+    cid = "glossary/semantic-search"
+    kb.update_concept(cid, body="Completely new content about zebras.")
+    hits = kb.search("zebras", mode="text", k=3)
+    assert any(h.concept.id == cid for h in hits)
+
+
+def test_update_concept_reembeds(kb):
+    cid = "glossary/semantic-search"
+    kb.update_concept(cid, body="xylophone quartz nebula")
+    hits = kb.search("xylophone quartz nebula", mode="semantic", k=3)
+    assert hits and hits[0].concept.id == cid
+
+
+def test_update_concept_unknown_or_protected_raises(kb):
+    with pytest.raises(ValueError, match="Unknown concept"):
+        kb.update_concept("nope/missing", title="X")
+    with pytest.raises(ValueError, match="reserved property"):
+        kb.update_concept("glossary/semantic-search", stub=True)
+    with pytest.raises(ValueError, match="non-empty string"):
+        kb.update_concept("glossary/semantic-search", type="")
+
+
+# --- remove_concept + save(prune) round-trip ----------------------------------
+
+
+def test_remove_concept_prunes_file_on_save(kb, tmp_path):
+    out = tmp_path / "bundle"
+    kb.save(out)
+    assert (out / "glossary" / "semantic-search.md").exists()
+
+    kb.remove_concept("glossary/semantic-search")
+    summary = kb.save(out)
+    assert summary["pruned"] == 1
+    assert not (out / "glossary" / "semantic-search.md").exists()
+    # Round-trip: the removed concept must not resurrect on re-import.
+    again = OKFBundle.load(str(out))
+    assert again.concept("glossary/semantic-search") is None
+    again.db.close()
+
+
+# --- search degradation without embeddings ------------------------------------
+
+
+def test_hybrid_search_degrades_to_text_without_embeddings():
+    bundle = OKFBundle.load(str(KB))  # no embed= -> no vector index
+    hits = bundle.search("vector similarity", mode="hybrid", k=3)
+    assert hits
+    assert all(h.via == "text" for h in hits)
+    bundle.db.close()

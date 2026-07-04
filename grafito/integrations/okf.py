@@ -101,6 +101,7 @@ def export_bundle(
     uri_prefix: str = "okf:",
     write_index: bool = True,
     write_viz: bool = False,
+    prune: bool = False,
     links_heading: str = "Links",
 ) -> dict:
     """Export the graph in ``db`` to an OKF bundle directory at ``root``.
@@ -116,17 +117,23 @@ def export_bundle(
             directory index grouping its concepts by ``type``.
         write_viz: Also emit a self-contained ``viz.html`` graph viewer at the
             bundle root (best-effort; mirrors the reference bundles).
+        prune: Delete concept ``.md`` files under ``root`` that no longer
+            correspond to a node — so deleting a concept from the graph deletes
+            its file on re-export. Reserved files (``log.md``), ``index.md``
+            files, and non-markdown files are never touched; directories left
+            empty are removed.
         links_heading: Heading used for the synthesized links section when a
             node has no stored ``body``.
 
     Returns:
-        Summary dict: ``{"concepts", "skipped", "viz"}``.
+        Summary dict: ``{"concepts", "skipped", "pruned", "viz"}``.
     """
     root_path = Path(root)
     root_path.mkdir(parents=True, exist_ok=True)
 
     concepts = 0
     skipped = 0
+    written: set[Path] = set()  # concept files written this export
     # (concept_id, title, description, type) for index generation.
     index_entries: list[tuple[str, str, str, str]] = []
 
@@ -163,6 +170,7 @@ def export_bundle(
         file_path = root_path / PurePosixPath(f"{concept_id}.md")
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(document, encoding="utf-8")
+        written.add(file_path)
         concepts += 1
 
         index_entries.append(
@@ -174,6 +182,10 @@ def export_bundle(
             )
         )
 
+    pruned = 0
+    if prune:
+        pruned = _prune_orphans(root_path, written)
+
     if write_index:
         _write_indexes(root_path, index_entries)
 
@@ -181,7 +193,34 @@ def export_bundle(
     if write_viz:
         viz_written = _write_viz(db, root_path)
 
-    return {"concepts": concepts, "skipped": skipped, "viz": viz_written}
+    return {"concepts": concepts, "skipped": skipped, "pruned": pruned, "viz": viz_written}
+
+
+def _prune_orphans(root_path: Path, written: set[Path]) -> int:
+    """Delete concept files not written by this export; drop emptied directories.
+
+    Only non-reserved ``.md`` files are candidates — ``index.md``/``log.md``
+    and non-markdown files (images, ``viz.html``, ...) are never removed.
+    """
+    from ..importers.okf import RESERVED_FILENAMES
+
+    pruned = 0
+    for path in sorted(root_path.rglob("*.md")):
+        if path.name in RESERVED_FILENAMES or path in written:
+            continue
+        path.unlink()
+        pruned += 1
+    # Remove directories the pruning emptied (deepest first). An index.md alone
+    # does not keep a directory alive — it described the pruned concepts.
+    for directory in sorted(
+        (p for p in root_path.rglob("*") if p.is_dir()), reverse=True
+    ):
+        entries = list(directory.iterdir())
+        if all(e.name == "index.md" for e in entries):
+            for e in entries:
+                e.unlink()
+            directory.rmdir()
+    return pruned
 
 
 def _write_indexes(root_path: Path, entries: list[tuple[str, str, str, str]]) -> None:

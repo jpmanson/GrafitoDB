@@ -122,3 +122,53 @@ def test_programmatic_node_synthesizes_links_section(db, tmp_path):
     _, body = _read(tmp_path / "a.md")
     assert "# Links" in body
     assert "[see B](/b.md)" in body
+
+
+# --- Pruning orphaned concept files ------------------------------------------
+
+
+def test_prune_deletes_orphaned_concept_files(db, tmp_path):
+    db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    db.export_okf_bundle(str(tmp_path))
+    assert (tmp_path / "tables" / "orders.md").exists()
+
+    orders = next(n for n in db.match_nodes() if n.uri == "okf:tables/orders")
+    db.delete_node(orders.id)
+    summary = db.export_okf_bundle(str(tmp_path), prune=True)
+    assert summary["pruned"] == 1
+    assert not (tmp_path / "tables" / "orders.md").exists()
+    assert (tmp_path / "tables" / "customers.md").exists()
+
+
+def test_prune_preserves_log_and_non_markdown_files(db, tmp_path):
+    db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    db.export_okf_bundle(str(tmp_path))
+    (tmp_path / "log.md").write_text("# Log\n\n## 2026-01-01\n* **Update**: x\n", encoding="utf-8")
+    (tmp_path / "diagram.png").write_bytes(b"\x89PNG")
+
+    summary = db.export_okf_bundle(str(tmp_path), prune=True)
+    assert summary["pruned"] == 0
+    assert (tmp_path / "log.md").exists()
+    assert (tmp_path / "diagram.png").exists()
+
+
+def test_prune_removes_emptied_directories(db, tmp_path):
+    db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    db.export_okf_bundle(str(tmp_path))
+
+    for node in list(db.match_nodes()):
+        if node.uri and node.uri.startswith("okf:datasets/"):
+            db.delete_node(node.id)
+    db.export_okf_bundle(str(tmp_path), prune=True)
+    assert not (tmp_path / "datasets").exists()
+    assert (tmp_path / "tables").exists()
+
+
+def test_prune_off_by_default(db, tmp_path):
+    db.import_okf_bundle(str(BUNDLE), configure_fts=False)
+    db.export_okf_bundle(str(tmp_path))
+    orders = next(n for n in db.match_nodes() if n.uri == "okf:tables/orders")
+    db.delete_node(orders.id)
+    summary = db.export_okf_bundle(str(tmp_path))
+    assert summary["pruned"] == 0
+    assert (tmp_path / "tables" / "orders.md").exists()

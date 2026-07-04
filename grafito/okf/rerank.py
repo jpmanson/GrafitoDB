@@ -178,6 +178,7 @@ class _HTTPReranker:
         top_n: int | None = None,
         fields: tuple[str, ...] = DEFAULT_RERANK_FIELDS,
         max_chars: int = 2000,
+        timeout: float = 30.0,
     ) -> None:
         try:
             import httpx
@@ -198,7 +199,7 @@ class _HTTPReranker:
         self._fields = fields
         self._max_chars = max_chars
         self._url = base_url or self._api_url
-        self._session = httpx.Client()
+        self._session = httpx.Client(timeout=timeout)
         self._session.headers.update({"Authorization": f"Bearer {api_key}"})
 
     def __call__(self, query: str, candidates: list["Concept"]) -> list[tuple["Concept", float]]:
@@ -211,9 +212,25 @@ class _HTTPReranker:
         if self.top_n is not None:
             payload[self._top_param] = self.top_n
         response = self._session.post(self._url, json=payload)
+        try:
+            data = response.json()
+        except ValueError:
+            # Non-JSON error page (gateway/HTML). Surface the HTTP status.
+            response.raise_for_status()
+            raise ValueError(f"{self._provider} rerank API returned a non-JSON response")
         return _parse_rerank_results(
-            response.json(), candidates, results_key=self._results_key, provider=self._provider
+            data, candidates, results_key=self._results_key, provider=self._provider
         )
+
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._session.close()
+
+    def __enter__(self) -> "_HTTPReranker":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
 
 
 class CohereReranker(_HTTPReranker):
