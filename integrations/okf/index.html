@@ -1874,6 +1874,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#persistent-reuse-across-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent reuse across sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2769,6 +2780,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#persistent-reuse-across-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent reuse across sessions
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2936,6 +2958,11 @@ you can query the bundle by meaning rather than keywords:</p>
 <td><code>"bruteforce"</code></td>
 <td>Vector index backend (the default needs no extra dependencies).</td>
 </tr>
+<tr>
+<td><code>embed_options</code></td>
+<td><code>None</code></td>
+<td>Extra options for the vector index — <code>{"store_embeddings": True}</code> persists the vectors in the database for reuse across sessions; <code>{"index_path": ...}</code> places a file-backed index (faiss/hnswlib/...).</td>
+</tr>
 </tbody>
 </table>
 <p>The summary dict reports the number of <code>embedded</code> concepts. This pairs full-text
@@ -2966,8 +2993,20 @@ bundle — useful for hybrid agent-memory workflows.</p>
 <td><code>"okf:"</code></td>
 <td>Prefix prepended to each concept ID to form the node <code>uri</code>.</td>
 </tr>
+<tr>
+<td><code>progress_every</code></td>
+<td><code>None</code></td>
+<td>Print a progress line every N concept files (and per phase) — for large bundles.</td>
+</tr>
+<tr>
+<td><code>progress</code></td>
+<td><code>None</code></td>
+<td>Callback <code>(phase, count)</code> invoked instead of printing; phases are <code>concepts</code>, <code>links</code>, <code>citations</code>, <code>embedded</code>, <code>done</code>.</td>
+</tr>
 </tbody>
 </table>
+<p>The import runs in a single transaction and creates an expression index on
+<code>concept_id</code>, so concept lookups stay fast as bundles grow.</p>
 <p>The returned summary dict reports <code>nodes</code>, <code>relationships</code>, <code>stubs</code> (nodes
 created for links whose target is not in the bundle), <code>skipped</code>
 (<code>index.md</code>/<code>log.md</code> files), and <code>malformed</code> (concept IDs whose frontmatter
@@ -3208,14 +3247,37 @@ concept created <strong>without</strong> a body, <code>link</code>/<code>cite</c
 <code># Links</code> / <code># Citations</code> sections on export (so they round-trip). For a concept
 <strong>with</strong> a body, include the links/citations in that body if you want them in the
 markdown — the edges remain queryable in the graph regardless.</p>
+<h3 id="persistent-reuse-across-sessions">Persistent reuse across sessions</h3>
+<p><code>load()</code> parses markdown and (optionally) embeds every concept — work you only
+want to do once. Back the bundle with a database <em>file</em> and persist the
+embeddings, then later sessions <code>open()</code> the file directly: no markdown
+parsing, no re-embedding.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Session 1 — import once, persist graph + embeddings.</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">db</span><span class="o">=</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">embed_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;store_embeddings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">)</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># Session 2+ — open the database file; the vector index rehydrates from it.</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">)</span>   <span class="c1"># semantic, no re-embedding</span>
+</span></code></pre></div>
+<p>Pass <code>embed=</code> to <code>open()</code> only when the embedding function is a custom one the
+registry cannot rebuild by name (built-ins such as the SentenceTransformer
+function are rehydrated automatically from the index metadata). <code>source_path</code>
+is optional; it sets the default <code>save()</code> target. For very large indexes,
+prefer a file-backed ANN backend via <code>embed_backend="hnswlib"</code> (or <code>faiss</code>)
+plus <code>embed_options={"index_path": "kb.hnswlib"}</code>.</p>
 <p>Materializing the directory tree and history (opt-in) lets you traverse the
 hierarchy as a graph and query the changelog:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
 </span></code></pre></div>
 <p><code>directory_nodes=True</code> adds <code>Directory</code> nodes + <code>CONTAINS</code> edges (root → subdir →
 concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked to mentioned concepts via
@@ -3230,13 +3292,17 @@ concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked t
 <li><strong><code>context()</code> is framework-agnostic</strong> — it returns prompt-ready text plus
   citations, not a framework-specific object; the <code>rerank=</code> hook is any callable.</li>
 <li><strong><code>Concept</code></strong> is a thin view; <code>concept.node</code> is the raw grafito node.</li>
+<li><strong>Lookups scale</strong> — <code>concept()</code>, <code>concepts()</code>, <code>layers()</code>, <code>index()</code> and
+  <code>len()</code> filter in SQL (backed by an expression index on <code>concept_id</code>); only
+  matching nodes are hydrated. <code>layer=</code> accepts nested paths
+  (<code>"references/joins"</code>), matching any concept below that directory.</li>
 <li>Captures <code>okf_version</code> from the root <code>index.md</code> (lost by the low-level import).</li>
 </ul>
 <h2 id="examples">Examples</h2>
 <p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf/okf_import.py</code> is a
 short intro (load → concept/links → search → save with <code>viz.html</code>) over the
 tabular sample bundle in <code>examples/okf/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf/okf_knowledge_base/</code> is a small engineering knowledge base —
@@ -3246,7 +3312,7 @@ the directory tree, aggregation via the <code>kb.execute</code> escape hatch, se
 search, grounded <code>context()</code> assembly with a reranker, the agent-memory write
 path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
 
 
