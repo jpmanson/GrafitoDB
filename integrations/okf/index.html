@@ -1912,6 +1912,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#agentic-graphrag-grafitookfagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic GraphRAG: grafito.okf.agent
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2829,6 +2840,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#agentic-graphrag-grafitookfagent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic GraphRAG: grafito.okf.agent
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3371,22 +3393,47 @@ path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
-<p><code>examples/okf/okf_agent.py</code> is the <strong>agentic GraphRAG</strong> variant: where
-<code>context()</code> packs context in one shot, here the <em>model drives the exploration</em>
-through OpenAI-style tool calls — <code>browse</code> (progressive disclosure), <code>search</code>
-(hybrid), <code>open</code> (full concept + typed edges), <code>follow</code> (graph traversal),
-<code>history</code> (changelog), and <code>remember</code> (write a linked, embedded, autologged
-note back into the bundle). It answers with concept citations and <code>save()</code>s
-both the new knowledge and its changelog to markdown. Works against any
-OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, ...); needs
-<code>httpx</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+<h2 id="agentic-graphrag-grafitookfagent">Agentic GraphRAG: <code>grafito.okf.agent</code></h2>
+<p>Where <code>context()</code> is <em>one-shot</em> GraphRAG, <code>grafito.okf.agent</code> lets the <strong>model
+drive the exploration itself</strong> through OpenAI-style tool calls:</p>
+<ul>
+<li><strong><code>BundleTools</code></strong> — the bundle façade as function tools: <code>browse</code>
+  (progressive disclosure), <code>search</code> (hybrid), <code>open</code> (full concept + typed
+  edges), <code>follow</code> (graph traversal by relationship type), <code>history</code>
+  (changelog), and <code>remember</code> (write a linked, embedded, autologged note back
+  into the bundle). Schemas + dispatch, framework-free: the same tools drop
+  into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
+  <code>{"error": ...}</code> for the model to react to instead of killing the loop.</li>
+<li><strong><code>run_agent(kb, question, chat=...)</code></strong> — a minimal tool-calling loop.</li>
+<li><strong><code>Chat</code></strong> — the model contract: <em>any callable</em>
+  <code>(messages, tools) -&gt; assistant message</code> in OpenAI chat format. Grafito
+  never imports an LLM SDK — the client is injected, like <code>rerank=</code>.</li>
+<li><strong><code>OpenAIChat</code></strong> — the bundled convenience for any OpenAI-compatible
+  endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs <code>httpx</code>,
+  reads <code>OPENAI_BASE_URL</code> / <code>OPENAI_API_KEY</code> / <code>OPENAI_MODEL</code>.</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span><span class="p">,</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">run_agent</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">answer</span> <span class="o">=</span> <span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">OpenAIChat</span><span class="p">())</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>   <span class="c1"># the agent&#39;s remember()ed notes + changelog land in git</span>
 </span></code></pre></div>
-<p>The loop is deliberately framework-free (~80 lines): <code>run_agent(kb, question,
-chat=...)</code> takes any <code>(messages, tools) -&gt; message</code> callable, so the same
-<code>BundleTools</code> drop into LangGraph, CrewAI, or a future MCP server unchanged.</p>
+<p>For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>examples/okf/okf_agent.py</code> is the runnable end-to-end walkthrough (explore →
+answer with concept citations → remember a note → save bundle + <code>log.md</code>):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+</span></code></pre></div>
 
 
 
