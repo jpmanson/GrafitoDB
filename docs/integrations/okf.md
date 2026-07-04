@@ -436,22 +436,52 @@ path, and visualization (it retrieves a "slow query" runbook for the query
 python examples/okf/okf_knowledge_base.py
 ```
 
-`examples/okf/okf_agent.py` is the **agentic GraphRAG** variant: where
-`context()` packs context in one shot, here the *model drives the exploration*
-through OpenAI-style tool calls — `browse` (progressive disclosure), `search`
-(hybrid), `open` (full concept + typed edges), `follow` (graph traversal),
-`history` (changelog), and `remember` (write a linked, embedded, autologged
-note back into the bundle). It answers with concept citations and `save()`s
-both the new knowledge and its changelog to markdown. Works against any
-OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, ...); needs
-`httpx`:
+## Agentic GraphRAG: `grafito.okf.agent`
+
+Where `context()` is *one-shot* GraphRAG, `grafito.okf.agent` lets the **model
+drive the exploration itself** through OpenAI-style tool calls:
+
+- **`BundleTools`** — the bundle façade as function tools: `browse`
+  (progressive disclosure), `search` (hybrid), `open` (full concept + typed
+  edges), `follow` (graph traversal by relationship type), `history`
+  (changelog), and `remember` (write a linked, embedded, autologged note back
+  into the bundle). Schemas + dispatch, framework-free: the same tools drop
+  into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
+  `{"error": ...}` for the model to react to instead of killing the loop.
+- **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop.
+- **`Chat`** — the model contract: *any callable*
+  `(messages, tools) -> assistant message` in OpenAI chat format. Grafito
+  never imports an LLM SDK — the client is injected, like `rerank=`.
+- **`OpenAIChat`** — the bundled convenience for any OpenAI-compatible
+  endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs `httpx`,
+  reads `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`.
+
+```python
+from grafito.okf import OKFBundle, OpenAIChat, run_agent
+
+kb = OKFBundle.load("bundle", embed=embedder, autolog=True)
+answer = run_agent(kb, "why did we pick SQLite?", chat=OpenAIChat())
+kb.save()   # the agent's remember()ed notes + changelog land in git
+```
+
+For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:
+
+```python
+import litellm
+
+def chat(messages, tools):
+    response = litellm.completion(model="anthropic/claude-sonnet-5",
+                                  messages=messages, tools=tools)
+    return response.choices[0].message.model_dump()
+
+run_agent(kb, question, chat=chat)
+```
+
+`examples/okf/okf_agent.py` is the runnable end-to-end walkthrough (explore →
+answer with concept citations → remember a note → save bundle + `log.md`):
 
 ```bash
 export OPENAI_BASE_URL=http://localhost:11434/v1   # e.g. Ollama
 export OPENAI_MODEL=llama3.1
 python examples/okf/okf_agent.py
 ```
-
-The loop is deliberately framework-free (~80 lines): `run_agent(kb, question,
-chat=...)` takes any `(messages, tools) -> message` callable, so the same
-`BundleTools` drop into LangGraph, CrewAI, or a future MCP server unchanged.

@@ -1,29 +1,21 @@
-"""Tests for the agentic GraphRAG example (examples/okf/okf_agent.py).
+"""Tests for the agentic GraphRAG toolkit (grafito.okf.agent).
 
-The agent loop is driven with a scripted fake ``chat`` — no endpoint, no
-network — so the example's tool schemas, dispatch, and write path stay honest.
+The loop is driven with a scripted fake ``chat`` — no endpoint, no network —
+exercising the tool schemas, dispatch, error handling, and the write path.
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
+from grafito.okf import BundleTools, Chat, OKFBundle, run_agent
+
 pytest.importorskip("yaml")
 
-_EXAMPLES = Path("examples") / "okf"
-
-
-def _load_example():
-    spec = importlib.util.spec_from_file_location("okf_agent", _EXAMPLES / "okf_agent.py")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["okf_agent"] = module
-    spec.loader.exec_module(module)
-    return module
+KB = Path("examples") / "okf" / "okf_knowledge_base"
 
 
 def _tool_call(name: str, call_id: str, **args) -> dict:
@@ -48,27 +40,18 @@ class ScriptedChat:
 
 
 @pytest.fixture
-def kb():
-    okf_agent = _load_example()
-    from okf_knowledge_base import HashingEmbeddingFunction
-
-    from grafito.okf import OKFBundle
-
-    bundle = OKFBundle.load(
-        str(_EXAMPLES / "okf_knowledge_base"),
-        embed=HashingEmbeddingFunction(),
-        autolog=True,
-    )
-    yield okf_agent, bundle
+def kb() -> OKFBundle:
+    # No embedder: the search tool's hybrid mode degrades to full-text.
+    bundle = OKFBundle.load(str(KB), autolog=True)
+    yield bundle
     bundle.db.close()
 
 
 def test_agent_loop_explores_and_remembers(kb):
-    okf_agent, bundle = kb
     chat = ScriptedChat(
         [
             {"role": "assistant", "content": None, "tool_calls": [
-                _tool_call("search", "c1", query="slow query performance"),
+                _tool_call("search", "c1", query="slow query"),
                 _tool_call("browse", "c2", layer="runbooks"),
             ]},
             {"role": "assistant", "content": None, "tool_calls": [
@@ -87,12 +70,15 @@ def test_agent_loop_explores_and_remembers(kb):
             {"role": "assistant", "content": "Use the runbook (runbooks/slow-queries)."},
         ]
     )
-    answer = okf_agent.run_agent(bundle, "query got slow, what do I do?", chat=chat, verbose=False)
+    answer = run_agent(kb, "query got slow, what do I do?", chat=chat)
     assert answer == "Use the runbook (runbooks/slow-queries)."
 
+    # The default system prompt orients the model with the bundle layers.
+    system = chat.seen[0][0]
+    assert system["role"] == "system" and "runbooks" in system["content"]
+
     # Tool results reached the model as role=tool messages.
-    last_seen = chat.seen[-1]
-    tool_messages = [m for m in last_seen if m.get("role") == "tool"]
+    tool_messages = [m for m in chat.seen[-1] if m.get("role") == "tool"]
     assert {m["tool_call_id"] for m in tool_messages} == {"c1", "c2", "c3", "c4", "c5"}
     opened = json.loads(next(m for m in tool_messages if m["tool_call_id"] == "c3")["content"])
     assert opened["id"] == "runbooks/slow-queries"
@@ -100,32 +86,49 @@ def test_agent_loop_explores_and_remembers(kb):
     failed = json.loads(next(m for m in tool_messages if m["tool_call_id"] == "c4")["content"])
     assert "error" in failed
 
-    # The write path: note created, typed-linked, embedded, and autologged.
-    note = bundle.concept("notes/slow-query-checklist")
+    # The write path: note created, typed-linked, indexed, and autologged.
+    note = kb.concept("notes/slow-query-checklist")
     assert note is not None and note.type == "Note"
     assert {c.id for c in note.links(type="BUILDS_ON")} == {"runbooks/slow-queries"}
-    assert any("slow-query-checklist" in e["text"] for e in bundle.log())
-    hits = bundle.search("checklist", mode="text", k=5)
+    assert any("slow-query-checklist" in e["text"] for e in kb.log())
+    hits = kb.search("checklist", mode="text", k=5)
     assert "notes/slow-query-checklist" in {h.concept.id for h in hits}
 
 
 def test_agent_loop_stops_at_max_turns(kb):
-    okf_agent, bundle = kb
     endless = ScriptedChat(
         [
-            {"role": "assistant", "content": None,
-             "tool_calls": [_tool_call("browse", f"b{i}")]}
+            {"role": "assistant", "content": None, "tool_calls": [_tool_call("browse", f"b{i}")]}
             for i in range(5)
         ]
     )
-    answer = okf_agent.run_agent(bundle, "loop forever", chat=endless, max_turns=3, verbose=False)
+    answer = run_agent(kb, "loop forever", chat=endless, max_turns=3)
     assert "max_turns" in answer
 
 
+def test_custom_system_prompt_is_used(kb):
+    chat = ScriptedChat([{"role": "assistant", "content": "ok"}])
+    run_agent(kb, "hi", chat=chat, system="You are a test fixture.")
+    assert chat.seen[0][0]["content"] == "You are a test fixture."
+
+
 def test_tool_schemas_match_implementations(kb):
-    okf_agent, bundle = kb
-    tools = okf_agent.BundleTools(bundle)
+    tools = BundleTools(kb)
     for schema in tools.schemas:
         name = schema["function"]["name"]
         assert callable(getattr(tools, f"_{name}"))
         assert schema["function"]["description"]
+
+
+def test_scripted_chat_satisfies_protocol():
+    assert isinstance(ScriptedChat([]), Chat)
+
+
+def test_openai_chat_requires_httpx_or_builds():
+    pytest.importorskip("httpx")
+    from grafito.okf import OpenAIChat
+
+    with OpenAIChat(base_url="http://localhost:1/v1", api_key="x", model="m") as chat:
+        assert chat.base_url == "http://localhost:1/v1"
+        assert chat.model == "m"
+        assert isinstance(chat, Chat)

@@ -1,6 +1,6 @@
 [project]
 name = "grafitodb"
-version = "0.1.17"
+version = "0.1.18"
 description = "SQLite-based Property Graph Database"
 readme = "README.md"
 requires-python = ">=3.11"
