@@ -435,3 +435,23 @@ path, and visualization (it retrieves a "slow query" runbook for the query
 ```bash
 python examples/okf/okf_knowledge_base.py
 ```
+
+`examples/okf/okf_agent.py` is the **agentic GraphRAG** variant: where
+`context()` packs context in one shot, here the *model drives the exploration*
+through OpenAI-style tool calls — `browse` (progressive disclosure), `search`
+(hybrid), `open` (full concept + typed edges), `follow` (graph traversal),
+`history` (changelog), and `remember` (write a linked, embedded, autologged
+note back into the bundle). It answers with concept citations and `save()`s
+both the new knowledge and its changelog to markdown. Works against any
+OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, LM Studio, ...); needs
+`httpx`:
+
+```bash
+export OPENAI_BASE_URL=http://localhost:11434/v1   # e.g. Ollama
+export OPENAI_MODEL=llama3.1
+python examples/okf/okf_agent.py
+```
+
+The loop is deliberately framework-free (~80 lines): `run_agent(kb, question,
+chat=...)` takes any `(messages, tools) -> message` callable, so the same
+`BundleTools` drop into LangGraph, CrewAI, or a future MCP server unchanged.
