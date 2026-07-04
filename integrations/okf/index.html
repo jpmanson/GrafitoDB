@@ -1875,6 +1875,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#changelog-log_entry-and-autolog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changelog: log_entry() and autolog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#persistent-reuse-across-sessions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2781,6 +2792,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#changelog-log_entry-and-autolog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changelog: log_entry() and autolog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#persistent-reuse-across-sessions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2984,6 +3006,11 @@ bundle — useful for hybrid agent-memory workflows.</p>
 <td>Relationship type created for intra-bundle markdown links.</td>
 </tr>
 <tr>
+<td><code>typed_links</code></td>
+<td><code>False</code></td>
+<td>Derive the relationship type from the heading a link sits under — a link under <code># Joins with</code> becomes a <code>JOINS_WITH</code> relationship. Links before any heading, under <code># Links</code>, or under headings that don't normalize to a valid type keep <code>link_type</code>.</td>
+</tr>
+<tr>
 <td><code>configure_fts</code></td>
 <td><code>True</code></td>
 <td>Configure full-text search over <code>title</code>/<code>description</code>/<code>body</code> (best-effort; skipped if SQLite lacks FTS5).</td>
@@ -3042,8 +3069,11 @@ tolerate (a broken link may simply be not-yet-written knowledge).</p>
 <li>an optional self-contained <code>viz.html</code> graph viewer (<code>write_viz=True</code>).</li>
 </ul>
 <p>Stub nodes (created for broken links during import) are <strong>not</strong> exported. Nodes
-created programmatically without a stored <code>body</code> get a synthesized <code># Links</code>
-section listing their outgoing relationships.</p>
+created programmatically without a stored <code>body</code> get synthesized link sections
+from their outgoing relationships: <code>LINKS_TO</code> edges under <code># Links</code>, and every
+other type under a heading derived from it (<code>JOINS_WITH</code> → <code># Joins with</code>), so
+typed relationships round-trip through markdown when re-imported with
+<code>typed_links=True</code>.</p>
 <h3 id="options_1">Options</h3>
 <table>
 <thead>
@@ -3068,6 +3098,11 @@ section listing their outgoing relationships.</p>
 <td><code>write_viz</code></td>
 <td><code>False</code></td>
 <td>Also emit a self-contained <code>viz.html</code> at the bundle root.</td>
+</tr>
+<tr>
+<td><code>write_log</code></td>
+<td><code>True</code></td>
+<td>Regenerate per-scope <code>log.md</code> files from the graph's <code>LogEntry</code> nodes (imported history plus <code>log_entry</code>/autolog additions). Scopes without entries are left alone — an existing <code>log.md</code> is never blanked.</td>
 </tr>
 <tr>
 <td><code>prune</code></td>
@@ -3107,16 +3142,17 @@ of nodes/relationships, while exposing the full graph via <code>bundle.db</code>
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>                         <span class="c1"># a directory&#39;s listing: title+description, no bodies</span>
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">c</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0003-vector-search&quot;</span><span class="p">)</span>
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">c</span><span class="o">.</span><span class="n">title</span>                                       <span class="c1"># &#39;Add optional vector search&#39;</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">c</span><span class="o">.</span><span class="n">links</span><span class="p">()</span>                                     <span class="c1"># [Concept, ...] outgoing LINKS_TO</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">c</span><span class="o">.</span><span class="n">cites</span><span class="p">()</span>                                     <span class="c1"># [{&#39;url&#39;|&#39;concept&#39;, &#39;anchor&#39;}, ...]</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
-</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># semantic / text / hybrid</span>
-</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;make it faster&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>            <span class="c1"># scoped to a layer</span>
-</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;vector similarity&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;hybrid&quot;</span><span class="p">)</span>             <span class="c1"># RRF fusion of FTS + vector</span>
-</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="c1"># hybrid degrades to text-only when the bundle was loaded without embed=</span>
-</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>
-</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
-</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">c</span><span class="o">.</span><span class="n">links</span><span class="p">()</span>                                     <span class="c1"># [Concept, ...] any outgoing link type</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">c</span><span class="o">.</span><span class="n">links</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;JOINS_WITH&quot;</span><span class="p">)</span>                    <span class="c1"># restrict to one type (typed_links bundles)</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">c</span><span class="o">.</span><span class="n">cites</span><span class="p">()</span>                                     <span class="c1"># [{&#39;url&#39;|&#39;concept&#39;, &#39;anchor&#39;}, ...]</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># semantic / text / hybrid</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;make it faster&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>            <span class="c1"># scoped to a layer</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;vector similarity&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;hybrid&quot;</span><span class="p">)</span>             <span class="c1"># RRF fusion of FTS + vector</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="c1"># hybrid degrades to text-only when the bundle was loaded without embed=</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
 </span></code></pre></div>
 <h3 id="grounded-context-for-agents-context">Grounded context for agents: <code>context()</code></h3>
 <p><code>search()</code> returns ranked hits; <code>context()</code> turns them into a prompt. It is the
@@ -3124,9 +3160,10 @@ framework-agnostic bridge to <em>any</em> agent loop — no LangChain, LlamaInde
 required. Given a question it:</p>
 <ol>
 <li><strong>seeds</strong> retrieval with <code>search()</code> (semantic / text / hybrid);</li>
-<li><strong>graph-expands</strong> — follows each hit's outgoing <code>LINKS_TO</code> within
-   <code>expand_hops</code>, so the pack carries linked context the embedding alone would
-   miss (the GraphRAG edge over a flat vector store);</li>
+<li><strong>graph-expands</strong> — follows each hit's outgoing links (any relationship
+   type except <code>CITES</code>, including typed links) within <code>expand_hops</code>, so the
+   pack carries linked context the embedding alone would miss (the GraphRAG
+   edge over a flat vector store);</li>
 <li><strong>packs</strong> the concepts into a token budget as titled, cited blocks, greedily
    in priority order (the top hit is never dropped — it is truncated if it alone
    exceeds the budget).</li>
@@ -3174,7 +3211,7 @@ required. Given a question it:</p>
 <tr>
 <td><code>expand_hops</code></td>
 <td><code>1</code></td>
-<td>Outgoing <code>LINKS_TO</code> hops to graph-expand (<code>0</code> disables).</td>
+<td>Outgoing link hops to graph-expand (<code>0</code> disables); follows any relationship type except <code>CITES</code>.</td>
 </tr>
 <tr>
 <td><code>include_citations</code></td>
@@ -3242,6 +3279,26 @@ relabels the node, and any producer-defined frontmatter key); the FTS index and
 the vector embedding follow automatically. <code>save()</code> mirrors the graph to disk:
 files for removed concepts are pruned so <code>remove_concept</code> round-trips (pass
 <code>prune=False</code> to only add/overwrite).</p>
+<h3 id="changelog-log_entry-and-autolog">Changelog: <code>log_entry()</code> and autolog</h3>
+<p>An agent that writes memory should also leave a history. <code>log_entry()</code> appends
+a changelog entry (a <code>LogEntry</code> node, SPEC §7) that <code>save()</code> serializes to the
+scope's <code>log.md</code> — and <code>autolog=True</code> at load time does it automatically for
+every <code>add_concept</code> / <code>update_concept</code> / <code>remove_concept</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">)</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Refined.&quot;</span><span class="p">)</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log_entry</span><span class="p">(</span><span class="s2">&quot;Consolidated duplicate notes.&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;Update&quot;</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>             <span class="n">concepts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">])</span>          <span class="c1"># manual entry, MENTIONS the concept</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                    <span class="c1"># entries newest first, including the imported history</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                   <span class="c1"># regenerates log.md per scope (git-diffable history)</span>
+</span></code></pre></div>
+<p>Autolog entries embed a markdown link to the concept
+(<code>**Creation**: Created [An idea](/notes/idea.md).</code>), so <code>MENTIONS</code> edges
+survive markdown round-trips. Load with <code>import_log=True</code> when the bundle
+already has a <code>log.md</code> so new entries extend the history instead of replacing
+it on <code>save()</code>.</p>
 <p>Round-trip note: <code>save()</code> writes each concept's stored <code>body</code> verbatim. For a
 concept created <strong>without</strong> a body, <code>link</code>/<code>cite</code> edges are synthesized into
 <code># Links</code> / <code># Citations</code> sections on export (so they round-trip). For a concept
@@ -3252,17 +3309,17 @@ markdown — the edges remain queryable in the graph regardless.</p>
 want to do once. Back the bundle with a database <em>file</em> and persist the
 embeddings, then later sessions <code>open()</code> the file directly: no markdown
 parsing, no re-embedding.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Session 1 — import once, persist graph + embeddings.</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">db</span><span class="o">=</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">embed_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;store_embeddings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">)</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># Session 2+ — open the database file; the vector index rehydrates from it.</span>
-</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
-</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">)</span>   <span class="c1"># semantic, no re-embedding</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Session 1 — import once, persist graph + embeddings.</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">db</span><span class="o">=</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">embed_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;store_embeddings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="p">)</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1"># Session 2+ — open the database file; the vector index rehydrates from it.</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">)</span>   <span class="c1"># semantic, no re-embedding</span>
 </span></code></pre></div>
 <p>Pass <code>embed=</code> to <code>open()</code> only when the embedding function is a custom one the
 registry cannot rebuild by name (built-ins such as the SentenceTransformer
@@ -3272,12 +3329,12 @@ prefer a file-backed ANN backend via <code>embed_backend="hnswlib"</code> (or <c
 plus <code>embed_options={"index_path": "kb.hnswlib"}</code>.</p>
 <p>Materializing the directory tree and history (opt-in) lets you traverse the
 hierarchy as a graph and query the changelog:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
 </span></code></pre></div>
 <p><code>directory_nodes=True</code> adds <code>Directory</code> nodes + <code>CONTAINS</code> edges (root → subdir →
 concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked to mentioned concepts via
@@ -3302,7 +3359,7 @@ concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked t
 <p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf/okf_import.py</code> is a
 short intro (load → concept/links → search → save with <code>viz.html</code>) over the
 tabular sample bundle in <code>examples/okf/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf/okf_knowledge_base/</code> is a small engineering knowledge base —
@@ -3312,7 +3369,7 @@ the directory tree, aggregation via the <code>kb.execute</code> escape hatch, se
 search, grounded <code>context()</code> assembly with a reranker, the agent-memory write
 path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
 
 
