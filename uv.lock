@@ -1036,7 +1036,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/e5/51/e391a1a4238f18d0a
 
 [[package]]
 name = "grafitodb"
-version = "0.1.20"
+version = "0.1.21"
 source = { editable = "." }
 dependencies = [
     { name = "networkx" },
