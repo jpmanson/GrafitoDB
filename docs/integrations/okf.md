@@ -105,6 +105,7 @@ bundle — useful for hybrid agent-memory workflows.
 |----------|---------|-------------|
 | `link_type` | `"LINKS_TO"` | Relationship type created for intra-bundle markdown links. |
 | `typed_links` | `False` | Derive the relationship type from the heading a link sits under — a link under `# Joins with` becomes a `JOINS_WITH` relationship. Links before any heading, under `# Links`, or under headings that don't normalize to a valid type keep `link_type`. |
+| `wikilinks` | `False` | Also resolve Obsidian-style `[[Note]]` links (see [Obsidian wikilinks](#obsidian-wikilinks)). |
 | `configure_fts` | `True` | Configure full-text search over `title`/`description`/`body` (best-effort; skipped if SQLite lacks FTS5). |
 | `uri_prefix` | `"okf:"` | Prefix prepended to each concept ID to form the node `uri`. |
 | `progress_every` | `None` | Print a progress line every N concept files (and per phase) — for large bundles. |
@@ -117,6 +118,38 @@ The returned summary dict reports `nodes`, `relationships`, `stubs` (nodes
 created for links whose target is not in the bundle), `skipped`
 (`index.md`/`log.md` files), and `malformed` (concept IDs whose frontmatter
 was not valid YAML and was imported as plain body text).
+
+### Obsidian wikilinks
+
+An Obsidian vault is already an OKF bundle without a plugin — directories of
+markdown files with YAML frontmatter. What Obsidian adds is its own link
+syntax: `[[Note]]`, `[[Note|Alias]]`, `[[Note#Heading]]`. Pass
+`wikilinks=True` to resolve those alongside plain markdown links:
+
+```python
+db.import_okf_bundle("path/to/obsidian-vault", wikilinks=True)
+```
+
+Obsidian links by note title, not by path, so resolution is vault-wide rather
+than relative to the linking file:
+
+1. An exact concept-ID match first — `[[decisions/0001-use-sqlite]]` works
+   like a normal absolute markdown link.
+2. Otherwise, a case-insensitive match against every concept's *basename*
+   (filename without the directory) — `[[0001-use-sqlite]]` resolves the same
+   way, from any file in the vault.
+3. A basename shared by more than one concept is **ambiguous** and is
+   skipped rather than guessed (no relationship, no stub).
+4. A target matching nothing becomes a stub keyed by the literal link text —
+   Obsidian's own "red link" (not-yet-written note) convention. If a note
+   with that exact title is added later, the stub is promoted just like a
+   broken markdown link's would be (see [Incremental import](#incremental-import)).
+
+`[[Note|Alias]]` uses `Alias` as the relationship's `anchor` (falling back to
+`Note` without one); the `#Heading` fragment is dropped, same as for markdown
+links. Wikilinks participate in `typed_links` the same way markdown links do.
+Only the main body is scanned — a `[[Note]]` under `# Citations` is not
+picked up (citations resolve by URL or markdown link, not by title).
 
 ### Incremental import
 

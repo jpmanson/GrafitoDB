@@ -64,6 +64,10 @@ _HEADING_TEXT_RE = re.compile(r"^#{1,6}\s+(.*\S)\s*$", re.MULTILINE)
 
 _REL_TYPE_RE = re.compile(r"[A-Z_][A-Z0-9_]*")
 
+# Obsidian wikilink: [[Target]], [[Target|Alias]], [[Target#Heading]],
+# [[Target#Heading|Alias]] (also matches the `![[Target]]` embed form).
+_WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
+
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Split a markdown document into (frontmatter dict, body).
@@ -143,25 +147,93 @@ def extract_links(body: str, source_id: str) -> list[tuple[str, str]]:
     return [(anchor, target) for anchor, target, _ in extract_typed_links(body, source_id)]
 
 
+def _headings_before(body: str) -> list[tuple[int, str]]:
+    """[(position, heading_text), ...] for every markdown heading in ``body``."""
+    return [(m.start(), m.group(1)) for m in _HEADING_TEXT_RE.finditer(body)]
+
+
+def _heading_at(headings: list[tuple[int, str]], pos: int) -> str | None:
+    """The text of the closest heading at or before ``pos``, or ``None``."""
+    heading = None
+    for hpos, text in headings:
+        if hpos > pos:
+            break
+        heading = text
+    return heading
+
+
 def extract_typed_links(body: str, source_id: str) -> list[tuple[str, str, str | None]]:
     """Return [(anchor, target_concept_id, heading), ...] for intra-bundle links.
 
     ``heading`` is the text of the closest markdown heading above the link, or
     ``None`` for links before any heading.
     """
-    headings = [(m.start(), m.group(1)) for m in _HEADING_TEXT_RE.finditer(body)]
+    headings = _headings_before(body)
     links: list[tuple[str, str, str | None]] = []
     for match in _LINK_RE.finditer(body):
         anchor, raw_target = match.group(1), match.group(2)
         classified = classify_target(raw_target, source_id)
         if classified is None or classified[0] != "concept":
             continue
-        heading = None
-        for pos, text in headings:
-            if pos > match.start():
-                break
-            heading = text
-        links.append((anchor, classified[1], heading))
+        links.append((anchor, classified[1], _heading_at(headings, match.start())))
+    return links
+
+
+def parse_wikilink(raw: str) -> tuple[str, str | None]:
+    """Split a wikilink's inner text into ``(target, alias)``.
+
+    Handles ``Target``, ``Target|Alias``, ``Target#Heading``, and
+    ``Target#Heading|Alias`` — the heading fragment (an in-page anchor) is
+    dropped, same as :func:`classify_target` does for markdown links.
+    """
+    target_part, _, alias = raw.partition("|")
+    target_part = target_part.split("#", 1)[0].strip()
+    return target_part, (alias.strip() or None)
+
+
+def resolve_wikilink(
+    target: str, concept_ids: "set[str]", basename_index: dict[str, list[str]]
+) -> str | None:
+    """Resolve an Obsidian wikilink target to a concept ID.
+
+    Obsidian links by note title/filename, not by path, so this tries an exact
+    concept-ID match first (``[[decisions/0001-use-sqlite]]``), then a
+    case-insensitive match against every concept's basename. A basename shared
+    by more than one concept is ambiguous and left unresolved (``None``) rather
+    than guessed — same as a target matching nothing at all, both cases the
+    caller treats as "not found" (see :func:`extract_typed_wikilinks`).
+    """
+    if target in concept_ids:
+        return target
+    candidates = basename_index.get(target.lower(), [])
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def extract_typed_wikilinks(
+    body: str, concept_ids: "set[str]", basename_index: dict[str, list[str]]
+) -> list[tuple[str, str, str | None]]:
+    """Return [(anchor, target_concept_id, heading), ...] for Obsidian wikilinks.
+
+    Unlike markdown links (path-resolved, always kept — an unknown target
+    becomes a stub per SPEC sec. 5.3), a wikilink is only kept when it
+    resolves unambiguously via :func:`resolve_wikilink`: to an existing
+    concept, or verbatim as a not-yet-written concept ID (matching Obsidian's
+    own "red link" convention) when nothing matches its basename at all. An
+    *ambiguous* basename (shared by more than one concept) is dropped instead
+    of guessed. Citations sections are not scanned — wikilink support only
+    covers ``LINKS_TO``/typed body links.
+    """
+    headings = _headings_before(body)
+    links: list[tuple[str, str, str | None]] = []
+    for match in _WIKILINK_RE.finditer(body):
+        target, alias = parse_wikilink(match.group(1))
+        if not target:
+            continue
+        resolved = resolve_wikilink(target, concept_ids, basename_index)
+        if resolved is None and target.lower() in basename_index:
+            continue  # ambiguous basename: skip rather than guess
+        target_id = resolved or target  # unresolved -> verbatim, becomes a stub
+        links.append((alias or target, target_id, _heading_at(headings, match.start())))
     return links
 
 
@@ -298,6 +370,7 @@ def import_bundle(
     uri_prefix: str = "okf:",
     incremental: bool = False,
     prune: bool = False,
+    wikilinks: bool = False,
 ) -> dict:
     """Import an OKF bundle directory into ``db``.
 
@@ -310,6 +383,17 @@ def import_bundle(
             ``JOINS_WITH`` relationship). Links before any heading, under
             ``# Links``, or under headings that do not normalize to a valid
             type keep ``link_type``. Off by default.
+        wikilinks: Also resolve Obsidian-style ``[[Note]]``/``[[Note|Alias]]``
+            wikilinks in the main body (not the Citations section) into the
+            same relationship types as markdown links — Obsidian vaults are
+            OKF-compatible without a plugin, but wikilinks name a note by
+            title rather than path, so they need vault-wide resolution: an
+            exact concept-ID match first, then a case-insensitive match
+            against every concept's filename (basename). A basename shared by
+            more than one concept is ambiguous and skipped; one matching
+            nothing becomes a stub keyed by the literal link text (Obsidian's
+            own "red link" — not-yet-written note — convention). Off by
+            default.
         citations: Parse the ``# Citations`` section into ``citation_type``
             relationships (to concepts or auto-created ``Reference`` nodes).
         citation_type: Relationship type created for citations.
@@ -383,6 +467,7 @@ def import_bundle(
     # (source_id, anchor, kind, value)
     pending_citations: list[tuple[str, str, str, str]] = []
     embed_docs: list[tuple[int, str]] = []  # (node_id, document) for real concepts
+    wikilink_bodies: list[tuple[str, str]] = []  # (concept_id, main_body), only if wikilinks
     nodes = 0
     skipped = 0
     malformed: list[str] = []
@@ -522,6 +607,8 @@ def import_bundle(
                 pending_links.append((concept_id, anchor, target_id, rel_type))
             for anchor, kind, value in extract_citations(citations_block, concept_id):
                 pending_citations.append((concept_id, anchor, kind, value))
+            if wikilinks:
+                wikilink_bodies.append((concept_id, main_body))
 
         if stride:
             report("concepts", processed, end=True)
@@ -531,6 +618,21 @@ def import_bundle(
                 db.delete_node(stale_node.id)
                 concept_to_node.pop(stale_id, None)
                 pruned += 1
+
+        if wikilinks and wikilink_bodies:
+            # Resolved after the whole bundle's real_concepts is known — a
+            # wikilink names a note by title, not by the path of the file
+            # currently being parsed, so it needs vault-wide context.
+            concept_id_set = set(real_concepts)
+            basename_index: dict[str, list[str]] = {}
+            for cid in real_concepts:
+                basename_index.setdefault(cid.rsplit("/", 1)[-1].lower(), []).append(cid)
+            for concept_id, main_body in wikilink_bodies:
+                for anchor, target_id, heading in extract_typed_wikilinks(
+                    main_body, concept_id_set, basename_index
+                ):
+                    rel_type = (rel_type_from_heading(heading) if typed_links else None) or link_type
+                    pending_links.append((concept_id, anchor, target_id, rel_type))
 
         # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
         relationships = 0

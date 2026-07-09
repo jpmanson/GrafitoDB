@@ -566,6 +566,129 @@ def test_rel_type_from_heading_normalization():
     assert rel_type_from_heading("123") is None  # not a valid type identifier
 
 
+# --- Obsidian wikilinks -------------------------------------------------------
+
+
+def test_parse_wikilink_variants():
+    from grafito.importers.okf import parse_wikilink
+
+    assert parse_wikilink("Target") == ("Target", None)
+    assert parse_wikilink("Target|Alias") == ("Target", "Alias")
+    assert parse_wikilink("Target#Heading") == ("Target", None)
+    assert parse_wikilink("Target#Heading|Alias") == ("Target", "Alias")
+
+
+def test_resolve_wikilink_exact_path_and_basename_and_ambiguous():
+    from grafito.importers.okf import resolve_wikilink
+
+    concept_ids = {"decisions/0001-use-sqlite", "glossary/cypher", "notes/cypher"}
+    basename_index = {"0001-use-sqlite": ["decisions/0001-use-sqlite"], "cypher": ["glossary/cypher", "notes/cypher"]}
+
+    assert resolve_wikilink("decisions/0001-use-sqlite", concept_ids, basename_index) == "decisions/0001-use-sqlite"
+    assert resolve_wikilink("0001-use-sqlite", concept_ids, basename_index) == "decisions/0001-use-sqlite"
+    assert resolve_wikilink("cypher", concept_ids, basename_index) is None  # ambiguous
+    assert resolve_wikilink("nope", concept_ids, basename_index) is None  # not found
+
+
+def test_wikilinks_off_by_default(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[b]] for details.\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    assert summary["relationships"] == 0
+    assert summary["stubs"] == 0
+
+
+def test_wikilink_resolves_by_basename(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[b]] for details.\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["stubs"] == 0
+    rows = db.execute("MATCH (a {title: 'A'})-[:LINKS_TO]->(b) RETURN b.title AS t")
+    assert rows[0]["t"] == "B"
+
+
+def test_wikilink_resolves_by_exact_concept_id(db, tmp_path):
+    sub = tmp_path / "notes"
+    sub.mkdir()
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[notes/b]].\n", encoding="utf-8"
+    )
+    (sub / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["stubs"] == 0
+    rows = db.execute("MATCH (a {title: 'A'})-[:LINKS_TO]->(b) RETURN b.title AS t")
+    assert rows[0]["t"] == "B"
+
+
+def test_wikilink_alias_becomes_anchor(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[b|Beta]].\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    rows = db.execute("MATCH (a {title: 'A'})-[r:LINKS_TO]->(b) RETURN r.anchor AS anchor")
+    assert rows[0]["anchor"] == "Beta"
+
+
+def test_wikilink_heading_fragment_stripped(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[b#Some Section]].\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["stubs"] == 0
+    rows = db.execute("MATCH (a {title: 'A'})-[:LINKS_TO]->(b) RETURN b.title AS t")
+    assert rows[0]["t"] == "B"
+
+
+def test_wikilink_unresolved_creates_stub(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[Future Note]].\n", encoding="utf-8"
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["stubs"] == 1
+    stub = _node_by_uri(db, "okf:Future Note")
+    assert stub.properties.get("stub") is True
+
+
+def test_wikilink_ambiguous_basename_skipped(db, tmp_path):
+    sub1, sub2 = tmp_path / "one", tmp_path / "two"
+    sub1.mkdir()
+    sub2.mkdir()
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [[dup]].\n", encoding="utf-8"
+    )
+    (sub1 / "dup.md").write_text("---\ntype: Doc\ntitle: Dup1\n---\nx\n", encoding="utf-8")
+    (sub2 / "dup.md").write_text("---\ntype: Doc\ntitle: Dup2\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["relationships"] == 0
+    assert summary["stubs"] == 0
+
+
+def test_wikilinks_excluded_from_citations_section(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nx\n\n# Citations\n[[b]]\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nx\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True)
+    assert summary["relationships"] == 0
+    assert summary["stubs"] == 0
+
+
+def test_wikilinks_respect_typed_links(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Table\ntitle: A\n---\n# Joins with\n\n[[b]] on id.\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Table\ntitle: B\n---\nx\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, wikilinks=True, typed_links=True)
+    rows = db.execute("MATCH (a {title: 'A'})-[r]->(b) RETURN type(r) AS t")
+    assert rows[0]["t"] == "JOINS_WITH"
+
+
 # --- Progress reporting -------------------------------------------------------
 
 

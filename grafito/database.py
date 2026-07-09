@@ -3108,6 +3108,7 @@ class GrafitoDatabase:
         uri_prefix: str = "okf:",
         incremental: bool = False,
         prune: bool = False,
+        wikilinks: bool = False,
     ) -> dict:
         """Import an Open Knowledge Format (OKF) bundle into this database.
 
@@ -3132,6 +3133,10 @@ class GrafitoDatabase:
         changed files are updated in place (same node ID); new files are
         added. Add ``prune=True`` (requires ``incremental=True``) to also
         delete nodes for concept files removed from the bundle.
+
+        Pass ``wikilinks=True`` to also resolve Obsidian-style ``[[Note]]``
+        links in concept bodies (an Obsidian vault is OKF-compatible without a
+        plugin already; this adds its native link syntax).
 
         Returns a summary dict with
         node/relationship/citation/reference/stub/skipped/embedded/unchanged/
@@ -3159,6 +3164,7 @@ class GrafitoDatabase:
             uri_prefix=uri_prefix,
             incremental=incremental,
             prune=prune,
+            wikilinks=wikilinks,
         )
 
     def export_okf_bundle(
