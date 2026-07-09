@@ -176,6 +176,57 @@ report["warnings"]     # [{'path', 'warning'}] — broken intra-bundle links,
 Errors are conformance failures; warnings are soft guidance a consumer must
 tolerate (a broken link may simply be not-yet-written knowledge).
 
+### Layered linting: `lint_okf_bundle`
+
+`validate_okf_bundle` only checks hard SPEC conformance. `lint_okf_bundle`
+wraps it and adds two more layers — a three-tier model (Core / Profile /
+Hygiene):
+
+```python
+from grafito.okf import lint_okf_bundle
+
+report = lint_okf_bundle("path/to/bundle", profile="profile.yaml")
+report["conformant"]   # Core has no errors AND no Profile rule severity="error" fired
+report["core"]         # {"errors", "warnings"} — identical to validate_okf_bundle
+report["profile"]      # [{"path", "rule", "message", "severity"}, ...]
+report["hygiene"]      # [{"path", "rule", "message"}, ...] — always advisory
+```
+
+**Profile** rules are bundle-specific and come from a manifest — a dict, or a
+path to a YAML file:
+
+```yaml
+rules:
+  - id: adr-requires-status
+    applies_to: ADR            # a type name, a list of types, or "*" (default)
+    require_field: status      # missing, or empty ("" / [] / {}) unless non_empty: false
+    severity: error             # "error" blocks `conformant`; "warning" (default) doesn't
+  - id: title-max-length
+    field: title
+    max_length: 80
+    severity: warning
+```
+
+A rule may combine more than one check: `require_field` (+ `non_empty`),
+`forbid_field`, `max_length` (+ `field`), `allowed_values` (+ `field`),
+`pattern` (a regex, + `field`).
+
+**Hygiene** is a fixed set of best-practice checks for a *knowledge graph*
+specifically — not customizable, and never blocks `conformant`:
+`missing-title`, `missing-description`, `short-body` (main body under
+`short_body_chars`, default 40, excluding citations), `orphan-concept` (no
+intra-bundle links in or out — disconnected from the graph), and
+`duplicate-title` (two concepts sharing a title).
+
+`mode="audit"` (default) is the human-facing report — all three layers.
+`mode="validate"` drops Hygiene, for a CI gate that only cares about
+conformance:
+
+```python
+report = lint_okf_bundle("path/to/bundle", profile="profile.yaml", mode="validate")
+assert report["conformant"], report["core"]["errors"] + report["profile"]
+```
+
 ## Exporting a bundle
 
 The inverse operation serializes the graph back to OKF markdown:

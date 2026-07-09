@@ -337,6 +337,185 @@ def test_validate_missing_bundle_raises(tmp_path):
         validate_okf_bundle(str(tmp_path / "nope"))
 
 
+# --- Layered linting: Core / Profile / Hygiene --------------------------------
+
+
+def test_lint_core_layer_matches_validate_bundle():
+    from grafito.okf import lint_okf_bundle, validate_okf_bundle
+
+    validated = validate_okf_bundle(str(KB_BUNDLE))
+    report = lint_okf_bundle(str(KB_BUNDLE))
+    assert report["core"]["errors"] == validated["errors"]
+    assert report["core"]["warnings"] == validated["warnings"]
+    assert report["files"] == validated["files"]
+    assert report["conformant"] is True
+    assert report["profile"] == []
+
+
+def test_lint_missing_bundle_raises(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    with pytest.raises(NotADirectoryError):
+        lint_okf_bundle(str(tmp_path / "nope"))
+
+
+def test_lint_unknown_mode_raises(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        lint_okf_bundle(str(tmp_path), mode="bogus")
+
+
+def test_lint_hygiene_flags_missing_title_description_and_short_body(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "thin.md").write_text("---\ntype: Doc\n---\nToo short.\n", encoding="utf-8")
+    report = lint_okf_bundle(str(tmp_path))
+    rules = {(f["path"], f["rule"]) for f in report["hygiene"]}
+    assert ("thin.md", "missing-title") in rules
+    assert ("thin.md", "missing-description") in rules
+    assert ("thin.md", "short-body") in rules
+
+
+def test_lint_hygiene_flags_orphan_concept(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\ndescription: d\n---\n"
+        "See [b](/b.md) for a much longer body than the short-body threshold requires here.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "b.md").write_text(
+        "---\ntype: Doc\ntitle: B\ndescription: d\n---\n"
+        "Linked from A, with a body long enough to dodge the short-body hygiene check too.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "lonely.md").write_text(
+        "---\ntype: Doc\ntitle: Lonely\ndescription: d\n---\n"
+        "Nobody links here and this links nowhere, body padded past the threshold anyway.\n",
+        encoding="utf-8",
+    )
+    report = lint_okf_bundle(str(tmp_path))
+    orphans = {f["path"] for f in report["hygiene"] if f["rule"] == "orphan-concept"}
+    assert orphans == {"lonely.md"}
+
+
+def test_lint_hygiene_flags_duplicate_title(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: Same Title\ndescription: d\n---\n"
+        "A body long enough to not trip the short-body hygiene rule on its own.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "b.md").write_text(
+        "---\ntype: Doc\ntitle: Same Title\ndescription: d\n---\n"
+        "Another body long enough to not trip the short-body hygiene rule either.\n",
+        encoding="utf-8",
+    )
+    report = lint_okf_bundle(str(tmp_path))
+    dupes = {f["path"] for f in report["hygiene"] if f["rule"] == "duplicate-title"}
+    assert dupes == {"a.md", "b.md"}
+
+
+def test_lint_validate_mode_omits_hygiene(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "thin.md").write_text("---\ntype: Doc\n---\nToo short.\n", encoding="utf-8")
+    report = lint_okf_bundle(str(tmp_path), mode="validate")
+    assert report["hygiene"] == []
+
+
+def test_lint_profile_require_field_error_blocks_conformant(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "adr.md").write_text(
+        "---\ntype: ADR\ntitle: A decision\n---\nBody.\n", encoding="utf-8"
+    )
+    profile = {
+        "rules": [
+            {"id": "adr-requires-status", "applies_to": "ADR", "require_field": "status", "severity": "error"}
+        ]
+    }
+    report = lint_okf_bundle(str(tmp_path), profile=profile)
+    assert report["conformant"] is False
+    findings = [f for f in report["profile"] if f["rule"] == "adr-requires-status"]
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "error"
+    assert "missing required field: status" in findings[0]["message"]
+
+
+def test_lint_profile_applies_to_filters_by_type(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "adr.md").write_text("---\ntype: ADR\ntitle: A\n---\nBody.\n", encoding="utf-8")
+    (tmp_path / "note.md").write_text("---\ntype: Note\ntitle: N\n---\nBody.\n", encoding="utf-8")
+    profile = {
+        "rules": [{"id": "needs-status", "applies_to": "ADR", "require_field": "status"}]
+    }
+    report = lint_okf_bundle(str(tmp_path), profile=profile)
+    flagged = {f["path"] for f in report["profile"]}
+    assert flagged == {"adr.md"}
+
+
+def test_lint_profile_severity_warning_does_not_block_conformant(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody.\n", encoding="utf-8")
+    profile = {"rules": [{"id": "wants-tags", "require_field": "tags", "severity": "warning"}]}
+    report = lint_okf_bundle(str(tmp_path), profile=profile)
+    assert report["conformant"] is True
+    assert len(report["profile"]) == 1
+
+
+def test_lint_profile_from_yaml_file(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody.\n", encoding="utf-8")
+    manifest = tmp_path / "profile.yaml"
+    manifest.write_text(
+        "rules:\n  - id: wants-tags\n    require_field: tags\n    severity: warning\n",
+        encoding="utf-8",
+    )
+    report = lint_okf_bundle(str(tmp_path), profile=str(manifest))
+    assert len(report["profile"]) == 1
+    assert report["profile"][0]["rule"] == "wants-tags"
+
+
+def test_lint_profile_missing_id_raises(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        lint_okf_bundle(str(tmp_path), profile={"rules": [{"require_field": "tags"}]})
+
+
+def test_lint_profile_max_length_allowed_values_and_pattern(tmp_path):
+    from grafito.okf import lint_okf_bundle
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A very very long title that exceeds the limit\n"
+        "status: draft\n---\nBody.\n",
+        encoding="utf-8",
+    )
+    profile = {
+        "rules": [
+            {"id": "title-len", "field": "title", "max_length": 10, "severity": "warning"},
+            {
+                "id": "status-enum",
+                "field": "status",
+                "allowed_values": ["accepted", "rejected"],
+                "severity": "warning",
+            },
+            {"id": "title-pattern", "field": "title", "pattern": r"^\d+", "severity": "warning"},
+        ]
+    }
+    report = lint_okf_bundle(str(tmp_path), profile=profile)
+    rules = {f["rule"] for f in report["profile"]}
+    assert rules == {"title-len", "status-enum", "title-pattern"}
+
+
 # --- Typed links from headings --------------------------------------------------
 
 

@@ -764,3 +764,239 @@ def validate_bundle(root: str | Path) -> dict:
         "errors": errors,
         "warnings": warnings,
     }
+
+
+# --- Layered linting (Core / Profile / Hygiene) -------------------------------
+#
+# `validate_bundle` above is the Core layer: hard SPEC conformance, never
+# customizable. `lint_bundle` adds two more layers on top of it, inspired by
+# okflint's three-tier model:
+#
+# - Profile: bundle-specific rules from an optional YAML manifest (e.g. "ADR
+#   concepts require a status field"). A rule's `severity` decides whether it
+#   blocks `conformant`.
+# - Hygiene: built-in best-practice checks for a *knowledge graph* specifically
+#   (missing title/description, very short bodies, concepts disconnected from
+#   the graph, duplicate titles) — always advisory, never blocks `conformant`.
+
+# Rule keys `_check_profile_rule` understands, beyond `id`/`description`/
+# `applies_to`/`severity`.
+_PROFILE_RULE_CHECKS = frozenset(
+    {"require_field", "forbid_field", "max_length", "allowed_values", "pattern"}
+)
+
+
+def _load_profile(profile: "str | Path | dict | None") -> list[dict]:
+    """Load a Profile manifest: a dict, or a path to a YAML file with a `rules` list."""
+    if profile is None:
+        return []
+    if isinstance(profile, dict):
+        data = profile
+    else:
+        path = Path(profile)
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    rules = data.get("rules", [])
+    if not isinstance(rules, list):
+        raise ValueError("profile manifest must have a top-level 'rules' list")
+    for rule in rules:
+        if not isinstance(rule, dict) or "id" not in rule:
+            raise ValueError("every profile rule needs an 'id'")
+        if not _PROFILE_RULE_CHECKS.intersection(rule):
+            raise ValueError(
+                f"profile rule {rule['id']!r} has no recognized check "
+                f"(expected one of {sorted(_PROFILE_RULE_CHECKS)})"
+            )
+    return rules
+
+
+def _rule_applies(rule: dict, concept_type: str | None) -> bool:
+    applies_to = rule.get("applies_to", "*")
+    if applies_to in (None, "*"):
+        return True
+    if isinstance(applies_to, list):
+        return concept_type in applies_to
+    return concept_type == applies_to
+
+
+def _check_profile_rule(rule: dict, frontmatter: dict) -> list[str]:
+    """Return violation messages for `rule` against a concept's frontmatter."""
+    messages: list[str] = []
+    if "require_field" in rule:
+        field = rule["require_field"]
+        value = frontmatter.get(field)
+        empty = value in ("", [], {}) if rule.get("non_empty", True) else False
+        if value is None or empty:
+            messages.append(f"missing required field: {field}")
+    if "forbid_field" in rule and rule["forbid_field"] in frontmatter:
+        messages.append(f"forbidden field present: {rule['forbid_field']}")
+    if "max_length" in rule and "field" in rule:
+        value = frontmatter.get(rule["field"])
+        if isinstance(value, str) and len(value) > rule["max_length"]:
+            messages.append(
+                f"{rule['field']!r} exceeds max_length {rule['max_length']} ({len(value)} chars)"
+            )
+    if "allowed_values" in rule and "field" in rule:
+        value = frontmatter.get(rule["field"])
+        if value is not None and value not in rule["allowed_values"]:
+            messages.append(
+                f"{rule['field']!r} value {value!r} not in allowed_values {rule['allowed_values']}"
+            )
+    if "pattern" in rule and "field" in rule:
+        value = frontmatter.get(rule["field"])
+        if isinstance(value, str) and not re.search(rule["pattern"], value):
+            messages.append(f"{rule['field']!r} does not match pattern {rule['pattern']!r}")
+    return messages
+
+
+def lint_bundle(
+    root: str | Path,
+    *,
+    profile: "str | Path | dict | None" = None,
+    mode: str = "audit",
+    short_body_chars: int = 40,
+) -> dict:
+    """Lint a bundle in three layers: Core, Profile, and Hygiene.
+
+    Core reuses :func:`validate_bundle` verbatim (hard SPEC conformance,
+    sec. 9) — see its docstring for exactly what it checks.
+
+    Profile applies custom rules from ``profile`` (a dict, or a path to a
+    YAML file) shaped like::
+
+        rules:
+          - id: adr-requires-status
+            applies_to: ADR          # a type name, a list of types, or "*" (default)
+            require_field: status    # missing, or "" / [] / {} unless non_empty: false
+            severity: error          # "error" (blocks `conformant`) or "warning" (default)
+          - id: title-max-length
+            max_length: 80
+            field: title
+            severity: warning
+
+    Supported checks (a rule may combine more than one): ``require_field``
+    (+ optional ``non_empty``, default ``true``), ``forbid_field``,
+    ``max_length`` (+ ``field``), ``allowed_values`` (+ ``field``), ``pattern``
+    (a regex, + ``field``).
+
+    Hygiene is a fixed, non-customizable set of best-practice checks for a
+    knowledge graph specifically — always advisory, never affects
+    ``conformant``: ``missing-title``, ``missing-description``, ``short-body``
+    (main body under ``short_body_chars``, excluding the citations section),
+    ``orphan-concept`` (no intra-bundle links in or out), and
+    ``duplicate-title`` (two concepts sharing a title).
+
+    ``mode="audit"`` (default) returns all three layers — the observational,
+    human-facing report. ``mode="validate"`` omits Hygiene (a CI gate cares
+    about conformance, not style nits); in both modes ``conformant`` is
+    ``True`` only when Core has no errors and no Profile rule with
+    ``severity="error"`` was violated — Profile warnings never block it.
+
+    Returns:
+        ``{"conformant", "files", "core": {"errors", "warnings"},
+        "profile": [{"path", "rule", "message", "severity"}],
+        "hygiene": [{"path", "rule", "message"}]}``.
+    """
+    if mode not in ("audit", "validate"):
+        raise ValueError(f"Unknown lint mode: {mode!r} (expected 'audit' or 'validate')")
+
+    root_path = Path(root)
+    core_report = validate_bundle(root_path)
+    rules = _load_profile(profile)
+
+    # Single extra pass to gather what Profile/Hygiene need: frontmatter, body,
+    # and the intra-bundle link graph (in/out degree per concept).
+    concepts: list[tuple[str, str, dict, str]] = []  # (rel, concept_id, frontmatter, body)
+    id_to_rel: dict[str, str] = {}
+    outgoing: dict[str, int] = {}
+    incoming: dict[str, int] = {}
+    titles: dict[str, list[str]] = {}
+
+    for path in sorted(root_path.rglob("*.md")):
+        if path.name in RESERVED_FILENAMES:
+            continue
+        rel = path.relative_to(root_path).as_posix()
+        try:
+            frontmatter, body = parse_frontmatter(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            continue  # already reported by the Core layer
+        concept_id = _concept_id_for(path, root_path)
+        concepts.append((rel, concept_id, frontmatter, body))
+        id_to_rel[concept_id] = rel
+        outgoing.setdefault(concept_id, 0)
+        incoming.setdefault(concept_id, 0)
+        main_body, _citations_block = split_citations(body)
+        for _anchor, target_id in extract_links(main_body, concept_id):
+            outgoing[concept_id] += 1
+            incoming[target_id] = incoming.get(target_id, 0) + 1
+        title = frontmatter.get("title")
+        if isinstance(title, str) and title.strip():
+            titles.setdefault(title, []).append(concept_id)
+
+    profile_findings: list[dict] = []
+    hygiene_findings: list[dict] = []
+
+    for rel, concept_id, frontmatter, body in concepts:
+        concept_type = frontmatter.get("type")
+        concept_type = concept_type if isinstance(concept_type, str) else None
+
+        for rule in rules:
+            if not _rule_applies(rule, concept_type):
+                continue
+            for message in _check_profile_rule(rule, frontmatter):
+                profile_findings.append(
+                    {
+                        "path": rel,
+                        "rule": rule["id"],
+                        "message": message,
+                        "severity": rule.get("severity", "warning"),
+                    }
+                )
+
+        if mode == "audit":
+            if not isinstance(frontmatter.get("title"), str) or not frontmatter["title"].strip():
+                hygiene_findings.append(
+                    {"path": rel, "rule": "missing-title", "message": "no title field"}
+                )
+            if not isinstance(frontmatter.get("description"), str) or not frontmatter[
+                "description"
+            ].strip():
+                hygiene_findings.append(
+                    {"path": rel, "rule": "missing-description", "message": "no description field"}
+                )
+            main_body, _citations_block = split_citations(body)
+            if len(main_body.strip()) < short_body_chars:
+                hygiene_findings.append(
+                    {
+                        "path": rel,
+                        "rule": "short-body",
+                        "message": f"body is under {short_body_chars} characters",
+                    }
+                )
+            if outgoing[concept_id] == 0 and incoming.get(concept_id, 0) == 0:
+                hygiene_findings.append(
+                    {"path": rel, "rule": "orphan-concept", "message": "no outgoing or incoming links"}
+                )
+
+    if mode == "audit":
+        for title, ids in titles.items():
+            if len(ids) > 1:
+                for concept_id in ids:
+                    others = [i for i in ids if i != concept_id]
+                    hygiene_findings.append(
+                        {
+                            "path": id_to_rel[concept_id],
+                            "rule": "duplicate-title",
+                            "message": f"title {title!r} also used by {others}",
+                        }
+                    )
+
+    profile_errors = [f for f in profile_findings if f["severity"] == "error"]
+    conformant = not core_report["errors"] and not profile_errors
+
+    return {
+        "conformant": conformant,
+        "files": core_report["files"],
+        "core": {"errors": core_report["errors"], "warnings": core_report["warnings"]},
+        "profile": profile_findings,
+        "hygiene": hygiene_findings if mode == "audit" else [],
+    }

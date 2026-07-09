@@ -15,6 +15,7 @@ kb.db.execute("MATCH (n) RETURN count(n)")   # escape hatch
 ```
 """
 
+from ..importers.okf import lint_bundle as lint_okf_bundle
 from ..importers.okf import validate_bundle as validate_okf_bundle
 from .agent import AnthropicChat, BundleTools, Chat, OpenAIChat, run_agent
 from .bundle import OKFBundle
@@ -32,6 +33,7 @@ from .rerank import (
 __all__ = [
     "OKFBundle",
     "validate_okf_bundle",
+    "lint_okf_bundle",
     "BundleTools",
     "Chat",
     "AnthropicChat",
