@@ -38,6 +38,7 @@ Read the full documentation at: https://jpmanson.github.io/GrafitoDB/
 - **Metadata Queries**: Inspect labels, relationship types, and counts
 - **Full-Text Search (FTS5)**: BM25-ranked keyword search over configured text properties
 - **Semantic/Vector Search**: Optional ANN backends with similarity search and reranker hooks
+- **Open Knowledge Format (OKF)**: Import/export git-diffable markdown bundles as a graph, plus the `OKFBundle` agent-memory façade (grounded retrieval, review queue, layered linting, Obsidian wikilinks)
 - **Transactions**: Full ACID transaction support with context managers
 
 ### Technical Details
