@@ -60,6 +60,26 @@ class Concept:
     def properties(self) -> dict[str, Any]:
         return self.node.properties
 
+    @property
+    def status(self) -> str | None:
+        return self.node.properties.get("status")
+
+    @property
+    def is_superseded(self) -> bool:
+        return self.status == "superseded"
+
+    @property
+    def superseded_by(self) -> str | None:
+        return self.node.properties.get("superseded_by")
+
+    @property
+    def supersedes(self) -> list[str]:
+        """Concept IDs this concept replaces (SPEC trust model)."""
+        value = self.node.properties.get("supersedes")
+        if isinstance(value, list):
+            return list(value)
+        return [value] if value else []
+
     # --- navigation --------------------------------------------------------
 
     def links(self, *, type: str | None = None) -> list["Concept"]:
@@ -83,11 +103,71 @@ class Concept:
         """Citations from this concept: ``[{"url"|"concept", "anchor"}, ...]``."""
         return self._bundle._citations_of(self.id)
 
+    def conflicts(self) -> list["Concept"]:
+        """Concepts flagged as contradicting this one (see :meth:`OKFBundle.conflicts_with`)."""
+        return self._bundle._neighbors(self.id, "CONFLICTS_WITH", "out")
+
     def __repr__(self) -> str:
         return f"<Concept {self.id!r} ({self.type})>"
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Concept) and other.node.id == self.node.id
+
+    def __hash__(self) -> int:
+        return hash(self.node.id)
+
+
+class Proposal:
+    """A concept staged for review before it lands in the graph.
+
+    Produced by :meth:`OKFBundle.propose` when a new concept is similar enough
+    to existing ones that it needs a human (or heuristic) decision rather than
+    being written straight away. Approve with :meth:`OKFBundle.approve`, or
+    discard with :meth:`OKFBundle.reject`. A thin, read-only view — mutation
+    always goes through the bundle, matching :class:`Concept`.
+    """
+
+    __slots__ = ("node", "_bundle")
+
+    def __init__(self, bundle: "OKFBundle", node: Node) -> None:
+        self.node = node
+        self._bundle = bundle
+
+    @property
+    def id(self) -> str:
+        return str(self.node.properties.get("concept_id") or self.node.id)
+
+    @property
+    def type(self) -> str:
+        return self.node.labels[0] if self.node.labels else "Concept"
+
+    @property
+    def title(self) -> str | None:
+        return self.node.properties.get("title")
+
+    @property
+    def body(self) -> str:
+        return self.node.properties.get("body", "")
+
+    @property
+    def properties(self) -> dict[str, Any]:
+        return self.node.properties
+
+    @property
+    def similar(self) -> list[dict]:
+        """Existing concepts that triggered review, most similar first.
+
+        Each entry is ``{"concept_id", "title", "score", "via"}`` (``via`` is
+        ``"semantic"`` or ``"text"``, matching :class:`Hit`).
+        """
+        value = self.node.properties.get("pending_similar")
+        return list(value) if isinstance(value, list) else []
+
+    def __repr__(self) -> str:
+        return f"<Proposal {self.id!r} ({self.type})>"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Proposal) and other.node.id == self.node.id
 
     def __hash__(self) -> int:
         return hash(self.node.id)

@@ -59,8 +59,8 @@ uv pip install grafito
 # Install in development mode
 git clone <repository-url>
 cd grafito
-pip install -e ".[dev]"
-uv pip install -e ".[dev]"
+pip install -e . pytest pytest-cov
+uv sync
 ```
 
 Optional extras:

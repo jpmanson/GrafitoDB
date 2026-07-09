@@ -118,6 +118,43 @@ created for links whose target is not in the bundle), `skipped`
 (`index.md`/`log.md` files), and `malformed` (concept IDs whose frontmatter
 was not valid YAML and was imported as plain body text).
 
+### Incremental import
+
+Re-importing a bundle normally reparses and re-embeds every file. For a large
+or frequently-updated bundle, pass `incremental=True` to make re-imports cheap:
+
+```python
+db.import_okf_bundle("path/to/bundle", embed=embedder, incremental=True)
+# ... edit a couple of files in the bundle directory ...
+summary = db.import_okf_bundle("path/to/bundle", embed=embedder, incremental=True)
+print(summary["unchanged"], summary["updated"], summary["nodes"])
+```
+
+Each concept's raw file content is hashed (`okf_hash`, stored on the node and
+excluded from exported frontmatter) and compared against the hash recorded on
+its last import:
+
+- **Unchanged** files are skipped entirely — no re-parsing, no re-embedding,
+  no relationship churn. This is the main cost saved on a re-import.
+- **Changed** files are updated *in place*: the same node ID is kept (so
+  relationships from unchanged concepts pointing at it stay valid), its own
+  outgoing links/citations are regenerated, and it is re-embedded. Edges added
+  by the trust model (`OKFBundle.supersede`/`conflicts_with` —
+  `SUPERSEDES`/`CONFLICTS_WITH`) are left untouched.
+- **New** files are created as usual. A link that previously created a stub
+  (SPEC §5.3) is promoted in place when the target file is later added,
+  rather than creating a duplicate node.
+- Pass `prune=True` (requires `incremental=True`) to also delete nodes whose
+  concept file was removed from the bundle since the last import — mirrors
+  the exporter's `prune` option.
+
+The summary dict gains `unchanged`, `updated`, and `pruned` counts, and
+`references`/`stubs` count only genuinely new nodes (existing `Reference`/stub
+nodes are reused, not duplicated).
+
+`directory_nodes`/`import_log` are not incremental-aware: combining them with
+`incremental=True` duplicates directory/log nodes on every re-import.
+
 ## Validating a bundle
 
 `validate_okf_bundle` is the linter counterpart to the importer's permissive
@@ -192,8 +229,8 @@ db.export_okf_bundle("bundle")
 
 !!! note "Multi-label nodes"
     OKF concepts have a single `type`. When a node has several labels, the
-    exporter uses the first label as `type`. See `todo/okf/IMPROVEMENTS.md` for
-    the open design question on representing multi-label nodes.
+    exporter uses the first label as `type`; representing multi-label nodes is
+    an open design question with no OKF-side convention yet.
 
 ## High-level API: `OKFBundle`
 
@@ -322,6 +359,88 @@ the vector embedding follow automatically. `save()` mirrors the graph to disk:
 files for removed concepts are pruned so `remove_concept` round-trips (pass
 `prune=False` to only add/overwrite).
 
+### Trust model: `supersede()` and `conflicts_with()`
+
+An agent writing memory unattended can silently overwrite a correct claim with
+a hallucinated one if edits always land in place. `supersede()` and
+`conflicts_with()` give the write path the **append-only-on-meaning** discipline
+from the OKF trust model: corrections create a new concept and link it to the
+old one, rather than rewriting the old one's meaning.
+
+```python
+new = kb.add_concept("decisions/0002-use-hnswlib", type="Decision",
+                      title="Use hnswlib for ANN", body="# Context\n...")
+kb.supersede("decisions/0001-use-bruteforce", new, note="scaled past 50k vectors")
+
+kb.conflicts_with("glossary/latency", "glossary/throughput",
+                   note="one source defines these interchangeably")
+```
+
+`supersede(old, new)` sets `status="superseded"` / `superseded_by` on `old`,
+appends to `supersedes` on `new`, and links `new -[:SUPERSEDES]-> old` (typed,
+so it round-trips with `typed_links=True`). It does **not** delete or rewrite
+`old` — the retracted claim stays inspectable via `kb.concept(old_id)`, `git
+blame`, and `kb.log()`.  `conflicts_with(a, b)` is the softer, symmetric
+sibling for when new information contradicts an existing concept without
+strong enough evidence to supersede it outright: it links both concepts via
+`CONFLICTS_WITH` (both directions — a conflict has no natural direction)
+without changing either.
+
+`search()` and `context()` exclude `status="superseded"` concepts by default
+(`include_superseded=True` opts back in), so retrieval never hands an agent a
+retracted claim as if it were current truth — while `concepts()`/`concept()`
+still surface them for provenance and history browsing.
+
+```python
+kb.concept("decisions/0001-use-bruteforce").is_superseded   # True
+kb.concept("decisions/0001-use-bruteforce").superseded_by   # 'decisions/0002-use-hnswlib'
+new.supersedes                                               # ['decisions/0001-use-bruteforce']
+kb.concept("glossary/latency").conflicts()                   # [Concept('glossary/throughput')]
+```
+
+### Review queue: `propose()`, `approve()`, `reject()`
+
+`add_concept()` always writes immediately — right for a human curating the
+bundle, or a pipeline you trust. An autonomous agent proposing *new* facts is
+a different trust level: it might be duplicating something that already
+exists, or contradicting it under a different id. `propose()` is the
+agent-facing entry point that gates on that:
+
+```python
+result = kb.propose("decisions/0004-use-hnswlib", type="Decision",
+                     title="Use hnswlib for ANN", body="# Context\n...")
+
+if isinstance(result, Proposal):
+    result.similar          # [{'concept_id', 'title', 'score', 'via'}, ...]
+    kb.approve(result)       # materializes it (same node id) — or:
+    kb.reject(result, note="duplicate of 0003")
+```
+
+Three modes, controlled by `auto_approve`:
+
+- `None` (default, **conditional**): searches the bundle for concepts similar
+  to the proposal. With a vector index it auto-approves unless a hit scores
+  at or above `similarity_threshold` (cosine similarity, default `0.85`);
+  without one (text-only), there's no comparable numeric scale, so *any* FTS
+  hit at all triggers review. Nothing to compare against (no
+  title/description/body, or no hits) auto-approves.
+- `True`: always writes immediately, like `add_concept` — returns a `Concept`.
+- `False`: always stages it, regardless of similarity — returns a `Proposal`.
+
+A staged proposal is a real graph node (`pending_reviews()` survives process
+restarts) but is invisible to `concept()`, `concepts()`, `search()`,
+iteration, and `save()` until `approve()`d — it can't leak into retrieval or
+round-trip to markdown while undecided. It carries no links/citations of its
+own; wire those up with `link()`/`cite()` after approval. An id collision
+with an existing concept always raises — that's a hard conflict, not a
+similarity judgment call, so it isn't staged for review either.
+
+```python
+kb.pending_reviews()                    # [Proposal, ...], ordered by id
+kb.approve("decisions/0004-use-hnswlib")  # or an id string
+kb.reject("decisions/0004-use-hnswlib", note="duplicate of 0003")
+```
+
 ### Changelog: `log_entry()` and autolog
 
 An agent that writes memory should also leave a history. `log_entry()` appends
@@ -380,6 +499,12 @@ function are rehydrated automatically from the index metadata). `source_path`
 is optional; it sets the default `save()` target. For very large indexes,
 prefer a file-backed ANN backend via `embed_backend="hnswlib"` (or `faiss`)
 plus `embed_options={"index_path": "kb.hnswlib"}`.
+
+If the bundle's markdown keeps changing across sessions, `load()` forwards
+unknown keyword arguments to `import_okf_bundle`, so `incremental=True` (see
+[Incremental import](#incremental-import)) works the same way: `OKFBundle.load("bundle",
+db=GrafitoDatabase("kb.db"), embed=embedder, incremental=True)` re-parses and
+re-embeds only what changed since the last `load()`.
 
 Materializing the directory tree and history (opt-in) lets you traverse the
 hierarchy as a graph and query the changelog:

@@ -20,7 +20,7 @@ from ..importers.okf import (
     concept_document,
 )
 from ..models import Node
-from .concept import Concept, ContextPack, Hit
+from .concept import Concept, ContextPack, Hit, Proposal
 
 if TYPE_CHECKING:
     from ..database import GrafitoDatabase
@@ -33,7 +33,18 @@ _RRF_K = 60  # reciprocal-rank-fusion constant for hybrid search
 _UNSET: Any = object()
 
 # Node properties that are grafito/OKF bookkeeping, not editable frontmatter.
-_PROTECTED_PROPS = frozenset({"concept_id", "stub", "okf_auto", "directory", "log"})
+_PROTECTED_PROPS = frozenset(
+    {
+        "concept_id",
+        "stub",
+        "okf_auto",
+        "directory",
+        "log",
+        "okf_hash",
+        "pending_review",
+        "pending_similar",
+    }
+)
 
 # SQL predicate selecting real concept rows (the SQL twin of `_is_concept`).
 # `concept_id` is served by the expression index created at import time.
@@ -43,7 +54,16 @@ _CONCEPT_SQL = (
     " AND json_extract(n.properties, '$.okf_auto') IS NULL"
     " AND json_extract(n.properties, '$.directory') IS NULL"
     " AND json_extract(n.properties, '$.log') IS NULL"
+    " AND json_extract(n.properties, '$.pending_review') IS NULL"
 )
+
+# Default cosine-similarity threshold above which `propose()` stages a
+# concept for review instead of writing it straight away (semantic mode only).
+_DEFAULT_REVIEW_THRESHOLD = 0.85
+
+# Word-token extractor for turning free text into a safe FTS5 MATCH query
+# (bareword tokens only — no quotes/colons/hyphens for the query parser to trip on).
+_FTS_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 
 # First (alphabetical) label of a node — matches Node.labels ordering.
 _FIRST_LABEL_SQL = (
@@ -393,6 +413,7 @@ class OKFBundle:
         mode: str = "auto",
         type: str | None = None,
         layer: str | None = None,
+        include_superseded: bool = False,
     ) -> list[Hit]:
         """Search concepts by text or meaning, with a unified result shape.
 
@@ -400,14 +421,18 @@ class OKFBundle:
         ``"semantic"``, ``"text"``, or ``"hybrid"`` (reciprocal-rank fusion).
         ``"hybrid"`` degrades to text-only when the bundle has no embeddings;
         ``"semantic"`` requires them (load with ``embed=``).
+
+        Concepts marked ``status="superseded"`` (see :meth:`supersede`) are
+        excluded by default, so retrieval never surfaces retracted claims as
+        current truth; pass ``include_superseded=True`` to see them anyway.
         """
         if mode == "auto":
             mode = "semantic" if self._has_vector_index() else "text"
         elif mode == "hybrid" and not self._has_vector_index():
             mode = "text"
 
-        # When filtering by layer we post-filter, so over-fetch to keep k results.
-        fetch = k * 4 if layer else k
+        # Post-filters (layer, superseded) need over-fetch to keep k results.
+        fetch = k * 4 if (layer or not include_superseded) else k
 
         if mode == "semantic":
             hits = self._semantic(query, fetch, type)
@@ -421,6 +446,8 @@ class OKFBundle:
         if layer is not None:
             prefix = f"{layer.strip('/')}/"
             hits = [h for h in hits if h.concept.id.startswith(prefix)]
+        if not include_superseded:
+            hits = [h for h in hits if not h.concept.is_superseded]
         return hits[:k]
 
     def context(
@@ -434,6 +461,7 @@ class OKFBundle:
         layer: str | None = None,
         expand_hops: int = 1,
         include_citations: bool = True,
+        include_superseded: bool = False,
         token_counter: Callable[[str], int] | None = None,
         rerank: "Reranker | None" = None,
     ) -> ContextPack:
@@ -452,12 +480,20 @@ class OKFBundle:
         expanded pool is re-scored against the query text *before* budgeting — so
         graph-expanded neighbours compete on relevance instead of insertion order.
 
+        ``include_superseded`` (default ``False``) also governs graph-expanded
+        neighbours: superseded concepts pulled in via ``SUPERSEDES`` or a stale
+        ``LINKS_TO`` edge are dropped unless requested, so a retracted claim
+        doesn't leak into the pack through expansion even when the seed search
+        excluded it.
+
         ``budget_tokens`` is measured with ``token_counter`` (default: a ~4
         chars/token heuristic — pass your model's tokenizer for exact budgeting).
         Returns a :class:`ContextPack`; ``str(pack)`` is the prompt-ready text.
         """
         count = token_counter or self._estimate_tokens
-        hits = self.search(query, k=k, mode=mode, type=type, layer=layer)
+        hits = self.search(
+            query, k=k, mode=mode, type=type, layer=layer, include_superseded=include_superseded
+        )
 
         # Candidate order: seed concepts first (ranked), then graph-expanded
         # neighbours, de-duplicated by node identity.
@@ -470,7 +506,7 @@ class OKFBundle:
         if expand_hops > 0:
             for hit in hits:
                 for nbr in hit.concept.neighbors(depth=expand_hops):
-                    if nbr.node.id not in seen:
+                    if nbr.node.id not in seen and (include_superseded or not nbr.is_superseded):
                         seen.add(nbr.node.id)
                         candidates.append(nbr)
 
@@ -712,6 +748,257 @@ class OKFBundle:
             self.log_entry(f"Removed {concept_id}.", kind="Removal")
         return deleted
 
+    def supersede(
+        self, old: "Concept | str", new: "Concept | str", *, note: str | None = None
+    ) -> Concept:
+        """Mark ``old`` as superseded by ``new`` (SPEC trust model).
+
+        Per **append-only-on-meaning**: a claim is never rewritten in place to
+        change its meaning — a correction creates a new concept and links the
+        old one to it. Sets ``status="superseded"``/``superseded_by`` on
+        ``old`` and appends to ``supersedes`` on ``new``, and links
+        ``new -[:SUPERSEDES]-> old`` so the relationship is graph-queryable
+        and, with ``typed_links=True``, round-trips through markdown.
+        Superseded concepts are excluded from :meth:`search`/:meth:`context`
+        by default (pass ``include_superseded=True`` to include them).
+        """
+        old_c = self._resolve(old)
+        new_c = self._resolve(new)
+        if old_c.id == new_c.id:
+            raise ValueError("A concept cannot supersede itself")
+        # Re-fetch: a caller-held Concept may be stale (e.g. a second supersede()
+        # onto the same `new` after the first already appended to `supersedes`).
+        old_node = self._db.get_node(old_c.node.id)
+        new_node = self._db.get_node(new_c.node.id)
+
+        old_props = dict(old_node.properties)
+        old_props["status"] = "superseded"
+        old_props["superseded_by"] = new_c.id
+        self._db.replace_node_properties(old_c.node.id, old_props)
+
+        new_props = dict(new_node.properties)
+        supersedes_value = new_props.get("supersedes")
+        supersedes = list(supersedes_value) if isinstance(supersedes_value, list) else (
+            [supersedes_value] if supersedes_value else []
+        )
+        if old_c.id not in supersedes:
+            supersedes.append(old_c.id)
+        new_props["supersedes"] = supersedes
+        self._db.replace_node_properties(new_c.node.id, new_props)
+
+        self._db.create_relationship(new_c.node.id, old_c.node.id, "SUPERSEDES")
+
+        if self._has_vector_index():
+            self._db.upsert_embeddings(
+                [old_c.node.id],
+                [concept_document(old_props, self._embed_fields)],
+                index=self._embed_index,
+            )
+
+        if self.autolog:
+            text = (
+                f"[{new_c.title or new_c.id}](/{new_c.id}.md) supersedes"
+                f" [{old_c.title or old_c.id}](/{old_c.id}.md)."
+            )
+            if note:
+                text += f" {note}"
+            self.log_entry(text, kind="Supersede", concepts=[old_c, new_c])
+
+        return Concept(self, self._db.get_node(new_c.node.id))
+
+    def conflicts_with(
+        self, a: "Concept | str", b: "Concept | str", *, note: str | None = None
+    ) -> None:
+        """Flag ``a`` and ``b`` as contradicting each other (SPEC trust model).
+
+        A conflict has no natural direction, so a ``CONFLICTS_WITH``
+        relationship is created both ways, optionally carrying ``note``.
+        Neither concept is changed or removed — resolving the conflict is a
+        deliberate follow-up (:meth:`supersede` one side, or update both with
+        clarifying context). This is the *default* when new information
+        contradicts an existing concept without strong enough evidence to
+        supersede it outright.
+        """
+        ca = self._resolve(a)
+        cb = self._resolve(b)
+        if ca.id == cb.id:
+            raise ValueError("A concept cannot conflict with itself")
+        props = {"anchor": note} if note else {}
+        self._db.create_relationship(ca.node.id, cb.node.id, "CONFLICTS_WITH", props)
+        self._db.create_relationship(cb.node.id, ca.node.id, "CONFLICTS_WITH", props)
+
+        if self.autolog:
+            text = (
+                f"[{ca.title or ca.id}](/{ca.id}.md) conflicts with"
+                f" [{cb.title or cb.id}](/{cb.id}.md)."
+            )
+            if note:
+                text += f" {note}"
+            self.log_entry(text, kind="Conflict", concepts=[ca, cb])
+
+    def propose(
+        self,
+        concept_id: str,
+        *,
+        type: str,
+        title: str | None = None,
+        body: str = "",
+        description: str | None = None,
+        tags: list[str] | None = None,
+        auto_approve: bool | None = None,
+        similarity_threshold: float = _DEFAULT_REVIEW_THRESHOLD,
+        similarity_k: int = 3,
+        **frontmatter: Any,
+    ) -> "Concept | Proposal":
+        """Suggest a new concept, gated by a review queue (agent-write safety valve).
+
+        Like :meth:`add_concept`, but instead of always writing immediately,
+        checks whether the proposal looks like it might duplicate or overlap
+        existing knowledge before deciding:
+
+        - ``auto_approve=True`` always writes it now (equivalent to
+          ``add_concept``) and returns the new :class:`Concept`.
+        - ``auto_approve=False`` always stages it and returns a
+          :class:`Proposal`, regardless of similarity.
+        - ``auto_approve=None`` (default, *conditional* mode): searches the
+          bundle for concepts similar to the proposal. With a vector index,
+          it auto-approves unless a hit scores at or above
+          ``similarity_threshold`` (cosine similarity, default 0.85);
+          text-only search has no comparable numeric scale, so *any* hit at
+          all triggers review. No hits (or nothing to compare — no
+          title/description/body) auto-approves.
+
+        A staged proposal is a real node in the graph (so ``pending_reviews()``
+        survives process restarts) but is excluded from ``concept()``,
+        ``concepts()``, ``search()``, iteration, and export until approved —
+        it does not pollute retrieval or round-trip to markdown. It does not
+        create any links/citations; wire those up with :meth:`link`/:meth:`cite`
+        after :meth:`approve`.
+
+        Raises ``ValueError`` if a concept with this ID already exists (an ID
+        collision is a hard conflict, not a similarity judgment call).
+        """
+        if self.concept(concept_id) is not None:
+            raise ValueError(f"Concept already exists: {concept_id!r}")
+
+        props: dict[str, Any] = {"concept_id": concept_id, "body": body or ""}
+        if title is not None:
+            props["title"] = title
+        if description is not None:
+            props["description"] = description
+        if tags is not None:
+            props["tags"] = list(tags)
+        props.update(frontmatter)
+
+        similar: list[dict] = []
+        if auto_approve is None:
+            query_text = concept_document(props, self._embed_fields)
+            if query_text.strip():
+                semantic = self._has_vector_index()
+                if semantic:
+                    hits = self.search(query_text, k=similarity_k, mode="semantic")
+                    hits = [h for h in hits if h.score >= similarity_threshold]
+                else:
+                    # Free text (markdown punctuation, quotes, hyphens...) is not
+                    # a safe FTS5 MATCH query — reduce it to a bareword OR-query.
+                    fts_query = " OR ".join(_FTS_TOKEN_RE.findall(query_text)[:32])
+                    hits = self.search(fts_query, k=similarity_k, mode="text") if fts_query else []
+                if hits:
+                    similar = [
+                        {
+                            "concept_id": h.concept.id,
+                            "title": h.concept.title,
+                            "score": h.score,
+                            "via": h.via,
+                        }
+                        for h in hits
+                    ]
+            auto_approve = not similar
+
+        if auto_approve:
+            return self.add_concept(
+                concept_id,
+                type=type,
+                title=title,
+                body=body,
+                description=description,
+                tags=tags,
+                **frontmatter,
+            )
+
+        props["pending_review"] = True
+        if similar:
+            props["pending_similar"] = similar
+        node = self._db.create_node(
+            labels=[type], properties=props, uri=f"{self._uri_prefix}{concept_id}"
+        )
+        proposal = Proposal(self, node)
+        if self.autolog:
+            self.log_entry(
+                f"Proposed {title or concept_id} ({concept_id}) — pending review.",
+                kind="Proposal",
+            )
+        return proposal
+
+    def pending_reviews(self) -> list[Proposal]:
+        """List concepts staged by :meth:`propose`, ordered by concept ID."""
+        nodes = list(self._db.match_nodes(properties={"pending_review": True}))
+        nodes.sort(key=lambda n: n.properties.get("concept_id") or "")
+        return [Proposal(self, n) for n in nodes]
+
+    def approve(self, proposal: "Proposal | str") -> Concept:
+        """Materialize a staged proposal into a real, retrievable concept.
+
+        Clears the review markers (same node ID — any relationships added to
+        the pending node, e.g. by a reviewer inspecting it, are preserved) and
+        embeds it if the bundle has a vector index.
+        """
+        node = self._resolve_proposal(proposal)
+        props = dict(node.properties)
+        props.pop("pending_review", None)
+        props.pop("pending_similar", None)
+        self._db.replace_node_properties(node.id, props)
+        if self._has_vector_index():
+            self._db.upsert_embeddings(
+                [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
+            )
+        concept = Concept(self, self._db.get_node(node.id))
+        if self.autolog:
+            self.log_entry(
+                f"Approved [{concept.title or concept.id}](/{concept.id}.md).",
+                kind="Creation",
+                concepts=[concept],
+            )
+        return concept
+
+    def reject(self, proposal: "Proposal | str", *, note: str | None = None) -> bool:
+        """Discard a staged proposal. Returns whether a proposal was found."""
+        try:
+            node = self._resolve_proposal(proposal)
+        except ValueError:
+            return False
+        concept_id = node.properties.get("concept_id")
+        title = node.properties.get("title")
+        deleted = self._db.delete_node(node.id)
+        if deleted and self.autolog:
+            text = f"Rejected proposal for {title or concept_id} ({concept_id})."
+            if note:
+                text += f" {note}"
+            self.log_entry(text, kind="Rejection")
+        return deleted
+
+    def _resolve_proposal(self, value: "Proposal | str") -> Node:
+        if isinstance(value, Proposal):
+            node = self._db.get_node(value.node.id)
+            if node is not None and node.properties.get("pending_review"):
+                return node
+            raise ValueError(f"Not a pending proposal: {value.id!r}")
+        if not isinstance(value, str):
+            raise TypeError(f"Expected a Proposal or concept ID string, got {type(value).__name__}")
+        for node in self._db.match_nodes(properties={"concept_id": value, "pending_review": True}):
+            return node
+        raise ValueError(f"Unknown pending proposal: {value!r}")
+
     # --- metadata ----------------------------------------------------------
 
     @property
@@ -780,13 +1067,14 @@ class OKFBundle:
 
     @staticmethod
     def _is_concept(node: Node) -> bool:
-        """True for real concepts (not stubs, Reference, Directory or LogEntry)."""
+        """True for real concepts (not stubs, Reference, Directory, LogEntry, or a pending proposal)."""
         props = node.properties
         return not (
             props.get("stub")
             or props.get("okf_auto")
             or props.get("directory")
             or props.get("log")
+            or props.get("pending_review")
         )
 
     def _has_vector_index(self) -> bool:

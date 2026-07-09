@@ -15,11 +15,13 @@ This importer maps an OKF bundle onto the Property Graph Model:
 - links under a ``# Citations`` heading -> ``CITES`` relationships, to concepts
   (intra-bundle) or to auto-created ``Reference`` nodes (external URLs)
 
-See ``todo/okf/SPEC.md`` for the format specification.
+See https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf for
+the format specification.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 from contextlib import nullcontext
 from pathlib import Path, PurePosixPath
@@ -39,6 +41,10 @@ DEFAULT_LABEL = "Concept"
 
 # Label for auto-created nodes representing external citation sources (sec. 8).
 REFERENCE_LABEL = "Reference"
+
+# Relationship types added by OKFBundle's trust model (supersede/conflicts_with),
+# not reproduced by re-parsing a concept file. Preserved across incremental updates.
+_TRUST_REL_TYPES = frozenset({"SUPERSEDES", "CONFLICTS_WITH"})
 
 # Markdown inline link: [anchor](target)
 _LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
@@ -290,6 +296,8 @@ def import_bundle(
     log_label: str = "LogEntry",
     mentions_type: str = "MENTIONS",
     uri_prefix: str = "okf:",
+    incremental: bool = False,
+    prune: bool = False,
 ) -> dict:
     """Import an OKF bundle directory into ``db``.
 
@@ -335,16 +343,38 @@ def import_bundle(
         log_label: Label for log-entry nodes.
         mentions_type: Relationship type from a log entry to a mentioned concept.
         uri_prefix: Prefix prepended to each concept ID to form the node ``uri``.
+        incremental: Skip re-parsing and re-embedding concept files whose
+            content hasn't changed since the last import (tracked via a
+            content hash stored on each node, ``okf_hash``). A changed file
+            updates its node in place (same node ID, so incoming links from
+            unchanged concepts stay valid) rather than creating a duplicate;
+            a link to a not-yet-imported concept reuses an existing stub
+            instead of creating a second one. Trust-model edges added via
+            ``OKFBundle.supersede``/``conflicts_with`` (``SUPERSEDES``,
+            ``CONFLICTS_WITH``) are preserved on updated concepts. Off by
+            default (matches the original always-reimport behavior). Note:
+            ``directory_nodes``/``import_log`` are not incremental-aware —
+            combining them with ``incremental=True`` duplicates directory/log
+            nodes on repeated imports.
+        prune: Requires ``incremental=True``. Delete nodes for concept files
+            that existed in a prior import but are no longer present in the
+            bundle. Mirrors the exporter's ``prune`` option.
 
     Returns:
-        Summary dict with ``nodes``, ``relationships``, ``citations``,
-        ``references``, ``stubs``, ``skipped``, ``embedded``, ``directories``,
-        ``log_entries`` and ``malformed`` (concept IDs whose frontmatter was
-        not valid YAML and was treated as body text).
+        Summary dict with ``nodes`` (created or updated this run),
+        ``relationships``, ``citations``, ``references`` (new ``Reference``
+        nodes created this run), ``stubs``, ``skipped``, ``embedded``,
+        ``directories``, ``log_entries``, ``malformed`` (concept IDs whose
+        frontmatter was not valid YAML and was treated as body text),
+        ``unchanged`` (hash-matched files skipped), ``updated`` (pre-existing
+        nodes whose content changed), and ``pruned`` (nodes removed because
+        their file disappeared from the bundle).
     """
     root_path = Path(root)
     if not root_path.is_dir():
         raise NotADirectoryError(f"OKF bundle root not found: {root_path}")
+    if prune and not incremental:
+        raise ValueError("prune=True requires incremental=True")
 
     concept_to_node: dict[str, int] = {}
     real_concepts: dict[str, int] = {}  # concept_id -> node_id (file concepts only)
@@ -356,6 +386,10 @@ def import_bundle(
     nodes = 0
     skipped = 0
     malformed: list[str] = []
+    processed = 0
+    unchanged = 0
+    updated = 0
+    pruned = 0
 
     def report(phase: str, count: int, *, end: bool = False) -> None:
         if progress is not None:
@@ -374,6 +408,37 @@ def import_bundle(
     # before the transaction because index creation commits unconditionally.
     db.create_node_index(None, "concept_id")
 
+    # Incremental mode: seed lookups from the graph's current state so unchanged
+    # concepts, existing stubs, and existing Reference nodes are reused by ID
+    # instead of duplicated.
+    existing_real: dict[str, Any] = {}  # concept_id -> Node, real (non-stub) concepts only
+    reference_nodes: dict[str, int] = {}  # url -> node_id
+    if incremental:
+        for existing_node in db.match_nodes():
+            props = existing_node.properties
+            cid = props.get("concept_id")
+            if not isinstance(cid, str) or not cid:
+                continue
+            if props.get("stub") is True:
+                concept_to_node[cid] = existing_node.id
+            elif (
+                props.get("okf_auto")
+                or props.get("directory")
+                or props.get("log")
+                or props.get("pending_review")
+            ):
+                # Reference/Directory/LogEntry nodes, and concepts staged via
+                # OKFBundle.propose() awaiting review, are not file-backed
+                # concepts — never reused/promoted by the file importer.
+                continue
+            else:
+                existing_real[cid] = existing_node
+                concept_to_node[cid] = existing_node.id
+        for ref_node in db.match_nodes(labels=[REFERENCE_LABEL]):
+            url = ref_node.properties.get("url")
+            if isinstance(url, str) and url:
+                reference_nodes[url] = ref_node.id
+
     # One transaction for the whole import: per-node autocommit dominates load
     # time on large bundles. Respect a transaction the caller already opened.
     txn = nullcontext(db) if getattr(db, "_in_transaction", False) else db
@@ -384,6 +449,23 @@ def import_bundle(
                 continue
             text = path.read_text(encoding="utf-8")
             concept_id = _concept_id_for(path, root_path)
+            content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            processed += 1
+
+            prior_real = None
+            node_id = None
+            if incremental:
+                prior_real = existing_real.pop(concept_id, None)
+                if prior_real is not None and prior_real.properties.get("okf_hash") == content_hash:
+                    # Unchanged since the last import: keep the node as-is,
+                    # skip re-parsing its links/citations and re-embedding it.
+                    real_concepts[concept_id] = prior_real.id
+                    unchanged += 1
+                    if stride and processed % stride == 0:
+                        report("concepts", processed)
+                    continue
+                node_id = concept_to_node.get(concept_id)  # prior real (changed) or a stub
+
             try:
                 frontmatter, body = parse_frontmatter(text)
             except yaml.YAMLError:
@@ -400,20 +482,38 @@ def import_bundle(
             properties = {k: v for k, v in frontmatter.items() if k != "type"}
             properties["body"] = body
             properties.setdefault("concept_id", concept_id)
+            properties["okf_hash"] = content_hash
 
-            node = db.create_node(
-                labels=[label],
-                properties=properties,
-                uri=f"{uri_prefix}{concept_id}",
-            )
-            concept_to_node[concept_id] = node.id
-            real_concepts[concept_id] = node.id
+            if node_id is not None:
+                db.replace_node_properties(node_id, properties)
+                current_node = db.get_node(node_id)
+                if current_node.labels != [label]:
+                    if current_node.labels:
+                        db.remove_labels(node_id, list(current_node.labels))
+                    db.add_labels(node_id, [label])
+                if prior_real is not None:
+                    # Re-derive this concept's own links/citations below; leave
+                    # trust-model edges (added via OKFBundle) untouched.
+                    for rel in db.match_relationships(source_id=node_id):
+                        if rel.type not in _TRUST_REL_TYPES:
+                            db.delete_relationship(rel.id)
+                    updated += 1
+            else:
+                node = db.create_node(
+                    labels=[label],
+                    properties=properties,
+                    uri=f"{uri_prefix}{concept_id}",
+                )
+                node_id = node.id
+
+            concept_to_node[concept_id] = node_id
+            real_concepts[concept_id] = node_id
             nodes += 1
-            if stride and nodes % stride == 0:
-                report("concepts", nodes)
+            if stride and processed % stride == 0:
+                report("concepts", processed)
 
             if embed is not None:
-                embed_docs.append((node.id, concept_document(properties, embed_fields)))
+                embed_docs.append((node_id, concept_document(properties, embed_fields)))
 
             # Citation links are excluded from LINKS_TO so they only yield CITES.
             main_body, citations_block = split_citations(body) if citations else (body, "")
@@ -424,7 +524,13 @@ def import_bundle(
                 pending_citations.append((concept_id, anchor, kind, value))
 
         if stride:
-            report("concepts", nodes, end=True)
+            report("concepts", processed, end=True)
+
+        if incremental and prune:
+            for stale_id, stale_node in existing_real.items():
+                db.delete_node(stale_node.id)
+                concept_to_node.pop(stale_id, None)
+                pruned += 1
 
         # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
         relationships = 0
@@ -454,8 +560,10 @@ def import_bundle(
             report("links", relationships, end=True)
 
         # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
-        reference_nodes: dict[str, int] = {}  # url -> node_id
+        # `reference_nodes` is pre-seeded with existing Reference nodes in
+        # incremental mode, so only genuinely new URLs create a node here.
         citation_count = 0
+        new_references = 0
         for source_id, anchor, kind, value in pending_citations:
             if kind == "concept":
                 target = resolve_concept(value)
@@ -467,6 +575,7 @@ def import_bundle(
                         uri=value,
                     )
                     reference_nodes[value] = ref.id
+                    new_references += 1
                 target = reference_nodes[value]
             db.create_relationship(
                 concept_to_node[source_id],
@@ -560,19 +669,22 @@ def import_bundle(
                 report("embedded", embedded, end=True)
 
     if progress is not None:
-        progress("done", nodes)
+        progress("done", processed)
 
     return {
         "nodes": nodes,
         "relationships": relationships,
         "citations": citation_count,
-        "references": len(reference_nodes),
+        "references": new_references,
         "stubs": stubs,
         "skipped": skipped,
         "embedded": embedded,
         "directories": directories,
         "log_entries": log_entries,
         "malformed": malformed,
+        "unchanged": unchanged,
+        "updated": updated,
+        "pruned": pruned,
     }
 
 

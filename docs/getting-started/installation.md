@@ -26,13 +26,13 @@ To install GrafitoDB in development mode with all test dependencies:
 ```bash
 git clone <repository-url>
 cd grafito
-pip install -e ".[dev]"
+pip install -e . pytest pytest-cov
 ```
 
 Or with `uv`:
 
 ```bash
-uv pip install -e ".[dev]"
+uv sync
 ```
 
 ## Optional Dependencies

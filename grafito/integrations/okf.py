@@ -1,7 +1,8 @@
 """Open Knowledge Format (OKF) bundle exporter.
 
 Serializes a GrafitoDB graph back into an OKF bundle: a directory tree of
-markdown files with YAML frontmatter (see ``todo/okf/SPEC.md``). This is the
+markdown files with YAML frontmatter (see
+https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf). This is the
 inverse of :func:`grafito.importers.okf.import_bundle`.
 
 Each node becomes one concept document:
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from ..database import GrafitoDatabase
 
 # Properties that are GrafitoDB bookkeeping, not OKF frontmatter.
-_INTERNAL_PROPS = ("body", "concept_id", "stub")
+_INTERNAL_PROPS = ("body", "concept_id", "stub", "okf_hash")
 
 # Recommended frontmatter order (SPEC sec. 4.1). `type` is always emitted first.
 _RECOMMENDED_ORDER = ("title", "description", "resource", "tags", "timestamp")
@@ -154,14 +155,16 @@ def export_bundle(
     index_entries: list[tuple[str, str, str, str]] = []
 
     for node in db.match_nodes():
-        # Skip derived nodes, all re-synthesized on (re-)import: stubs (broken
-        # links), auto Reference nodes (external citations), Directory nodes, and
-        # LogEntry nodes. None are written as their own concept file.
+        # Skip derived/unapproved nodes: stubs (broken links), auto Reference
+        # nodes (external citations), Directory nodes, LogEntry nodes (all
+        # re-synthesized on (re-)import), and concepts still awaiting review
+        # via OKFBundle.propose(). None are written as their own concept file.
         if (
             node.properties.get("stub") is True
             or node.properties.get("okf_auto") is True
             or node.properties.get("directory") is True
             or node.properties.get("log") is True
+            or node.properties.get("pending_review") is True
         ):
             skipped += 1
             continue

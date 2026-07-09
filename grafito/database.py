@@ -3106,6 +3106,8 @@ class GrafitoDatabase:
         directory_nodes: bool = False,
         import_log: bool = False,
         uri_prefix: str = "okf:",
+        incremental: bool = False,
+        prune: bool = False,
     ) -> dict:
         """Import an Open Knowledge Format (OKF) bundle into this database.
 
@@ -3124,8 +3126,16 @@ class GrafitoDatabase:
         ``progress_every=N`` (prints) or ``progress=callback`` for progress
         reporting on large bundles.
 
+        Pass ``incremental=True`` to re-import a bundle cheaply: concept files
+        whose content hasn't changed since the last import (tracked via a
+        content hash) are skipped entirely (no re-parsing, no re-embedding);
+        changed files are updated in place (same node ID); new files are
+        added. Add ``prune=True`` (requires ``incremental=True``) to also
+        delete nodes for concept files removed from the bundle.
+
         Returns a summary dict with
-        node/relationship/citation/reference/stub/skipped/embedded counts.
+        node/relationship/citation/reference/stub/skipped/embedded/unchanged/
+        updated/pruned counts.
         """
         from .importers.okf import import_bundle
 
@@ -3147,6 +3157,8 @@ class GrafitoDatabase:
             directory_nodes=directory_nodes,
             import_log=import_log,
             uri_prefix=uri_prefix,
+            incremental=incremental,
+            prune=prune,
         )
 
     def export_okf_bundle(

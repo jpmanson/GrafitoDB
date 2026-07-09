@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from grafito import GrafitoDatabase
+from grafito.embedding_functions import EmbeddingFunction
 from grafito.importers.okf import (
     extract_citations,
     extract_links,
@@ -426,3 +427,218 @@ def test_import_creates_concept_id_index(db):
         ("tables/orders",),
     ).fetchall()
     assert any("INDEX" in row["detail"].upper() for row in plan)
+
+
+# --- Incremental import (content-hash skip / update-in-place) ----------------
+
+
+class _CountingEmbedder(EmbeddingFunction):
+    """Trivial embedder that counts how many documents it was asked to embed."""
+
+    def __init__(self) -> None:
+        self.total_docs = 0
+
+    def __call__(self, input: list[str]) -> list[list[float]]:
+        self.total_docs += len(input)
+        return [[1.0, 0.0] for _ in input]
+
+    @staticmethod
+    def name() -> str:
+        return "counting_test_embedder"
+
+    def default_space(self) -> str:
+        return "cosine"
+
+    def supported_spaces(self) -> list[str]:
+        return ["cosine"]
+
+    @staticmethod
+    def build_from_config(config: dict) -> "_CountingEmbedder":
+        return _CountingEmbedder()
+
+    def get_config(self) -> dict:
+        return {}
+
+    @staticmethod
+    def validate_config(config: dict) -> None:
+        return None
+
+    @property
+    def dimension(self) -> int:
+        return 2
+
+
+def test_incremental_second_import_skips_unchanged(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+
+    first = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert first["nodes"] == 2
+    assert first["unchanged"] == 0
+    a_id = _node_by_uri(db, "okf:a").id
+    b_id = _node_by_uri(db, "okf:b").id
+
+    second = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert second["nodes"] == 0
+    assert second["updated"] == 0
+    assert second["unchanged"] == 2
+    assert db.get_node_count() == 2
+    assert _node_by_uri(db, "okf:a").id == a_id
+    assert _node_by_uri(db, "okf:b").id == b_id
+
+
+def test_incremental_updates_changed_file_in_place(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [b](/b.md).\n", encoding="utf-8"
+    )
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    a_id = _node_by_uri(db, "okf:a").id
+    b_id = _node_by_uri(db, "okf:b").id
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A Updated\n---\nSee [b](/b.md) again.\n", encoding="utf-8"
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert summary["updated"] == 1
+    assert summary["unchanged"] == 1
+    assert summary["nodes"] == 1
+
+    a = _node_by_uri(db, "okf:a")
+    assert a.id == a_id  # same node, updated in place
+    assert a.properties["title"] == "A Updated"
+    assert _node_by_uri(db, "okf:b").id == b_id  # unchanged concept untouched
+
+    links = db.match_relationships(source_id=a_id, rel_type="LINKS_TO")
+    assert len(links) == 1  # stale relationship replaced, not duplicated
+    assert links[0].target_id == b_id
+
+
+def test_incremental_new_file_added(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert summary["nodes"] == 1
+    assert summary["unchanged"] == 1
+    assert db.get_node_count() == 2
+
+
+def test_incremental_preserves_trust_model_edges(db, tmp_path):
+    (tmp_path / "old.md").write_text(
+        "---\ntype: Doc\ntitle: Old\n---\nBody old.\n", encoding="utf-8"
+    )
+    (tmp_path / "new.md").write_text(
+        "---\ntype: Doc\ntitle: New\n---\nBody new.\n", encoding="utf-8"
+    )
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    old_id = _node_by_uri(db, "okf:old").id
+    new_id = _node_by_uri(db, "okf:new").id
+    db.create_relationship(new_id, old_id, "SUPERSEDES")
+
+    (tmp_path / "new.md").write_text(
+        "---\ntype: Doc\ntitle: New Updated\n---\nBody new updated.\n", encoding="utf-8"
+    )
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+
+    rels = db.match_relationships(source_id=new_id, rel_type="SUPERSEDES")
+    assert len(rels) == 1
+    assert rels[0].target_id == old_id
+
+
+def test_incremental_promotes_existing_stub(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nSee [b](/b.md).\n", encoding="utf-8"
+    )
+    first = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert first["stubs"] == 1
+    stub_id = _node_by_uri(db, "okf:b").id
+
+    (tmp_path / "b.md").write_text(
+        "---\ntype: Doc\ntitle: B\n---\nReal body B.\n", encoding="utf-8"
+    )
+    second = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert second["stubs"] == 0  # no *new* stub created; the existing one was promoted
+
+    b = _node_by_uri(db, "okf:b")
+    assert b.id == stub_id  # same node, promoted in place
+    assert b.properties.get("stub") is None
+    assert b.properties["title"] == "B"
+    assert db.get_node_count() == 2  # no duplicate node for b
+
+    links = db.match_relationships(rel_type="LINKS_TO")
+    assert len(links) == 1
+    assert links[0].target_id == stub_id
+
+
+def test_incremental_prune_removes_missing_file_node(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    (tmp_path / "b.md").unlink()
+
+    summary = db.import_okf_bundle(
+        str(tmp_path), configure_fts=False, incremental=True, prune=True
+    )
+    assert summary["pruned"] == 1
+    assert db.get_node_count() == 1
+    assert not [n for n in db.match_nodes() if n.uri == "okf:b"]
+
+
+def test_incremental_without_prune_keeps_missing_file_node(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+    db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    (tmp_path / "b.md").unlink()
+
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert summary["pruned"] == 0
+    assert db.get_node_count() == 2
+
+
+def test_prune_requires_incremental(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        db.import_okf_bundle(str(tmp_path), configure_fts=False, prune=True)
+
+
+def test_incremental_reuses_reference_node_across_imports(db, tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\n---\nx\n\n# Citations\n- https://example.com/spec\n",
+        encoding="utf-8",
+    )
+    first = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert first["references"] == 1
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A Updated\n---\nx\n\n# Citations\n- https://example.com/spec\n",
+        encoding="utf-8",
+    )
+    second = db.import_okf_bundle(str(tmp_path), configure_fts=False, incremental=True)
+    assert second["references"] == 0  # reused, not duplicated
+    assert second["updated"] == 1
+    refs = [n for n in db.match_nodes() if "Reference" in n.labels]
+    assert len(refs) == 1
+
+
+def test_incremental_skips_reembedding_unchanged(db, tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\nBody B.\n", encoding="utf-8")
+
+    embedder = _CountingEmbedder()
+    first = db.import_okf_bundle(
+        str(tmp_path), configure_fts=False, incremental=True, embed=embedder
+    )
+    assert first["embedded"] == 2
+    assert embedder.total_docs == 2
+
+    (tmp_path / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A Updated\n---\nBody A updated.\n", encoding="utf-8"
+    )
+    second = db.import_okf_bundle(
+        str(tmp_path), configure_fts=False, incremental=True, embed=embedder
+    )
+    assert second["embedded"] == 1  # only the changed concept was re-embedded
+    assert second["unchanged"] == 1
+    assert embedder.total_docs == 3  # 2 from the first import + 1 re-embed

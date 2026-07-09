@@ -18,7 +18,7 @@ kb.db.execute("MATCH (n) RETURN count(n)")   # escape hatch
 from ..importers.okf import validate_bundle as validate_okf_bundle
 from .agent import AnthropicChat, BundleTools, Chat, OpenAIChat, run_agent
 from .bundle import OKFBundle
-from .concept import Concept, ContextPack, Hit
+from .concept import Concept, ContextPack, Hit, Proposal
 from .rerank import (
     CohereReranker,
     CrossEncoderReranker,
@@ -40,6 +40,7 @@ __all__ = [
     "Concept",
     "ContextPack",
     "Hit",
+    "Proposal",
     "Reranker",
     "LexicalReranker",
     "CrossEncoderReranker",

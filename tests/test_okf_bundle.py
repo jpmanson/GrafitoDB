@@ -10,7 +10,7 @@ import pytest
 
 from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
-from grafito.okf import Concept, ContextPack, Hit, LexicalReranker, OKFBundle
+from grafito.okf import Concept, ContextPack, Hit, LexicalReranker, OKFBundle, Proposal
 from grafito.okf.rerank import (
     DEFAULT_RERANK_FIELDS,
     CohereReranker,
@@ -87,6 +87,20 @@ def test_load_into_existing_db():
     db = GrafitoDatabase(":memory:")
     bundle = OKFBundle.load(str(KB), db=db, configure_fts=False)
     assert bundle.db is db
+    db.close()
+
+
+def test_load_incremental_forwards_to_import(tmp_path):
+    (tmp_path / "a.md").write_text("---\ntype: Doc\ntitle: A\n---\nBody A.\n", encoding="utf-8")
+    db = GrafitoDatabase(":memory:")
+
+    first = OKFBundle.load(str(tmp_path), db=db, configure_fts=False, incremental=True)
+    assert first.summary["nodes"] == 1
+    a_id = first.concept("a").node.id
+
+    second = OKFBundle.load(str(tmp_path), db=db, configure_fts=False, incremental=True)
+    assert second.summary["unchanged"] == 1
+    assert second.concept("a").node.id == a_id  # same underlying node, not re-imported
     db.close()
 
 
@@ -676,6 +690,246 @@ def test_remove_concept_prunes_file_on_save(kb, tmp_path):
     again = OKFBundle.load(str(out))
     assert again.concept("glossary/semantic-search") is None
     again.db.close()
+
+
+# --- supersede / conflicts_with (trust model) ---------------------------------
+
+
+def test_supersede_marks_old_and_links_new(kb):
+    old = kb.add_concept("notes/old", type="Note", title="Old", body="stale")
+    new = kb.add_concept("notes/new", type="Note", title="New", body="fresh")
+
+    result = kb.supersede(old, new, note="corrected after review")
+    assert result.id == "notes/new"
+    assert result.supersedes == ["notes/old"]
+
+    reloaded_old = kb.concept("notes/old")
+    assert reloaded_old.is_superseded is True
+    assert reloaded_old.status == "superseded"
+    assert reloaded_old.superseded_by == "notes/new"
+    assert {c.id for c in kb.concept("notes/new").links(type="SUPERSEDES")} == {"notes/old"}
+
+
+def test_supersede_appends_to_existing_supersedes_list(kb):
+    a = kb.add_concept("notes/a-old", type="Note", title="A")
+    b = kb.add_concept("notes/b-old", type="Note", title="B")
+    new = kb.add_concept("notes/consolidated", type="Note", title="Consolidated")
+    kb.supersede(a, new)
+    kb.supersede(b, new)
+    assert set(kb.concept("notes/consolidated").supersedes) == {"notes/a-old", "notes/b-old"}
+
+
+def test_supersede_self_raises(kb):
+    kb.add_concept("notes/x", type="Note", title="X")
+    with pytest.raises(ValueError, match="cannot supersede itself"):
+        kb.supersede("notes/x", "notes/x")
+
+
+def test_supersede_excluded_from_search_by_default(kb):
+    old = kb.add_concept("notes/old2", type="Note", title="Old fact", body="xenon crystal lattice")
+    kb.add_concept("notes/new2", type="Note", title="New fact", body="xenon crystal lattice corrected")
+    kb.supersede(old, "notes/new2")
+
+    hits = kb.search("xenon crystal lattice", mode="text", k=10)
+    ids = {h.concept.id for h in hits}
+    assert "notes/old2" not in ids
+    assert "notes/new2" in ids
+
+    hits_all = kb.search("xenon crystal lattice", mode="text", k=10, include_superseded=True)
+    assert "notes/old2" in {h.concept.id for h in hits_all}
+
+
+def test_supersede_excluded_from_context_expansion(kb):
+    kb.add_concept("notes/hub", type="Note", title="Hub topic", body="graph expansion hub content")
+    old = kb.add_concept("notes/oldc", type="Note", title="Retired detail", body="retired detail body")
+    kb.add_concept("notes/newc", type="Note", title="Current detail", body="current detail body")
+    kb.link("notes/hub", "notes/oldc")
+    kb.supersede(old, "notes/newc")
+
+    pack = kb.context("graph expansion hub", mode="text", k=5, expand_hops=1)
+    assert "notes/oldc" not in {c.id for c in pack.concepts}
+
+    pack_all = kb.context(
+        "graph expansion hub", mode="text", k=5, expand_hops=1, include_superseded=True
+    )
+    assert "notes/oldc" in {c.id for c in pack_all.concepts}
+
+
+def test_supersede_autolog_entry(tmp_path):
+    bundle = OKFBundle.load(str(KB), autolog=True, configure_fts=False)
+    try:
+        old = bundle.add_concept("notes/old-log", type="Note", title="Old")
+        new = bundle.add_concept("notes/new-log", type="Note", title="New")
+        bundle.supersede(old, new, note="cleanup")
+        entries = bundle.log()
+        assert any(e["kind"] == "Supersede" for e in entries)
+    finally:
+        bundle.db.close()
+
+
+def test_conflicts_with_bidirectional(kb):
+    a = kb.add_concept("notes/a-conflict", type="Note", title="A version")
+    b = kb.add_concept("notes/b-conflict", type="Note", title="B version")
+    kb.conflicts_with(a, b, note="differing definitions")
+
+    assert {c.id for c in kb.concept("notes/a-conflict").conflicts()} == {"notes/b-conflict"}
+    assert {c.id for c in kb.concept("notes/b-conflict").conflicts()} == {"notes/a-conflict"}
+
+
+def test_conflicts_with_self_raises(kb):
+    kb.add_concept("notes/solo", type="Note", title="Solo")
+    with pytest.raises(ValueError, match="cannot conflict with itself"):
+        kb.conflicts_with("notes/solo", "notes/solo")
+
+
+def test_conflicts_with_autolog_entry(tmp_path):
+    bundle = OKFBundle.load(str(KB), autolog=True, configure_fts=False)
+    try:
+        a = bundle.add_concept("notes/a-log", type="Note", title="A")
+        b = bundle.add_concept("notes/b-log", type="Note", title="B")
+        bundle.conflicts_with(a, b)
+        entries = bundle.log()
+        assert any(e["kind"] == "Conflict" for e in entries)
+    finally:
+        bundle.db.close()
+
+
+# --- Review queue: propose() / approve() / reject() --------------------------
+
+
+def _near_duplicate(bundle, cid: str = "decisions/0001-use-sqlite") -> tuple[str, str]:
+    """(title, body) copied verbatim from an existing concept — guarantees a
+    high-similarity match under any embedder/FTS index, unlike a paraphrase."""
+    existing = bundle.concept(cid)
+    return existing.title, existing.body
+
+
+def test_propose_auto_approves_when_no_similar_concept(kb):
+    result = kb.propose(
+        "notes/pizza", type="Note", title="Best pizza toppings", body="Pepperoni and mushrooms"
+    )
+    assert isinstance(result, Concept)
+    assert kb.concept("notes/pizza") is not None
+
+
+def test_propose_stages_when_similar_concept_exists(kb):
+    title, body = _near_duplicate(kb)
+    result = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(result, Proposal)
+    assert result.id == "decisions/0001-duplicate"
+    assert result.title == title
+    # Not a real concept yet: excluded from lookup, listing, and search.
+    assert kb.concept("decisions/0001-duplicate") is None
+    assert "decisions/0001-duplicate" not in {c.id for c in kb}
+    hits = kb.search(title, k=10)
+    assert "decisions/0001-duplicate" not in {h.concept.id for h in hits}
+
+
+def test_proposal_reports_similar_concepts(kb):
+    title, body = _near_duplicate(kb)
+    result = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(result, Proposal)
+    assert result.similar
+    assert result.similar[0]["concept_id"] == "decisions/0001-use-sqlite"
+    assert result.similar[0]["via"] == "semantic"
+    assert result.similar[0]["score"] >= 0.85
+
+
+def test_propose_auto_approve_true_bypasses_similarity(kb):
+    title, body = _near_duplicate(kb)
+    result = kb.propose(
+        "decisions/0001-duplicate", type="ADR", title=title, body=body, auto_approve=True
+    )
+    assert isinstance(result, Concept)
+    assert kb.concept("decisions/0001-duplicate") is not None
+
+
+def test_propose_auto_approve_false_always_stages(kb):
+    result = kb.propose(
+        "notes/pizza",
+        type="Note",
+        title="Best pizza toppings",
+        body="Pepperoni and mushrooms",
+        auto_approve=False,
+    )
+    assert isinstance(result, Proposal)
+    assert kb.concept("notes/pizza") is None
+
+
+def test_propose_duplicate_id_raises(kb):
+    with pytest.raises(ValueError):
+        kb.propose("decisions/0001-use-sqlite", type="ADR", title="Dup")
+
+
+def test_approve_materializes_proposal(kb):
+    title, body = _near_duplicate(kb)
+    proposal = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(proposal, Proposal)
+    concept = kb.approve(proposal)
+    assert isinstance(concept, Concept)
+    assert concept.node.id == proposal.node.id  # same node, promoted in place
+    assert kb.concept("decisions/0001-duplicate") is not None
+    assert "decisions/0001-duplicate" in {c.id for c in kb}
+    assert not kb.pending_reviews()
+    # Now embedded/retrievable like any other concept.
+    hits = kb.search(title, mode="semantic", k=10)
+    assert "decisions/0001-duplicate" in {h.concept.id for h in hits}
+
+
+def test_approve_accepts_concept_id_string(kb):
+    title, body = _near_duplicate(kb)
+    proposal = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(proposal, Proposal)
+    concept = kb.approve("decisions/0001-duplicate")
+    assert concept.id == "decisions/0001-duplicate"
+
+
+def test_reject_discards_proposal(kb):
+    title, body = _near_duplicate(kb)
+    proposal = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(proposal, Proposal)
+    assert kb.reject(proposal) is True
+    assert kb.concept("decisions/0001-duplicate") is None
+    assert not kb.pending_reviews()
+
+
+def test_reject_unknown_returns_false(kb):
+    assert kb.reject("nope/not-a-proposal") is False
+
+
+def test_pending_reviews_lists_staged_proposals_by_id(kb):
+    title, body = _near_duplicate(kb)
+    kb.propose("notes/b-topic", type="Note", title=title, body=body)
+    kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    ids = [p.id for p in kb.pending_reviews()]
+    assert ids == sorted(ids)
+    assert {"notes/b-topic", "decisions/0001-duplicate"} <= set(ids)
+
+
+def test_pending_proposal_excluded_from_export(kb, tmp_path):
+    title, body = _near_duplicate(kb)
+    proposal = kb.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+    assert isinstance(proposal, Proposal)
+    kb.save(str(tmp_path))
+    assert not (tmp_path / "decisions" / "0001-duplicate.md").exists()
+
+
+def test_propose_without_vector_index_requires_any_text_hit():
+    bundle = OKFBundle.load(str(KB))  # no embed= -> text-only fallback
+    try:
+        # No FTS match for this content -> auto-approved.
+        auto = bundle.propose(
+            "notes/pizza", type="Note", title="Best pizza toppings", body="Pepperoni"
+        )
+        assert isinstance(auto, Concept)
+
+        # Reuses the exact existing title/body -> FTS finds it -> staged for review.
+        title, body = _near_duplicate(bundle)
+        staged = bundle.propose("decisions/0001-duplicate", type="ADR", title=title, body=body)
+        assert isinstance(staged, Proposal)
+        assert staged.similar and staged.similar[0]["via"] == "text"
+    finally:
+        bundle.db.close()
 
 
 # --- search degradation without embeddings ------------------------------------
