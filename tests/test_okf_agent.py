@@ -112,6 +112,39 @@ def test_custom_system_prompt_is_used(kb):
     assert chat.seen[0][0]["content"] == "You are a test fixture."
 
 
+def test_messages_none_discards_history_between_calls(kb):
+    chat = ScriptedChat([{"role": "assistant", "content": "first"}, {"role": "assistant", "content": "second"}])
+    run_agent(kb, "one", chat=chat)
+    run_agent(kb, "two", chat=chat)
+    # Each call started a fresh conversation: one system + one user message.
+    assert [m["role"] for m in chat.seen[0]] == ["system", "user"]
+    assert [m["role"] for m in chat.seen[1]] == ["system", "user"]
+
+
+def test_messages_list_threads_conversation_across_calls(kb):
+    chat = ScriptedChat([{"role": "assistant", "content": "first"}, {"role": "assistant", "content": "second"}])
+    history: list[dict] = []
+    first = run_agent(kb, "one", chat=chat, messages=history)
+    assert first == "first"
+    assert [m["role"] for m in history] == ["system", "user", "assistant"]
+
+    second = run_agent(kb, "two", chat=chat, messages=history)
+    assert second == "second"
+    # The second call's system prompt is the SAME message object (not re-created)
+    # and the full prior turn is still present ahead of the new question.
+    assert [m["role"] for m in history] == ["system", "user", "assistant", "user", "assistant"]
+    assert chat.seen[1][0] is history[0]
+    assert history[1]["content"] == "one"
+    assert history[3]["content"] == "two"
+
+
+def test_messages_empty_list_gets_system_prompt(kb):
+    chat = ScriptedChat([{"role": "assistant", "content": "ok"}])
+    history: list[dict] = []
+    run_agent(kb, "hi", chat=chat, messages=history)
+    assert history[0]["role"] == "system"
+
+
 def test_tool_schemas_match_implementations(kb):
     tools = BundleTools(kb)
     for schema in tools.schemas:

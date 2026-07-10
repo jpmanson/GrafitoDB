@@ -513,6 +513,7 @@ def run_agent(
     question: str,
     *,
     chat: Chat,
+    messages: list[dict] | None = None,
     system: str | None = None,
     max_turns: int = 12,
     verbose: bool = False,
@@ -520,17 +521,29 @@ def run_agent(
     """Drive a tool-calling loop over the bundle until the model answers.
 
     ``chat`` is any :class:`Chat` callable. ``system`` overrides the default
-    system prompt (which embeds ``kb.layers()`` for orientation). The loop
-    executes every tool call through :class:`BundleTools` — including the
-    ``remember`` write path, so with ``autolog=True`` the bundle records what
-    the agent learned. Returns the model's final text (or a note when
-    ``max_turns`` is exhausted).
+    system prompt (which embeds ``kb.layers()`` for orientation), used only
+    when the conversation starts. The loop executes every tool call through
+    :class:`BundleTools` — including the ``remember`` write path, so with
+    ``autolog=True`` the bundle records what the agent learned. Returns the
+    model's final text (or a note when ``max_turns`` is exhausted).
+
+    Pass a list via ``messages`` to carry conversation memory across calls:
+    it is extended in place with this turn's question, tool calls, and
+    answer, so reusing the same list on the next call continues the same
+    conversation. Omit it (the default) for a one-shot question, matching
+    the original single-turn behavior exactly — the history is discarded
+    once this call returns. Note that tool results (e.g. full concept
+    bodies from ``open``) accumulate in ``messages`` turn over turn, so a
+    long-running conversation costs more tokens each turn.
     """
     tools = BundleTools(kb)
-    messages: list[dict] = [
-        {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT.format(layers=kb.layers())},
-        {"role": "user", "content": question},
-    ]
+    if messages is None:
+        messages = []
+    if not messages:
+        messages.append(
+            {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT.format(layers=kb.layers())}
+        )
+    messages.append({"role": "user", "content": question})
     for _ in range(max_turns):
         message = chat(messages, tools.schemas)
         messages.append(message)

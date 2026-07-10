@@ -29,7 +29,9 @@ A ``.env`` file is picked up automatically if ``python-dotenv`` is installed
 (``pip install python-dotenv``); otherwise export the variables above directly.
 
 The model is injected: ``run_agent(kb, question, chat=...)`` takes any
-``(messages, tools) -> message`` callable. For a non-OpenAI-format provider,
+``(messages, tools) -> message`` callable. Pass ``messages=history`` (a list)
+to thread a multi-turn conversation across calls, as below — omit it for a
+one-shot question instead. For a non-OpenAI-format provider,
 swap ``OpenAIChat`` for a 4-line adapter, e.g. via litellm::
 
     import litellm
@@ -88,13 +90,23 @@ def main() -> None:
     # The bundle is the agent's memory: embedded for search, autologged writes.
     kb = OKFBundle.load(str(BUNDLE), embed=HashingEmbeddingFunction(), autolog=True)
 
+    # Passing the same `history` list on each call threads the conversation:
+    # run_agent extends it in place, so the second question can refer back to
+    # the first without re-explaining context. Omit `messages=` for a one-shot
+    # question instead — that's the original, stateless behavior.
+    history: list[dict] = []
     question = (
         "A production Cypher query got slow after a data load. What should I do, "
         "step by step? Afterwards, remember a short checklist note under notes/ "
         "linked to the concepts you used."
     )
     print(f"Q: {question}\n")
-    answer = run_agent(kb, question, chat=chat, verbose=True)
+    answer = run_agent(kb, question, chat=chat, messages=history, verbose=True)
+    print(f"\nA: {answer}\n")
+
+    followup = "Now turn that checklist into exactly 3 bullet points."
+    print(f"Q: {followup}\n")
+    answer = run_agent(kb, followup, chat=chat, messages=history, verbose=True)
     print(f"\nA: {answer}\n")
 
     # Persist knowledge + changelog to a scratch copy (markdown, git-ready).

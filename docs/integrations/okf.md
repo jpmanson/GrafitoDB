@@ -657,7 +657,8 @@ drive the exploration itself** through OpenAI-style tool calls:
   into the bundle). Schemas + dispatch, framework-free: the same tools drop
   into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
   `{"error": ...}` for the model to react to instead of killing the loop.
-- **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop.
+- **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop. One-shot
+  by default; pass `messages=` to thread a multi-turn conversation (see below).
 - **`Chat`** — the model contract: *any callable*
   `(messages, tools) -> assistant message` in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like `rerank=`.
@@ -679,6 +680,25 @@ kb = OKFBundle.load("bundle", embed=embedder, autolog=True)
 answer = run_agent(kb, "why did we pick SQLite?", chat=OpenAIChat())
 kb.save()   # the agent's remember()ed notes + changelog land in git
 ```
+
+### Multi-turn conversations
+
+`run_agent` is one-shot by default: each call builds a fresh `messages` list
+and discards it on return. Pass a list via `messages=` to thread a
+conversation across calls instead — `run_agent` extends it in place with this
+turn's question, tool calls, and answer, so the next call (same list) can
+refer back to earlier turns without re-exploring the bundle:
+
+```python
+history: list[dict] = []
+run_agent(kb, "why did we pick SQLite?", chat=chat, messages=history)
+run_agent(kb, "and what did we rule out?", chat=chat, messages=history)
+```
+
+Tool results (e.g. full concept bodies from `open`) accumulate in `history`
+turn over turn, so a long-running conversation costs more tokens each turn —
+fine for a modest back-and-forth, but a very long session will eventually
+need trimming or summarization of older turns (not handled automatically).
 
 For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:
 
