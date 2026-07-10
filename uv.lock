@@ -1052,6 +1052,7 @@ all = [
     { name = "bm25s" },
     { name = "faiss-cpu" },
     { name = "hnswlib" },
+    { name = "httpx" },
     { name = "leann" },
     { name = "matplotlib" },
     { name = "netgraph" },
@@ -1078,6 +1079,9 @@ faiss = [
 ]
 hnswlib = [
     { name = "hnswlib" },
+]
+http = [
+    { name = "httpx" },
 ]
 leann = [
     { name = "leann" },
@@ -1116,6 +1120,8 @@ requires-dist = [
     { name = "faiss-cpu", marker = "extra == 'faiss'", specifier = ">=1.13.2" },
     { name = "hnswlib", marker = "extra == 'all'", specifier = ">=0.8.0" },
     { name = "hnswlib", marker = "extra == 'hnswlib'", specifier = ">=0.8.0" },
+    { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27.0" },
+    { name = "httpx", marker = "extra == 'http'", specifier = ">=0.27.0" },
     { name = "leann", marker = "extra == 'all'", specifier = ">=0.3.6" },
     { name = "leann", marker = "extra == 'leann'", specifier = ">=0.3.6" },
     { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.8.0" },
@@ -1138,7 +1144,7 @@ requires-dist = [
     { name = "voyager", marker = "extra == 'voyager'", specifier = ">=2.0.0" },
     { name = "zstandard", specifier = ">=0.23.0" },
 ]
-provides-extras = ["faiss", "annoy", "leann", "hnswlib", "usearch", "voyager", "rdf", "anthropic", "viz", "bm25s", "d2", "netgraph", "all", "docs"]
+provides-extras = ["faiss", "annoy", "leann", "hnswlib", "usearch", "voyager", "rdf", "anthropic", "http", "viz", "bm25s", "d2", "netgraph", "all", "docs"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -37,6 +37,9 @@ rdf = [
 anthropic = [
     "anthropic>=0.116.0",
 ]
+http = [
+    "httpx>=0.27.0",
+]
 viz = [
     "pyvis>=0.3.2",
 ]
@@ -61,6 +64,7 @@ all = [
     "bm25s>=0.2.2",
     "netgraph>=4.13.0",
     "matplotlib>=3.8.0",
+    "httpx>=0.27.0",
 ]
 docs = [
     "mkdocs-material>=9.5.0",
