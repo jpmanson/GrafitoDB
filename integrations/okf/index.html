@@ -1730,6 +1730,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2736,6 +2747,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3046,6 +3068,29 @@ assemble grounded <a href="#grounded-context-for-agents-context"><code>context()
 agent prompt, and write memory back — with the raw graph one attribute away
 via <code>bundle.db</code>. The functions below are the low-level layer it delegates to.</p>
 </div>
+<h2 id="core-concepts">Core concepts</h2>
+<p>A quick glossary before diving in — each term links to where it's covered in depth.</p>
+<ul>
+<li><strong>Bundle</strong> — the directory tree of markdown files itself: what you import
+  from and export back to (see <a href="#how-concepts-map-to-the-graph">How concepts map to the graph</a>).</li>
+<li><strong>Concept</strong> — one markdown file, with YAML frontmatter (<code>type</code>, <code>title</code>, ...)
+  plus a body; becomes one node on import.</li>
+<li><strong>Layer</strong> — the directory a concept lives in (<code>decisions/</code>, <code>glossary/</code>,
+  <code>runbooks/</code>, ...), used for progressive disclosure (<code>kb.layers()</code>, <code>kb.index()</code>).</li>
+<li><strong>Link</strong> — a markdown link from one concept to another; becomes a typed
+  relationship (<code>LINKS_TO</code> by default, or a custom type derived from headings
+  via <code>typed_links</code>).</li>
+<li><strong>Citation</strong> — a link under a <code># Citations</code> heading, to either another
+  concept or an external URL; becomes a <code>CITES</code> relationship.</li>
+<li><strong>Stub</strong> — a placeholder concept created because something links to it
+  before it exists (or it has no <code>type</code>); promoted in place once the real
+  file shows up (see <a href="#how-concepts-map-to-the-graph">How concepts map to the graph</a>).</li>
+<li><strong>Reference</strong> — the node a citation points to when the target is an
+  external URL rather than a concept.</li>
+<li><strong>Proposal</strong> — a concept held in a review queue instead of merged directly,
+  pending a human or auto-approve decision (see
+  <a href="#review-queue-propose-approve-reject">Review queue</a>).</li>
+</ul>
 <h2 id="prerequisites">Prerequisites</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># PyYAML is included by default</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>grafito
