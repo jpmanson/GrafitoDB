@@ -32,10 +32,12 @@ class ScriptedChat:
     def __init__(self, turns: list[dict]) -> None:
         self.turns = list(turns)
         self.seen: list[list[dict]] = []
+        self.seen_tools: list[list[dict]] = []
 
     def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
         assert any(t["function"]["name"] == "remember" for t in tools)
         self.seen.append(list(messages))
+        self.seen_tools.append(list(tools))
         return self.turns.pop(0)
 
 
@@ -143,6 +145,64 @@ def test_messages_empty_list_gets_system_prompt(kb):
     history: list[dict] = []
     run_agent(kb, "hi", chat=chat, messages=history)
     assert history[0]["role"] == "system"
+
+
+class FakeToolSet:
+    """A minimal custom toolset: no base class, just schemas + call."""
+
+    def __init__(self, name: str = "ping", reply: str = '{"pong": true}') -> None:
+        self.name = name
+        self.reply = reply
+        self.calls: list[tuple[str, dict]] = []
+        self.schemas = [
+            {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": "A custom app tool unrelated to the bundle.",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+
+    def call(self, name: str, args: dict) -> str:
+        self.calls.append((name, args))
+        return self.reply
+
+
+def test_extra_tools_are_offered_to_the_model_and_dispatched(kb):
+    fake = FakeToolSet()
+    chat = ScriptedChat(
+        [
+            {"role": "assistant", "content": None, "tool_calls": [_tool_call("ping", "c1")]},
+            {"role": "assistant", "content": "done"},
+        ]
+    )
+    answer = run_agent(kb, "use the custom tool", chat=chat, extra_tools=[fake])
+    assert answer == "done"
+    assert fake.calls == [("ping", {})]
+    # The model saw both the bundle's schemas and the extra one.
+    schema_names = {s["function"]["name"] for s in chat.seen_tools[0]}
+    assert "ping" in schema_names and "search" in schema_names
+
+
+def test_extra_tools_duplicate_name_raises(kb):
+    chat = ScriptedChat([{"role": "assistant", "content": "unreachable"}])
+    with pytest.raises(ValueError, match="search"):
+        run_agent(kb, "hi", chat=chat, extra_tools=[FakeToolSet(name="search")])
+
+
+def test_unknown_tool_name_returns_error_without_crashing(kb):
+    chat = ScriptedChat(
+        [
+            {"role": "assistant", "content": None, "tool_calls": [_tool_call("does_not_exist", "c1")]},
+            {"role": "assistant", "content": "recovered"},
+        ]
+    )
+    answer = run_agent(kb, "hi", chat=chat, extra_tools=[FakeToolSet()])
+    assert answer == "recovered"
+    tool_message = next(m for m in chat.seen[1] if m.get("role") == "tool")
+    assert "error" in json.loads(tool_message["content"])
 
 
 def test_tool_schemas_match_implementations(kb):

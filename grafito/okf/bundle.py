@@ -473,7 +473,10 @@ class OKFBundle:
         miss. Concepts are rendered as titled,
         cited blocks and greedily added in priority order (seeds first, by score;
         then expanded neighbours) until the budget is reached. The top hit is
-        always included, truncated if it alone exceeds the budget.
+        always included, truncated if it alone exceeds the budget. A
+        graph-expanded block's header names the relationship that pulled it in
+        (e.g. ``via JOINS_WITH``) — explicit provenance the LLM can cite,
+        instead of an unlabelled block that merely looks related.
 
         ``rerank``: an optional :class:`~grafito.okf.rerank.Reranker` (any callable
         ``(query, candidates) -> [(concept, score), ...]``). When given, the seed +
@@ -503,12 +506,14 @@ class OKFBundle:
             if hit.concept.node.id not in seen:
                 seen.add(hit.concept.node.id)
                 candidates.append(hit.concept)
+        neighbor_via: dict[int, str] = {}
         if expand_hops > 0:
             for hit in hits:
-                for nbr in hit.concept.neighbors(depth=expand_hops):
+                for nbr, rel_type in self._neighbors_typed(hit.concept.id, "out", depth=expand_hops):
                     if nbr.node.id not in seen and (include_superseded or not nbr.is_superseded):
                         seen.add(nbr.node.id)
                         candidates.append(nbr)
+                        neighbor_via[nbr.node.id] = rel_type
 
         # Optional precision step: let an injected reranker decide the order (and,
         # if it has a top_n, the subset) the budget is then packed from.
@@ -522,7 +527,7 @@ class OKFBundle:
         remaining = budget_tokens
         truncated = False
         for concept in candidates:
-            block = self._render_block(concept, include_citations)
+            block = self._render_block(concept, include_citations, neighbor_via.get(concept.node.id))
             cost = count(block)
             if cost <= remaining:
                 blocks.append(block)
@@ -1138,6 +1143,49 @@ class OKFBundle:
                 out.append(Concept(self, node))
         return out
 
+    def _neighbors_typed(
+        self, concept_id: str, direction: str, *, depth: int = 1
+    ) -> list[tuple[Concept, str]]:
+        """Like :meth:`_neighbors` (any type except ``CITES``), but also returns
+        the relationship type of the edge that first reached each node (BFS
+        layer order) — used by :meth:`context` to annotate graph-expanded
+        blocks with *why* a neighbor was pulled in."""
+        start_rows = self._db.conn.execute(
+            "SELECT n.id FROM nodes n WHERE json_extract(n.properties, '$.concept_id') = ?",
+            (concept_id,),
+        ).fetchall()
+        frontier = {row["id"] for row in start_rows}
+        if not frontier:
+            return []
+        src_col, dst_col = ("source_node_id", "target_node_id")
+        if direction == "in":
+            src_col, dst_col = dst_col, src_col
+        seen: set[int] = set(frontier)
+        reached: list[tuple[int, str]] = []
+        for _ in range(max(1, int(depth))):
+            if not frontier:
+                break
+            placeholders = ",".join("?" * len(frontier))
+            sql = (
+                f"SELECT DISTINCT r.{dst_col} AS nid, r.type AS rtype FROM relationships r"
+                f" WHERE r.{src_col} IN ({placeholders}) AND r.type != 'CITES'"
+                " ORDER BY nid"
+            )
+            params: list[Any] = sorted(frontier)
+            frontier = set()
+            for row in self._db.conn.execute(sql, params).fetchall():
+                if row["nid"] not in seen:
+                    seen.add(row["nid"])
+                    frontier.add(row["nid"])
+                    reached.append((row["nid"], row["rtype"]))
+        out: list[tuple[Concept, str]] = []
+        for node_id, rel_type in reached:
+            node = self._db.get_node(node_id)
+            cid = node.properties.get("concept_id") if node else None
+            if isinstance(cid, str) and cid != concept_id:
+                out.append((Concept(self, node), rel_type))
+        return out
+
     def _citations_of(self, concept_id: str) -> list[dict]:
         rows = self.execute(
             "MATCH (a)-[r:CITES]->(t) WHERE a.concept_id = $cid "
@@ -1195,10 +1243,21 @@ class OKFBundle:
         """Default token estimate: ~4 characters per token (no tokenizer dep)."""
         return max(1, len(text) // 4)
 
-    def _render_block(self, concept: Concept, include_citations: bool) -> str:
-        """Render one concept as a titled, optionally-cited context block."""
+    def _render_block(
+        self, concept: Concept, include_citations: bool, via: str | None = None
+    ) -> str:
+        """Render one concept as a titled, optionally-cited context block.
+
+        ``via``, when given, is the relationship type that pulled this concept
+        in through graph expansion (e.g. ``"JOINS_WITH"``) — omitted for seed
+        hits, which were retrieved directly by ``search()`` rather than reached
+        through a link.
+        """
         title = concept.title or concept.id
-        lines = [f"### {title}  ·  {concept.type}  ·  {concept.id}"]
+        header = f"### {title}  ·  {concept.type}  ·  {concept.id}"
+        if via:
+            header += f"  ·  via {via}"
+        lines = [header]
         if concept.description:
             lines.append(concept.description)
         body = concept.body.strip()

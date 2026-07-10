@@ -382,7 +382,11 @@ required. Given a question it:
    edge over a flat vector store);
 3. **packs** the concepts into a token budget as titled, cited blocks, greedily
    in priority order (the top hit is never dropped — it is truncated if it alone
-   exceeds the budget).
+   exceeds the budget). A graph-expanded block's header names the relationship
+   that pulled it in (e.g. `### Semantic search · Term · glossary/semantic-search
+   · via JOINS_WITH`) — explicit provenance the LLM can cite, not just a block
+   that happens to sit nearby. Seed hits (found directly by `search()`) carry
+   no `via`.
 
 ```python
 pack = kb.context("how do I make a query run faster", budget_tokens=2000)
@@ -682,10 +686,15 @@ drive the exploration itself** through OpenAI-style tool calls:
   into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
   `{"error": ...}` for the model to react to instead of killing the loop.
 - **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop. One-shot
-  by default; pass `messages=` to thread a multi-turn conversation (see below).
+  by default; pass `messages=` to thread a multi-turn conversation, or
+  `extra_tools=` to add app-specific tools (see below for both).
 - **`Chat`** — the model contract: *any callable*
   `(messages, tools) -> assistant message` in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like `rerank=`.
+- **`ToolSet`** — the tool contract: any object with `schemas` (OpenAI
+  function-tool schemas) and a matching `call(name, args) -> str`.
+  `BundleTools` is one; write your own the same shape to plug in via
+  `extra_tools=`.
 - **`OpenAIChat`** — the bundled convenience for any OpenAI-compatible
   endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs `httpx`,
   reads `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`.
@@ -723,6 +732,42 @@ Tool results (e.g. full concept bodies from `open`) accumulate in `history`
 turn over turn, so a long-running conversation costs more tokens each turn —
 fine for a modest back-and-forth, but a very long session will eventually
 need trimming or summarization of older turns (not handled automatically).
+
+### Custom tools
+
+`run_agent` always includes `BundleTools(kb)` — browse/search/open/follow/
+history/remember. Pass `extra_tools=` with your own `ToolSet`\ s to add
+tools that have nothing to do with the bundle, e.g. sending a message or
+calling an internal API. No base class required, just the same
+`schemas`/`call` shape as `BundleTools`:
+
+```python
+class SlackTools:
+    schemas = [{
+        "type": "function",
+        "function": {
+            "name": "notify_channel",
+            "description": "Post a message to the team Slack channel.",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+        },
+    }]
+
+    def call(self, name: str, args: dict) -> str:
+        post_to_slack(args["text"])  # your own integration
+        return '{"posted": true}'
+
+run_agent(kb, question, chat=chat, extra_tools=[SlackTools()])
+```
+
+Tool names must be unique across `BundleTools` and every `extra_tools`
+entry — a collision (e.g. defining your own `search`) raises `ValueError`
+before the model is ever called, rather than one tool silently shadowing
+another. A tool call for a name no toolset owns comes back as
+`{"error": ...}`, same as any other tool error the model can react to.
 
 For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:
 

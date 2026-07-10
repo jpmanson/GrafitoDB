@@ -72,6 +72,23 @@ class Chat(Protocol):
         ...
 
 
+@runtime_checkable
+class ToolSet(Protocol):
+    """Anything with OpenAI-style tool ``schemas`` plus a matching ``call``.
+
+    :class:`BundleTools` is one such toolset; pass additional instances via
+    ``run_agent(..., extra_tools=[...])`` to give the agent app-specific
+    tools (send a message, query an internal API, ...) alongside the
+    bundle's own browse/search/open/follow/history/remember. No base class
+    needed — any object with this shape works, same spirit as :class:`Chat`.
+    """
+
+    schemas: list[dict]
+
+    def call(self, name: str, args: dict) -> str:
+        ...
+
+
 class BundleTools:
     """An :class:`OKFBundle` exposed as OpenAI-style function tools.
 
@@ -513,6 +530,7 @@ def run_agent(
     question: str,
     *,
     chat: Chat,
+    extra_tools: "list[ToolSet] | None" = None,
     messages: list[dict] | None = None,
     system: str | None = None,
     max_turns: int = 12,
@@ -522,10 +540,18 @@ def run_agent(
 
     ``chat`` is any :class:`Chat` callable. ``system`` overrides the default
     system prompt (which embeds ``kb.layers()`` for orientation), used only
-    when the conversation starts. The loop executes every tool call through
-    :class:`BundleTools` — including the ``remember`` write path, so with
-    ``autolog=True`` the bundle records what the agent learned. Returns the
-    model's final text (or a note when ``max_turns`` is exhausted).
+    when the conversation starts. The loop always executes tool calls
+    through :class:`BundleTools` — including the ``remember`` write path, so
+    with ``autolog=True`` the bundle records what the agent learned. Returns
+    the model's final text (or a note when ``max_turns`` is exhausted).
+
+    ``extra_tools`` adds app-specific :class:`ToolSet`\\ s (own ``schemas``
+    plus a matching ``call``) alongside the bundle's own, for tools that
+    have nothing to do with the bundle (send a message, query an internal
+    API, ...). Tool names must be unique across every toolset; a collision
+    raises ``ValueError`` before the model is ever called. A tool call for
+    a name no toolset owns comes back as ``{"error": ...}`` for the model to
+    react to, same as any other tool error.
 
     Pass a list via ``messages`` to carry conversation memory across calls:
     it is extended in place with this turn's question, tool calls, and
@@ -536,7 +562,17 @@ def run_agent(
     bodies from ``open``) accumulate in ``messages`` turn over turn, so a
     long-running conversation costs more tokens each turn.
     """
-    tools = BundleTools(kb)
+    toolsets: list[ToolSet] = [BundleTools(kb), *(extra_tools or [])]
+    schemas: list[dict] = []
+    dispatch: dict[str, ToolSet] = {}
+    for toolset in toolsets:
+        for schema in toolset.schemas:
+            name = schema["function"]["name"]
+            if name in dispatch:
+                raise ValueError(f"Duplicate tool name {name!r} across toolsets")
+            dispatch[name] = toolset
+            schemas.append(schema)
+
     if messages is None:
         messages = []
     if not messages:
@@ -545,7 +581,7 @@ def run_agent(
         )
     messages.append({"role": "user", "content": question})
     for _ in range(max_turns):
-        message = chat(messages, tools.schemas)
+        message = chat(messages, schemas)
         messages.append(message)
         tool_calls = message.get("tool_calls") or []
         if not tool_calls:
@@ -555,7 +591,11 @@ def run_agent(
             args = json.loads(call["function"]["arguments"] or "{}")
             if verbose:
                 print(f"  -> {name}({json.dumps(args, ensure_ascii=False)})")
-            result = tools.call(name, args)
+            toolset = dispatch.get(name)
+            if toolset is None:
+                result = json.dumps({"error": f"Unknown tool {name!r}"})
+            else:
+                result = toolset.call(name, args)
             if verbose:
                 print(f"     {_describe_result(name, result)}")
             messages.append(

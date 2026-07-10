@@ -1028,6 +1028,27 @@ def test_context_expands_across_typed_links(kb):
     assert "notes/u" in {c.id for c in pack.concepts}  # pulled in via the typed edge
 
 
+def test_context_neighbour_block_names_the_relationship_type(kb):
+    kb.add_concept("notes/u", type="Note", title="U",
+                   body="Unrelated topic: gardening and greenhouses.")
+    kb.link("runbooks/slow-queries", "notes/u", type="ESCALATES_TO")
+
+    pack = kb.context("how do I make a query run faster", k=2, budget_tokens=100000)
+    # The expanded neighbour's header names the edge that pulled it in...
+    assert "U  ·  Note  ·  notes/u  ·  via ESCALATES_TO" in pack.text
+    # ...but the seed hit, retrieved directly by search(), carries no "via" tag
+    # on its own header line.
+    seed_header = next(
+        line for line in pack.text.splitlines() if "Triaging a slow graph query" in line
+    )
+    assert "via" not in seed_header
+
+
+def test_context_no_expand_has_no_via_annotations(kb):
+    pack = kb.context("how do I make a query run faster", k=2, expand_hops=0)
+    assert "  ·  via " not in pack.text
+
+
 # --- changelog: log_entry + autolog ----------------------------------------------
 
 
