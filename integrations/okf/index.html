@@ -1982,6 +1982,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Agentic GraphRAG: grafito.okf.agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-turn-conversations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-turn conversations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2971,6 +2988,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Agentic GraphRAG: grafito.okf.agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-turn-conversations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-turn conversations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -3700,7 +3734,8 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
   into the bundle). Schemas + dispatch, framework-free: the same tools drop
   into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
   <code>{"error": ...}</code> for the model to react to instead of killing the loop.</li>
-<li><strong><code>run_agent(kb, question, chat=...)</code></strong> — a minimal tool-calling loop.</li>
+<li><strong><code>run_agent(kb, question, chat=...)</code></strong> — a minimal tool-calling loop. One-shot
+  by default; pass <code>messages=</code> to thread a multi-turn conversation (see below).</li>
 <li><strong><code>Chat</code></strong> — the model contract: <em>any callable</em>
   <code>(messages, tools) -&gt; assistant message</code> in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like <code>rerank=</code>.</li>
@@ -3721,21 +3756,35 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
 </span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="n">answer</span> <span class="o">=</span> <span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">OpenAIChat</span><span class="p">())</span>
 </span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>   <span class="c1"># the agent&#39;s remember()ed notes + changelog land in git</span>
 </span></code></pre></div>
+<h3 id="multi-turn-conversations">Multi-turn conversations</h3>
+<p><code>run_agent</code> is one-shot by default: each call builds a fresh <code>messages</code> list
+and discards it on return. Pass a list via <code>messages=</code> to thread a
+conversation across calls instead — <code>run_agent</code> extends it in place with this
+turn's question, tool calls, and answer, so the next call (same list) can
+refer back to earlier turns without re-exploring the bundle:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="n">history</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;and what did we rule out?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Tool results (e.g. full concept bodies from <code>open</code>) accumulate in <code>history</code>
+turn over turn, so a long-running conversation costs more tokens each turn —
+fine for a modest back-and-forth, but a very long session will eventually
+need trimming or summarization of older turns (not handled automatically).</p>
 <p>For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
-</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
-</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
-</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
-</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
-</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
-</span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>
-</span><span id="__span-26-8"><a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
+</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
+</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+</span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+</span><span id="__span-27-7"><a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>
+</span><span id="__span-27-8"><a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>examples/okf/okf_agent.py</code> is the runnable end-to-end walkthrough (explore →
 answer with concept citations → remember a note → save bundle + <code>log.md</code>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
-</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
-</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
 </span></code></pre></div>
 
 
