@@ -21,8 +21,12 @@ automatically when only Anthropic credentials are configured:
     export ANTHROPIC_API_KEY=sk-ant-...
     python examples/okf/okf_agent.py                   # claude-opus-4-8 by default
 
-Requires ``httpx`` for the OpenAI-compatible path. Retrieval runs on the
-dependency-free hashing embedder, so the knowledge side works fully offline.
+Requires ``httpx`` for the OpenAI-compatible path (``pip install grafito[http]``).
+Retrieval runs on the dependency-free hashing embedder, so the knowledge side
+works fully offline.
+
+A ``.env`` file is picked up automatically if ``python-dotenv`` is installed
+(``pip install python-dotenv``); otherwise export the variables above directly.
 
 The model is injected: ``run_agent(kb, question, chat=...)`` takes any
 ``(messages, tools) -> message`` callable. For a non-OpenAI-format provider,
@@ -50,6 +54,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from okf_knowledge_base import HashingEmbeddingFunction  # noqa: E402  (demo embedder)
 
 BUNDLE = Path(__file__).parent / "okf_knowledge_base"
+
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()  # optional: pip install python-dotenv
+except ImportError:
+    pass
 
 
 def pick_chat():

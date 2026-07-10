@@ -476,6 +476,38 @@ class AnthropicChat:
         self.close()
 
 
+def _describe_result(name: str, result: str) -> str:
+    """One-line, human-readable summary of a tool result for ``verbose`` logs.
+
+    Raw JSON gets unreadable once truncated mid-string; this describes shape
+    (counts, ids, titles) instead of slicing bytes.
+    """
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError:
+        return result[:160]
+    if isinstance(data, dict) and set(data) == {"error"}:
+        return f"error: {data['error']}"
+    if name in ("search", "follow"):
+        if not data:
+            return "(no results)"
+        shown = ", ".join(f"{item['id']} ({item['title']})" for item in data[:3])
+        more = f", +{len(data) - 3} more" if len(data) > 3 else ""
+        return f"{len(data)} result(s): {shown}{more}"
+    if name == "browse":
+        return (
+            f"layer={data['layer'] or '/'!r}: {len(data['subdirs'])} subdir(s), "
+            f"{len(data['concepts'])} concept(s)"
+        )
+    if name == "open":
+        return f"{data['id']} - {data['title']} ({len(data['links'])} link(s), {len(data['cites'])} citation(s))"
+    if name == "history":
+        return f"{len(data)} entr{'y' if len(data) == 1 else 'ies'}"
+    if name == "remember":
+        return f"saved {data['saved']}, linked to {data['linked_to']}"
+    return json.dumps(data, ensure_ascii=False)[:160]
+
+
 def run_agent(
     kb: "OKFBundle",
     question: str,
@@ -512,7 +544,7 @@ def run_agent(
                 print(f"  -> {name}({json.dumps(args, ensure_ascii=False)})")
             result = tools.call(name, args)
             if verbose:
-                print(f"     {result[:160]}{'…' if len(result) > 160 else ''}")
+                print(f"     {_describe_result(name, result)}")
             messages.append(
                 {"role": "tool", "tool_call_id": call.get("id", name), "content": result}
             )
