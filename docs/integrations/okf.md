@@ -19,6 +19,30 @@ as markdown in git, index and query it at runtime.
     agent prompt, and write memory back — with the raw graph one attribute away
     via `bundle.db`. The functions below are the low-level layer it delegates to.
 
+## Core concepts
+
+A quick glossary before diving in — each term links to where it's covered in depth.
+
+- **Bundle** — the directory tree of markdown files itself: what you import
+  from and export back to (see [How concepts map to the graph](#how-concepts-map-to-the-graph)).
+- **Concept** — one markdown file, with YAML frontmatter (`type`, `title`, ...)
+  plus a body; becomes one node on import.
+- **Layer** — the directory a concept lives in (`decisions/`, `glossary/`,
+  `runbooks/`, ...), used for progressive disclosure (`kb.layers()`, `kb.index()`).
+- **Link** — a markdown link from one concept to another; becomes a typed
+  relationship (`LINKS_TO` by default, or a custom type derived from headings
+  via `typed_links`).
+- **Citation** — a link under a `# Citations` heading, to either another
+  concept or an external URL; becomes a `CITES` relationship.
+- **Stub** — a placeholder concept created because something links to it
+  before it exists (or it has no `type`); promoted in place once the real
+  file shows up (see [How concepts map to the graph](#how-concepts-map-to-the-graph)).
+- **Reference** — the node a citation points to when the target is an
+  external URL rather than a concept.
+- **Proposal** — a concept held in a review queue instead of merged directly,
+  pending a human or auto-approve decision (see
+  [Review queue](#review-queue-propose-approve-reject)).
+
 ## Prerequisites
 
 ```bash
