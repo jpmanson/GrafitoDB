@@ -110,6 +110,7 @@ nav:
       - RDF/Turtle: integrations/rdf.md
       - Neo4j Dump Import: integrations/neo4j-import.md
       - Open Knowledge Format (OKF): integrations/okf.md
+      - Agentic Search over OKF: integrations/okf-agentic-search.md
       - Visualization: integrations/visualization.md
 
   - Embeddings & LLMs:
