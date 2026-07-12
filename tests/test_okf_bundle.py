@@ -236,6 +236,25 @@ def test_search_auto_uses_semantic_when_embedded(kb):
     assert hits and hits[0].via == "semantic"
 
 
+def test_search_text_tolerates_punctuated_query(kb):
+    # A raw hyphenated term like "SARS-CoV-2" used to raise sqlite3.OperationalError
+    # ("no such column: CoV") because unescaped "-" is FTS5 MATCH syntax, not a
+    # literal character. Free text must never reach MATCH unsanitized.
+    hits = kb.search("SARS-CoV-2 diagnostic reagent", mode="text", k=3)
+    assert isinstance(hits, list)
+
+
+def test_search_text_multiword_query_matches_on_any_token(kb):
+    # Space-joined FTS5 barewords are implicitly ANDed, so a natural-language
+    # question used to fail outright if any single token (e.g. a short
+    # stopword) didn't literally appear. OR-joining tokens means one strong
+    # match is enough to surface the hit.
+    cid = "glossary/semantic-search"
+    kb.update_concept(cid, body="Completely new content about zebras.")
+    hits = kb.search("zebras I II some words that do not appear anywhere", mode="text", k=5)
+    assert any(h.concept.id == cid for h in hits)
+
+
 # --- metadata / escape hatch ------------------------------------------------
 
 

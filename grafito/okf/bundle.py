@@ -64,6 +64,23 @@ _DEFAULT_REVIEW_THRESHOLD = 0.85
 # Word-token extractor for turning free text into a safe FTS5 MATCH query
 # (bareword tokens only — no quotes/colons/hyphens for the query parser to trip on).
 _FTS_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+_MAX_FTS_TOKENS = 32
+
+
+def _safe_fts_query(text: str) -> str:
+    """Reduce free text to a bareword OR-query safe for FTS5 MATCH.
+
+    ``search()``/``context()`` take natural-language questions, not FTS5 query
+    syntax — but ``mode="text"``/``"hybrid"`` hand the text straight to SQLite's
+    FTS5 MATCH, which has its own grammar (quotes, ``:``, ``-``, ``AND``/``OR``/
+    ``NOT``...). A term like ``SARS-CoV-2`` trips the parser (``-`` reads as a
+    column filter), and space-joined barewords are implicitly ANDed, so a
+    multi-word question fails outright if any one token doesn't literally
+    appear (e.g. short stopwords like "I"/"II"). OR-joining just the alphanumeric
+    tokens sidesteps both problems: it can't be invalid syntax, and any single
+    matching term is enough to surface a hit.
+    """
+    return " OR ".join(_FTS_TOKEN_RE.findall(text)[:_MAX_FTS_TOKENS])
 
 # First (alphabetical) label of a node — matches Node.labels ordering.
 _FIRST_LABEL_SQL = (
@@ -904,10 +921,9 @@ class OKFBundle:
                     hits = self.search(query_text, k=similarity_k, mode="semantic")
                     hits = [h for h in hits if h.score >= similarity_threshold]
                 else:
-                    # Free text (markdown punctuation, quotes, hyphens...) is not
-                    # a safe FTS5 MATCH query — reduce it to a bareword OR-query.
-                    fts_query = " OR ".join(_FTS_TOKEN_RE.findall(query_text)[:32])
-                    hits = self.search(fts_query, k=similarity_k, mode="text") if fts_query else []
+                    # `mode="text"` -> `_text()` already reduces this to a safe
+                    # bareword OR-query internally.
+                    hits = self.search(query_text, k=similarity_k, mode="text")
                 if hits:
                     similar = [
                         {
@@ -1213,7 +1229,10 @@ class OKFBundle:
         ]
 
     def _text(self, query: str, k: int, type: str | None) -> list[Hit]:
-        results = self._db.text_search(query, k=k, labels=[type] if type else None)
+        safe_query = _safe_fts_query(query)
+        if not safe_query:
+            return []
+        results = self._db.text_search(safe_query, k=k, labels=[type] if type else None)
         hits: list[Hit] = []
         for r in results:
             if r.get("entity_type") != "node":
