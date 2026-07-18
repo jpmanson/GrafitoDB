@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import re
 from contextlib import nullcontext
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -790,6 +791,12 @@ def import_bundle(
     }
 
 
+# Prefix of the Core-layer warning emitted for an intra-bundle link whose target
+# concept is absent. Shared with :func:`diff_okf_bundles`, which recovers the
+# target id from the warning rather than re-deriving broken links itself.
+_BROKEN_LINK_WARNING = "broken link to unknown concept: "
+
+
 def validate_bundle(root: str | Path) -> dict:
     """Validate a bundle against the OKF v0.1 conformance rules (SPEC sec. 9).
 
@@ -858,7 +865,7 @@ def validate_bundle(root: str | Path) -> dict:
 
     for rel, target_id in pending_links:
         if target_id not in concept_ids:
-            warnings.append({"path": rel, "warning": f"broken link to unknown concept: {target_id}"})
+            warnings.append({"path": rel, "warning": f"{_BROKEN_LINK_WARNING}{target_id}"})
 
     return {
         "conformant": not errors,
@@ -1102,3 +1109,190 @@ def lint_bundle(
         "profile": profile_findings,
         "hygiene": hygiene_findings if mode == "audit" else [],
     }
+
+
+# --- Bundle diff (read-only preview) ------------------------------------------
+#
+# `diff_okf_bundles` previews what would change if `candidate` replaced `base`,
+# without importing either side. It is a pure, read-only dry-run of the
+# *incremental* importer: the content hash it compares is byte-for-byte the same
+# `okf_hash` the importer stores and re-checks on re-import — `sha256` over the
+# newline-normalized file text (`read_text` translates CRLF -> LF, so the hash
+# already matches regardless of platform line endings). That lockstep is the
+# whole point: "changed here" iff "the importer would update that node". The
+# `invalid` and `broken_links` fields are delegated to `validate_bundle` so the
+# OKF conformance rules keep living in exactly one place.
+
+
+@dataclass(frozen=True)
+class ConceptDelta:
+    """Field-level change for a concept whose file differs between two trees.
+
+    Frontmatter is diffed key-by-key (``type`` included, so a retype shows up as
+    a ``frontmatter_changed`` entry); ``body_changed`` covers the markdown body
+    below the frontmatter block.
+    """
+
+    frontmatter_added: dict[str, Any]  # key -> value present only in candidate
+    frontmatter_removed: dict[str, Any]  # key -> value present only in base
+    frontmatter_changed: dict[str, tuple[Any, Any]]  # key -> (base, candidate)
+    body_changed: bool
+
+
+@dataclass(frozen=True)
+class BundleDiff:
+    """The read-only preview of replacing ``base`` with ``candidate``.
+
+    Paths are bundle-relative POSIX strings (e.g. ``decisions/0001-x.md``),
+    matching :func:`validate_bundle`'s reporting. Reserved files (``index.md``,
+    ``log.md``) are excluded, exactly as the importer excludes them from
+    concepts. ``invalid`` and ``broken_links`` describe the *candidate* — the
+    tree about to be adopted.
+    """
+
+    added: list[str]  # concepts present only in candidate
+    removed: list[str]  # concepts present only in base
+    changed: dict[str, ConceptDelta]  # concept path -> what changed
+    invalid: dict[str, str]  # candidate path -> conformance error
+    broken_links: list[tuple[str, str]]  # (candidate path, missing target id)
+
+    def summary(self) -> dict[str, int]:
+        """Counts for a one-line report."""
+        return {
+            "added": len(self.added),
+            "removed": len(self.removed),
+            "changed": len(self.changed),
+            "invalid": len(self.invalid),
+            "broken_links": len(self.broken_links),
+        }
+
+    @property
+    def has_changes(self) -> bool:
+        """Whether adopting the candidate would add, remove, or change anything."""
+        return bool(self.added or self.removed or self.changed)
+
+    @property
+    def conformant(self) -> bool:
+        """Whether the candidate is free of hard conformance errors.
+
+        Broken links are warnings (SPEC sec. 9), so they never make a candidate
+        non-conformant — mirroring :func:`validate_bundle`.
+        """
+        return not self.invalid
+
+
+def _concept_hashes(root: Path) -> dict[str, str]:
+    """Map every non-reserved concept path to the importer's ``okf_hash``.
+
+    Read and hashed exactly as :func:`import_bundle` does, so the result is
+    comparable to the ``okf_hash`` stored on imported nodes.
+    """
+    hashes: dict[str, str] = {}
+    for path in sorted(root.rglob("*.md")):
+        if path.name in RESERVED_FILENAMES:
+            continue
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8")
+        hashes[rel] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return hashes
+
+
+def _safe_parse(text: str) -> tuple[dict, str]:
+    """Parse frontmatter permissively (SPEC sec. 9), like the importer does.
+
+    A candidate file with malformed YAML is still reported in ``invalid`` by
+    :func:`validate_bundle`; here we only need a best-effort delta, so an
+    unparseable block degrades to an empty frontmatter with the whole text as
+    body rather than raising.
+    """
+    try:
+        return parse_frontmatter(text)
+    except yaml.YAMLError:
+        return {}, text
+
+
+def _concept_delta(base_text: str, candidate_text: str) -> ConceptDelta:
+    base_fm, base_body = _safe_parse(base_text)
+    cand_fm, cand_body = _safe_parse(candidate_text)
+    added = {k: v for k, v in cand_fm.items() if k not in base_fm}
+    removed = {k: v for k, v in base_fm.items() if k not in cand_fm}
+    changed = {
+        k: (base_fm[k], cand_fm[k])
+        for k in base_fm
+        if k in cand_fm and base_fm[k] != cand_fm[k]
+    }
+    return ConceptDelta(
+        frontmatter_added=added,
+        frontmatter_removed=removed,
+        frontmatter_changed=changed,
+        body_changed=base_body != cand_body,
+    )
+
+
+def diff_okf_bundles(base: str | Path, candidate: str | Path) -> BundleDiff:
+    """Preview what adopting ``candidate`` in place of ``base`` would change.
+
+    A pure, read-only, domain-agnostic diff between two OKF trees on disk —
+    neither is imported, no graph, no LLM, no network. It is the safe-replace
+    companion to :func:`validate_bundle`/:func:`lint_bundle`: build a candidate
+    bundle into a staging directory, diff it against the live one, show a human
+    the ``added``/``removed``/``changed`` concepts plus any ``invalid`` files or
+    ``broken_links``, and only then swap the directories.
+
+    Because the content hash matches the importer's ``okf_hash`` byte-for-byte,
+    the ``changed`` set is exactly the set of concepts a subsequent incremental
+    ``import_okf_bundle`` would re-process — this preview never disagrees with
+    what the import actually does.
+
+    Args:
+        base: the current bundle (the "before" tree).
+        candidate: the proposed bundle (the "after" tree).
+
+    Returns:
+        A :class:`BundleDiff`. See its fields for the exact shape.
+
+    Raises:
+        NotADirectoryError: if either path is not an existing directory.
+    """
+    base_root = Path(base)
+    cand_root = Path(candidate)
+    for role, root in (("base", base_root), ("candidate", cand_root)):
+        if not root.is_dir():
+            raise NotADirectoryError(f"OKF {role} bundle root not found: {root}")
+
+    base_hashes = _concept_hashes(base_root)
+    cand_hashes = _concept_hashes(cand_root)
+    base_paths, cand_paths = set(base_hashes), set(cand_hashes)
+
+    added = sorted(cand_paths - base_paths)
+    removed = sorted(base_paths - cand_paths)
+
+    # Field-level delta only for the (usually small) set of files whose content
+    # actually moved — re-read just those, rather than holding every body in RAM.
+    changed: dict[str, ConceptDelta] = {}
+    for rel in sorted(base_paths & cand_paths):
+        if base_hashes[rel] == cand_hashes[rel]:
+            continue
+        changed[rel] = _concept_delta(
+            (base_root / rel).read_text(encoding="utf-8"),
+            (cand_root / rel).read_text(encoding="utf-8"),
+        )
+
+    # Reuse the Core conformance pass for the candidate: `invalid` and
+    # `broken_links` are exactly its errors and its broken-link warnings, so the
+    # rules are never re-implemented here.
+    report = validate_bundle(cand_root)
+    invalid = {e["path"]: e["error"] for e in report["errors"]}
+    broken_links = [
+        (w["path"], w["warning"][len(_BROKEN_LINK_WARNING) :])
+        for w in report["warnings"]
+        if w["warning"].startswith(_BROKEN_LINK_WARNING)
+    ]
+
+    return BundleDiff(
+        added=added,
+        removed=removed,
+        changed=changed,
+        invalid=invalid,
+        broken_links=broken_links,
+    )

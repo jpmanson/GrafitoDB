@@ -15,6 +15,7 @@ kb.db.execute("MATCH (n) RETURN count(n)")   # escape hatch
 ```
 """
 
+from ..importers.okf import BundleDiff, ConceptDelta, diff_okf_bundles
 from ..importers.okf import lint_bundle as lint_okf_bundle
 from ..importers.okf import validate_bundle as validate_okf_bundle
 from .agent import AnthropicChat, BundleTools, Chat, OpenAIChat, ToolSet, run_agent
@@ -34,6 +35,9 @@ __all__ = [
     "OKFBundle",
     "validate_okf_bundle",
     "lint_okf_bundle",
+    "diff_okf_bundles",
+    "BundleDiff",
+    "ConceptDelta",
     "BundleTools",
     "Chat",
     "ToolSet",

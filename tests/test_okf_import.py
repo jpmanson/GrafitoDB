@@ -944,3 +944,153 @@ def test_incremental_skips_reembedding_unchanged(db, tmp_path):
     assert second["embedded"] == 1  # only the changed concept was re-embedded
     assert second["unchanged"] == 1
     assert embedder.total_docs == 3  # 2 from the first import + 1 re-embed
+
+
+# --- diff_okf_bundles ---------------------------------------------------------
+
+
+def _write_bundle(root: Path, files: dict[str, str]) -> Path:
+    for rel, text in files.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return root
+
+
+def test_diff_detects_added_removed_changed(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    base = _write_bundle(
+        tmp_path / "base",
+        {
+            "keep.md": "---\ntype: Doc\ntitle: Keep\n---\nUnchanged body.\n",
+            "edit.md": "---\ntype: Doc\ntitle: Edit\n---\nOld body.\n",
+            "gone.md": "---\ntype: Doc\ntitle: Gone\n---\nBye.\n",
+        },
+    )
+    cand = _write_bundle(
+        tmp_path / "cand",
+        {
+            "keep.md": "---\ntype: Doc\ntitle: Keep\n---\nUnchanged body.\n",
+            "edit.md": "---\ntype: Doc\ntitle: Edit\n---\nNew body.\n",
+            "new.md": "---\ntype: Doc\ntitle: New\n---\nHello.\n",
+        },
+    )
+
+    diff = diff_okf_bundles(base, cand)
+    assert diff.added == ["new.md"]
+    assert diff.removed == ["gone.md"]
+    assert list(diff.changed) == ["edit.md"]
+    assert "keep.md" not in diff.changed  # identical content is not a change
+    assert diff.has_changes is True
+    assert diff.summary() == {
+        "added": 1,
+        "removed": 1,
+        "changed": 1,
+        "invalid": 0,
+        "broken_links": 0,
+    }
+
+
+def test_diff_reports_field_level_delta(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    base = _write_bundle(
+        tmp_path / "base",
+        {"c.md": "---\ntype: ADR\ntitle: Old\nstatus: draft\n---\nBody.\n"},
+    )
+    cand = _write_bundle(
+        tmp_path / "cand",
+        {"c.md": "---\ntype: ADR\ntitle: New\nowner: jp\n---\nBody changed.\n"},
+    )
+
+    delta = diff_okf_bundles(base, cand).changed["c.md"]
+    assert delta.body_changed is True
+    assert delta.frontmatter_changed == {"title": ("Old", "New")}
+    assert delta.frontmatter_added == {"owner": "jp"}
+    assert delta.frontmatter_removed == {"status": "draft"}
+
+
+def test_diff_type_change_shows_as_frontmatter_delta(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    base = _write_bundle(tmp_path / "base", {"c.md": "---\ntype: Doc\n---\nBody.\n"})
+    cand = _write_bundle(tmp_path / "cand", {"c.md": "---\ntype: ADR\n---\nBody.\n"})
+
+    delta = diff_okf_bundles(base, cand).changed["c.md"]
+    assert delta.body_changed is False
+    assert delta.frontmatter_changed == {"type": ("Doc", "ADR")}
+
+
+def test_diff_surfaces_invalid_and_broken_links_in_candidate(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    base = _write_bundle(tmp_path / "base", {"a.md": "---\ntype: Doc\n---\nBody.\n"})
+    cand = _write_bundle(
+        tmp_path / "cand",
+        {
+            "a.md": "---\ntype: Doc\n---\nSee [x](/nowhere.md).\n",
+            "no-type.md": "---\ntitle: X\n---\nBody.\n",
+        },
+    )
+
+    diff = diff_okf_bundles(base, cand)
+    assert "missing or empty required field: type" in diff.invalid["no-type.md"]
+    assert ("a.md", "nowhere") in diff.broken_links
+    assert diff.conformant is False  # a hard conformance error is present
+
+
+def test_diff_ignores_reserved_files(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    base = _write_bundle(
+        tmp_path / "base",
+        {
+            "c.md": "---\ntype: Doc\n---\nBody.\n",
+            "log.md": "## 2026-01-01\n- **Creation**: c.\n",
+            "index.md": "---\nokf_version: '0.1'\n---\n# Index\n",
+        },
+    )
+    cand = _write_bundle(
+        tmp_path / "cand",
+        {
+            "c.md": "---\ntype: Doc\n---\nBody.\n",
+            "log.md": "## 2026-02-02\n- **Update**: changed log only.\n",
+            "index.md": "---\nokf_version: '0.9'\n---\n# Different index\n",
+        },
+    )
+
+    diff = diff_okf_bundles(base, cand)
+    assert diff.has_changes is False  # only reserved files differ
+    assert diff.summary()["changed"] == 0
+
+
+def test_diff_hash_matches_importer_okf_hash(db, tmp_path):
+    """The diff's content hash is byte-for-byte the importer's ``okf_hash``."""
+    from grafito.importers.okf import _concept_hashes
+
+    _write_bundle(
+        tmp_path,
+        {
+            "a.md": "---\ntype: Doc\ntitle: A\n---\nBody A.\n",
+            "sub/b.md": "---\ntype: Doc\ntitle: B\n---\nBody B.\n",
+        },
+    )
+    db.import_okf_bundle(str(tmp_path), configure_fts=False)
+
+    hashes = _concept_hashes(tmp_path)
+    for node in db.match_nodes():
+        cid = node.properties.get("concept_id")
+        okf_hash = node.properties.get("okf_hash")
+        if cid and okf_hash:
+            assert hashes[f"{cid}.md"] == okf_hash
+
+
+def test_diff_missing_bundle_raises(tmp_path):
+    from grafito.okf import diff_okf_bundles
+
+    real = _write_bundle(tmp_path / "real", {"c.md": "---\ntype: Doc\n---\nBody.\n"})
+    with pytest.raises(NotADirectoryError):
+        diff_okf_bundles(tmp_path / "nope", real)
+    with pytest.raises(NotADirectoryError):
+        diff_okf_bundles(real, tmp_path / "nope")
