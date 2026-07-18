@@ -1113,3 +1113,86 @@ def test_autolog_records_concept_mutations(tmp_path):
 def test_autolog_off_by_default(kb):
     kb.add_concept("notes/quiet", type="Note", title="Quiet")
     assert kb.log() == []
+
+
+# --- context omissions & trace (auditable retrieval) --------------------------
+
+
+def test_context_omitted_empty_when_everything_fits(kb):
+    pack = kb.context("query performance", k=3, budget_tokens=5000)
+    assert pack.omitted == []
+    assert pack.truncated is False
+    assert pack.trace is None  # trace is opt-in
+
+
+def test_context_omitted_budget_records_dropped_candidates(kb):
+    pack = kb.context("sqlite storage", mode="text", k=6, budget_tokens=60)
+    assert pack.truncated is True
+    assert pack.omitted  # what didn't fit is spelled out, not silently dropped
+    assert all(o["reason"] == "budget" for o in pack.omitted)
+    entry = pack.omitted[0]
+    assert set(entry) >= {"concept_id", "title", "reason"}
+    # Nothing is both included and omitted.
+    included = {c.id for c in pack.concepts}
+    assert not (included & {o["concept_id"] for o in pack.omitted})
+
+
+def test_context_omitted_budget_when_top_hit_alone_overflows(kb):
+    # A tiny budget forces truncation of the very first block; every later
+    # candidate must still be reported, never dropped in silence.
+    pack = kb.context("sqlite storage", mode="text", k=6, budget_tokens=5)
+    assert len(pack.concepts) == 1  # top hit kept (truncated)
+    assert pack.truncated is True
+    assert pack.omitted
+    assert all(o["reason"] == "budget" for o in pack.omitted)
+
+
+def test_context_omitted_superseded_during_expansion(kb):
+    kb.add_concept("notes/hub", type="Note", title="Hub", body="graph expansion hub content")
+    old = kb.add_concept("notes/oldc", type="Note", title="Retired", body="retired detail body")
+    kb.add_concept("notes/newc", type="Note", title="Current", body="current detail body")
+    kb.link("notes/hub", "notes/oldc")
+    kb.supersede(old, "notes/newc")
+
+    pack = kb.context("graph expansion hub", mode="text", k=5, expand_hops=1)
+    superseded = [o for o in pack.omitted if o["reason"] == "superseded"]
+    assert any(o["concept_id"] == "notes/oldc" for o in superseded)
+    # The dropped neighbour carries the edge that reached it.
+    assert superseded[0].get("via") == "LINKS_TO"
+    assert "notes/oldc" not in {c.id for c in pack.concepts}
+
+
+def test_context_omitted_reranked_out(kb):
+    def top1(query, candidates):
+        return LexicalReranker()(query, candidates)[:1]
+
+    pack = kb.context(
+        "how do I make a query run faster", k=3, rerank=top1, budget_tokens=5000
+    )
+    assert len(pack.concepts) == 1
+    reranked_out = [o for o in pack.omitted if o["reason"] == "reranked_out"]
+    assert reranked_out  # the pool the reranker discarded is accounted for
+    assert "reranked_out" in {o["reason"] for o in pack.omitted}
+
+
+def test_context_trace_shape_and_consistency(kb):
+    def top1(query, candidates):
+        return LexicalReranker()(query, candidates)[:1]
+
+    pack = kb.context(
+        "sqlite storage", mode="text", k=6, budget_tokens=60, rerank=top1, include_trace=True
+    )
+    steps = {s["step"]: s for s in pack.trace}
+    assert set(steps) == {"search", "expand", "rerank", "pack"}
+    assert steps["search"]["mode"] == "text"  # resolves the real index used
+    assert steps["rerank"]["in"] >= steps["rerank"]["out"]
+    # The trace's pack counts agree with the pack itself.
+    assert steps["pack"]["included"] == len(pack.concepts)
+    assert steps["pack"]["omitted"] == len(pack.omitted)
+    assert steps["pack"]["tokens"] == pack.tokens
+    assert steps["pack"]["truncated"] == pack.truncated
+
+
+def test_context_trace_omits_rerank_step_when_no_reranker(kb):
+    pack = kb.context("query performance", k=3, include_trace=True)
+    assert {s["step"] for s in pack.trace} == {"search", "expand", "pack"}

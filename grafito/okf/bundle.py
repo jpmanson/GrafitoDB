@@ -481,6 +481,7 @@ class OKFBundle:
         include_superseded: bool = False,
         token_counter: Callable[[str], int] | None = None,
         rerank: "Reranker | None" = None,
+        include_trace: bool = False,
     ) -> ContextPack:
         """Retrieve, graph-expand, and pack grounded context within a token budget.
 
@@ -509,11 +510,23 @@ class OKFBundle:
         ``budget_tokens`` is measured with ``token_counter`` (default: a ~4
         chars/token heuristic — pass your model's tokenizer for exact budgeting).
         Returns a :class:`ContextPack`; ``str(pack)`` is the prompt-ready text.
+
+        The pack is auditable: ``pack.omitted`` lists what retrieval reached but
+        left out — concepts dropped for ``"budget"`` (didn't fit), ``"superseded"``
+        (a retracted claim reached via expansion), or ``"reranked_out"`` (cut by a
+        reranker's ``top_n``) — each as ``{"concept_id", "title", "reason", "via"}``.
+        ``include_trace=True`` additionally fills ``pack.trace`` with a compact,
+        deterministic step log (search -> expand -> rerank -> pack) so an agent can
+        explain *why* the context is what it is; it stays ``None`` otherwise.
         """
         count = token_counter or self._estimate_tokens
         hits = self.search(
             query, k=k, mode=mode, type=type, layer=layer, include_superseded=include_superseded
         )
+
+        # What retrieval reached but left out — accrued as we filter/pack, so the
+        # pack can explain itself (their `reason`s: superseded/reranked_out/budget).
+        omitted: list[dict] = []
 
         # Candidate order: seed concepts first (ranked), then graph-expanded
         # neighbours, de-duplicated by node identity.
@@ -524,18 +537,32 @@ class OKFBundle:
                 seen.add(hit.concept.node.id)
                 candidates.append(hit.concept)
         neighbor_via: dict[int, str] = {}
+        expanded = 0
         if expand_hops > 0:
             for hit in hits:
                 for nbr, rel_type in self._neighbors_typed(hit.concept.id, "out", depth=expand_hops):
-                    if nbr.node.id not in seen and (include_superseded or not nbr.is_superseded):
-                        seen.add(nbr.node.id)
-                        candidates.append(nbr)
-                        neighbor_via[nbr.node.id] = rel_type
+                    if nbr.node.id in seen:
+                        continue
+                    seen.add(nbr.node.id)
+                    if not include_superseded and nbr.is_superseded:
+                        omitted.append(self._omission(nbr, "superseded", rel_type))
+                        continue
+                    candidates.append(nbr)
+                    neighbor_via[nbr.node.id] = rel_type
+                    expanded += 1
 
         # Optional precision step: let an injected reranker decide the order (and,
         # if it has a top_n, the subset) the budget is then packed from.
+        rerank_in = len(candidates)
         if rerank is not None and candidates:
-            candidates = [concept for concept, _ in rerank(query, candidates)]
+            reranked = [concept for concept, _ in rerank(query, candidates)]
+            kept = {concept.node.id for concept in reranked}
+            for concept in candidates:
+                if concept.node.id not in kept:
+                    omitted.append(
+                        self._omission(concept, "reranked_out", neighbor_via.get(concept.node.id))
+                    )
+            candidates = reranked
 
         # Greedy pack: whole blocks while they fit; force-truncate the first one
         # if even it overflows, so the top hit is never dropped silently.
@@ -543,7 +570,7 @@ class OKFBundle:
         included: list[Concept] = []
         remaining = budget_tokens
         truncated = False
-        for concept in candidates:
+        for i, concept in enumerate(candidates):
             block = self._render_block(concept, include_citations, neighbor_via.get(concept.node.id))
             cost = count(block)
             if cost <= remaining:
@@ -551,23 +578,52 @@ class OKFBundle:
                 included.append(concept)
                 remaining -= cost
             elif not included:
+                # The top hit alone overflows: truncate and keep it, but the rest
+                # never get a turn — record them all so the drop isn't silent.
                 blocks.append(self._truncate(block, remaining, count))
                 included.append(concept)
                 remaining = 0
                 truncated = True
+                for rest in candidates[i + 1 :]:
+                    omitted.append(self._omission(rest, "budget", neighbor_via.get(rest.node.id)))
                 break
             else:
                 truncated = True
+                omitted.append(self._omission(concept, "budget", neighbor_via.get(concept.node.id)))
 
         citations = self._collect_citations(included) if include_citations else []
         text = "\n\n".join(blocks)
+        pack_tokens = count(text) if text else 0
+
+        trace: list[dict] | None = None
+        if include_trace:
+            # `hits[0].via` is the index actually used (resolves mode="auto").
+            trace = [
+                {"step": "search", "mode": hits[0].via if hits else mode, "hits": len(hits)},
+                {"step": "expand", "hops": expand_hops, "added": expanded},
+            ]
+            if rerank is not None:
+                trace.append({"step": "rerank", "in": rerank_in, "out": len(candidates)})
+            trace.append(
+                {
+                    "step": "pack",
+                    "budget_tokens": budget_tokens,
+                    "included": len(included),
+                    "omitted": len(omitted),
+                    "tokens": pack_tokens,
+                    "truncated": truncated,
+                }
+            )
+
         return ContextPack(
             text=text,
             citations=citations,
             concepts=included,
             hits=hits,
-            tokens=count(text) if text else 0,
+            tokens=pack_tokens,
             truncated=truncated,
+            omitted=omitted,
+            trace=trace,
         )
 
     # --- mutation ----------------------------------------------------------
@@ -1261,6 +1317,22 @@ class OKFBundle:
     def _estimate_tokens(text: str) -> int:
         """Default token estimate: ~4 characters per token (no tokenizer dep)."""
         return max(1, len(text) // 4)
+
+    @staticmethod
+    def _omission(concept: Concept, reason: str, via: str | None = None) -> dict:
+        """One :attr:`ContextPack.omitted` entry: what was dropped and why.
+
+        ``via`` (the relationship that reached a graph-expanded neighbour) is
+        included only when present, so seed concepts carry no ``via`` key.
+        """
+        entry = {
+            "concept_id": concept.id,
+            "title": concept.title or concept.id,
+            "reason": reason,
+        }
+        if via:
+            entry["via"] = via
+        return entry
 
     def _render_block(
         self, concept: Concept, include_citations: bool, via: str | None = None

@@ -7,7 +7,7 @@ is always available via ``concept.node`` for full graph access.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from ..models import Node
@@ -190,6 +190,15 @@ class ContextPack:
     into a prompt, the ``citations`` backing it (for grounding/attribution), the
     ``concepts`` that were included, and the seed ``hits`` that started retrieval.
     ``str(pack)`` returns ``pack.text`` so it drops straight into an f-string.
+
+    ``omitted`` explains what retrieval reached but left out — each entry is
+    ``{"concept_id", "title", "reason", "via"}`` where ``reason`` is
+    ``"budget"`` (didn't fit the token budget), ``"superseded"`` (a retracted
+    claim dropped during graph expansion), or ``"reranked_out"`` (a reranker
+    with a ``top_n`` cut it). ``trace`` is a compact, deterministic step log of
+    how the pack was built, populated only when ``context(..., include_trace=True)``
+    — otherwise ``None``. Together they make the pack auditable: an agent (or a
+    human) can see not just what grounded the answer, but what didn't and why.
     """
 
     text: str
@@ -198,6 +207,8 @@ class ContextPack:
     hits: list[Hit]
     tokens: int
     truncated: bool
+    omitted: list[dict] = field(default_factory=list)
+    trace: list[dict] | None = None
 
     def __str__(self) -> str:
         return self.text

@@ -445,8 +445,33 @@ pack.concepts      # the Concepts that made it into the budget, in order
 pack.hits          # the seed search Hits (scores/provenance)
 pack.tokens        # estimated token count of the packed text
 pack.truncated     # True if anything was dropped/cut to fit
+pack.omitted       # [{'concept_id', 'title', 'reason', 'via'}, ...] — what was left out
+pack.trace         # step log when include_trace=True, else None
 
 prompt = f"Answer using only this context:\n\n{pack}"   # drops straight into a prompt
+```
+
+The pack is **auditable**: `pack.omitted` spells out what retrieval reached but
+left out, so nothing is dropped silently. Each entry has a `reason`:
+
+- `"budget"` — a candidate that didn't fit the token budget;
+- `"superseded"` — a retracted claim reached via graph expansion (see
+  [Trust model](#trust-model-supersede-and-conflicts_with));
+- `"reranked_out"` — a candidate a reranker's `top_n` discarded.
+
+`context(..., include_trace=True)` additionally fills `pack.trace` with a compact,
+deterministic step log — one step each for `search` (the index actually used and
+hit count), `expand` (hops and neighbours added), `rerank` (pool in/out, only when
+a reranker runs), and `pack` (budget, included/omitted counts, final tokens,
+truncated) — so an agent can explain *why* the context is what it is:
+
+```python
+pack = kb.context(question, include_trace=True)
+pack.trace
+# [{'step': 'search', 'mode': 'semantic', 'hits': 8},
+#  {'step': 'expand', 'hops': 1, 'added': 5},
+#  {'step': 'pack', 'budget_tokens': 2000, 'included': 6,
+#   'omitted': 2, 'tokens': 1974, 'truncated': True}]
 ```
 
 | Argument | Default | Description |
