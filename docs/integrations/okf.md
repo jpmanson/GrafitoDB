@@ -284,6 +284,54 @@ report = lint_okf_bundle("path/to/bundle", profile="profile.yaml", mode="validat
 assert report["conformant"], report["core"]["errors"] + report["profile"]
 ```
 
+### Previewing a replacement: `diff_okf_bundles`
+
+Before swapping a live bundle for a freshly built one, `diff_okf_bundles`
+previews exactly what would change — a pure, read-only diff between two OKF
+trees on disk. Neither side is imported (no graph, no LLM, no network), so it is
+safe to run against a candidate you haven't accepted yet:
+
+```python
+from grafito.okf import diff_okf_bundles
+
+diff = diff_okf_bundles("kb/", "kb_staging/")   # base, candidate
+diff.added          # [rel_path]           — concepts only in the candidate
+diff.removed        # [rel_path]           — concepts only in the base
+diff.changed        # {rel_path: ConceptDelta}
+diff.invalid        # {rel_path: error}    — candidate conformance errors
+diff.broken_links   # [(rel_path, target)] — links to concepts absent in the candidate
+diff.summary()      # {"added", "removed", "changed", "invalid", "broken_links"} counts
+diff.has_changes    # bool — added or removed or changed
+diff.conformant     # bool — not invalid (broken links are warnings, never blocking)
+```
+
+Each `changed` entry is a `ConceptDelta` describing *what* moved — field-level
+frontmatter changes (`type` included, so a retype is visible) and whether the
+markdown body changed:
+
+```python
+delta = diff.changed["decisions/0001-use-sqlite.md"]
+delta.frontmatter_added     # {key: candidate_value}
+delta.frontmatter_removed   # {key: base_value}
+delta.frontmatter_changed   # {key: (base_value, candidate_value)}
+delta.body_changed          # bool
+```
+
+Two properties make the preview trustworthy:
+
+- **`invalid` and `broken_links` reuse `validate_okf_bundle`** on the candidate,
+  so the conformance rules live in exactly one place.
+- **The `changed` set matches what an import would do.** The content hash it
+  compares is byte-for-byte the `okf_hash` the incremental importer stores and
+  re-checks, so `changed` is exactly the set of concepts a subsequent
+  `import_okf_bundle` would re-process — the preview never disagrees with the
+  real import. Reserved files (`index.md`, `log.md`) are excluded, matching the
+  importer and the validator.
+
+The intended flow: build a candidate into a staging directory, `diff_okf_bundles`
+it against the live one, show a human the `added`/`removed`/`changed` concepts
+plus any `invalid` files or `broken_links`, and only then swap the directories.
+
 ## Exporting a bundle
 
 The inverse operation serializes the graph back to OKF markdown:
