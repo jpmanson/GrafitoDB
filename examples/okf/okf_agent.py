@@ -101,13 +101,25 @@ def main() -> None:
         "linked to the concepts you used."
     )
     print(f"Q: {question}\n")
-    answer = run_agent(kb, question, chat=chat, messages=history, verbose=True)
-    print(f"\nA: {answer}\n")
+    first = run_agent(kb, question, chat=chat, messages=history, verbose=True)
+    print(f"\nA: {first}\n")
 
     followup = "Now turn that checklist into exactly 3 bullet points."
     print(f"Q: {followup}\n")
-    answer = run_agent(kb, followup, chat=chat, messages=history, verbose=True)
-    print(f"\nA: {answer}\n")
+    second = run_agent(kb, followup, chat=chat, messages=history, verbose=True)
+    print(f"\nA: {second}\n")
+
+    # What the exploration cost. The second turn re-sends the first turn's tool
+    # results, so its input token count is larger even though it read nothing
+    # new — the reason `context()` and `run_agent()` are worth comparing on
+    # numbers rather than intuition.
+    for label, run in (("turn 1", first), ("turn 2", second)):
+        stats = run.summary()
+        print(
+            f"{label}: {stats['turns']} model call(s), {stats['tool_calls']} tool call(s), "
+            f"{stats['result_bytes']} bytes of tool output"
+            + (f", tokens {stats['usage']}" if stats["usage"] else "")
+        )
 
     # Persist knowledge + changelog to a scratch copy (markdown, git-ready).
     out = Path(tempfile.mkdtemp(prefix="okf_agent_")) / "bundle"

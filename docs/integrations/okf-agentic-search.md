@@ -129,14 +129,15 @@ conversation ends.
 `run_agent()` is a plain tool-calling loop (`grafito/okf/agent.py`):
 
 ```python
-for _ in range(max_turns):
+for turn in range(1, max_turns + 1):
     message = chat(messages, schemas)      # model sees the conversation + tool schemas
     messages.append(message)
     tool_calls = message.get("tool_calls") or []
     if not tool_calls:
-        return message.get("content") or ""  # no more tools requested -> final answer
+        return AgentRun(answer=message.get("content") or "", ...)  # final answer
     for call in tool_calls:
         result = dispatch[name].call(name, args)   # execute against the bundle
+        recorded.append(ToolCall(turn, name, args, len(result), _tool_error(result)))
         messages.append({"role": "tool", "content": result})
 ```
 
@@ -165,9 +166,14 @@ Q: A production Cypher query got slow after a data load. What should I do,
      runbooks/slow-queries - Triaging a slow graph query (4 link(s), 2 citation(s))
   -> remember({"concept_id": "notes/slow-query-checklist", ...})
      saved notes/slow-query-checklist, linked to [...]
+  [4 turn(s), 3 tool call(s), 6120 tool byte(s), 21400 in (14200 cached) / 512 out]
 
 A: ...(cites runbooks/slow-queries)...
 ```
+
+That closing line is `run.summary()` — see
+[Measuring a run](okf.md#measuring-a-run) for the full breakdown, including
+which tool the bytes came from and how many calls were repeats.
 
 Three tool calls. Only **one** (`open`) pulled a full document body into
 context — the other four concepts `search` surfaced stayed as one-line
@@ -186,6 +192,11 @@ needs its own past reasoning to stay coherent. This is the one place context
 conversation has opened so far. For a long-running session, that's the
 signal to eventually trim or summarize older turns — bundle size was never
 the bottleneck, accumulated conversation is.
+
+You don't have to guess where that line is: `run.summary()["result_bytes"]`
+is how much tool output the run added to the conversation, and
+`run.usage["input_tokens"]` is what the model was actually charged for
+re-reading it each turn.
 
 ## The non-agentic alternative: `context()`
 

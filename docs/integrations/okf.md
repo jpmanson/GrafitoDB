@@ -822,6 +822,11 @@ drive the exploration itself** through OpenAI-style tool calls:
 - **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop. One-shot
   by default; pass `messages=` to thread a multi-turn conversation, `tools=` to
   inject a scoped `BundleTools`, or `extra_tools=` to add app-specific tools.
+  Returns an **`AgentRun`** (below), not a bare string.
+- **`AgentRun`** — the answer plus what the run cost: `turns`, every `ToolCall`
+  (name, args, result size, error), aggregated token `usage`, and the final
+  `messages`. `str(run)` is the answer; `run.summary()` gives the efficiency
+  numbers. See [Measuring a run](#measuring-a-run).
 - **`Chat`** — the model contract: *any callable*
   `(messages, tools) -> assistant message` in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like `rerank=`.
@@ -844,7 +849,8 @@ drive the exploration itself** through OpenAI-style tool calls:
 from grafito.okf import OKFBundle, OpenAIChat, run_agent
 
 kb = OKFBundle.load("bundle", embed=embedder, autolog=True)
-answer = run_agent(kb, "why did we pick SQLite?", chat=OpenAIChat())
+run = run_agent(kb, "why did we pick SQLite?", chat=OpenAIChat())
+print(run)  # str(run) is the answer
 kb.save()   # the agent's remember()ed notes + changelog land in git
 ```
 
@@ -866,6 +872,56 @@ Tool results (e.g. full concept bodies from `open`) accumulate in `history`
 turn over turn, so a long-running conversation costs more tokens each turn —
 fine for a modest back-and-forth, but a very long session will eventually
 need trimming or summarization of older turns (not handled automatically).
+
+### Measuring a run
+
+`run_agent` returns an `AgentRun`, so the cost of agentic exploration is
+observable rather than inferred. `str(run)` is the answer; the rest is the
+receipt:
+
+```python
+run = run_agent(kb, "why did we pick SQLite?", chat=chat)
+
+run.answer          # the model's final text ("" if stopped_early)
+run.stopped_early   # True when max_turns ran out before an answer
+run.turns           # model calls made
+run.tool_calls      # [ToolCall(turn, name, args, result_bytes, error), ...]
+run.usage           # aggregated tokens, {} if the Chat reports none
+run.messages        # the conversation (the same list you passed as messages=)
+
+run.summary()
+# {'turns': 3, 'tool_calls': 4, 'errors': 1, 'repeated_calls': 0,
+#  'result_bytes': 8214,
+#  'by_tool': {'search': {'calls': 2, 'errors': 0, 'bytes': 731},
+#              'open':   {'calls': 2, 'errors': 1, 'bytes': 7483}},
+#  'usage': {'input_tokens': 18400, 'cached_input_tokens': 12000,
+#            'cache_write_tokens': 0, 'output_tokens': 430, 'requests': 3}}
+```
+
+What each number is actually for:
+
+- **`repeated_calls`** — invocations with a `(name, args)` the model already
+  issued in this run. Non-zero means it is re-reading what is already in its
+  context: the most actionable inefficiency signal here.
+- **`errors` / `by_tool[...]['errors']`** — with a scoped `BundleTools`, this
+  is how many `Unknown concept` responses the filter fed the model.
+- **`result_bytes`** — the size of tool output handed back. This is the real
+  driver of per-turn cost, since results stay in `messages` for the rest of
+  the conversation, and `open` is usually where it concentrates. Grafito
+  computes it itself, so it is available even with a `Chat` that reports no
+  tokens.
+- **`usage`** — token counts, normalized across providers:
+  `input_tokens` is the *whole* prompt sent that turn (cached parts included),
+  with `cached_input_tokens` (≈0.1× price) and `cache_write_tokens` (≈1.25×,
+  Anthropic only) broken out. Summing `input_tokens` across turns is the real
+  billed cost, not the size of the context — a tool loop re-sends the full
+  history every turn. Read the cached slice before concluding a long
+  conversation was expensive.
+
+`usage` stays `{}` for an injected `Chat` that reports nothing; the loop never
+invents numbers. `OpenAIChat` and `AnthropicChat` both report.
+
+`verbose=True` prints the same summary as a closing line after the trace.
 
 ### Scoping an agent to part of the bundle
 

@@ -72,8 +72,8 @@ def test_agent_loop_explores_and_remembers(kb):
             {"role": "assistant", "content": "Use the runbook (runbooks/slow-queries)."},
         ]
     )
-    answer = run_agent(kb, "query got slow, what do I do?", chat=chat)
-    assert answer == "Use the runbook (runbooks/slow-queries)."
+    run = run_agent(kb, "query got slow, what do I do?", chat=chat)
+    assert run.answer == "Use the runbook (runbooks/slow-queries)."
 
     # The default system prompt orients the model with the bundle layers.
     system = chat.seen[0][0]
@@ -104,8 +104,9 @@ def test_agent_loop_stops_at_max_turns(kb):
             for i in range(5)
         ]
     )
-    answer = run_agent(kb, "loop forever", chat=endless, max_turns=3)
-    assert "max_turns" in answer
+    run = run_agent(kb, "loop forever", chat=endless, max_turns=3)
+    assert run.stopped_early and run.answer == ""
+    assert run.turns == 3
 
 
 def test_custom_system_prompt_is_used(kb):
@@ -127,11 +128,11 @@ def test_messages_list_threads_conversation_across_calls(kb):
     chat = ScriptedChat([{"role": "assistant", "content": "first"}, {"role": "assistant", "content": "second"}])
     history: list[dict] = []
     first = run_agent(kb, "one", chat=chat, messages=history)
-    assert first == "first"
+    assert first.answer == "first"
     assert [m["role"] for m in history] == ["system", "user", "assistant"]
 
     second = run_agent(kb, "two", chat=chat, messages=history)
-    assert second == "second"
+    assert second.answer == "second"
     # The second call's system prompt is the SAME message object (not re-created)
     # and the full prior turn is still present ahead of the new question.
     assert [m["role"] for m in history] == ["system", "user", "assistant", "user", "assistant"]
@@ -178,8 +179,8 @@ def test_extra_tools_are_offered_to_the_model_and_dispatched(kb):
             {"role": "assistant", "content": "done"},
         ]
     )
-    answer = run_agent(kb, "use the custom tool", chat=chat, extra_tools=[fake])
-    assert answer == "done"
+    run = run_agent(kb, "use the custom tool", chat=chat, extra_tools=[fake])
+    assert run.answer == "done"
     assert fake.calls == [("ping", {})]
     # The model saw both the bundle's schemas and the extra one.
     schema_names = {s["function"]["name"] for s in chat.seen_tools[0]}
@@ -199,10 +200,140 @@ def test_unknown_tool_name_returns_error_without_crashing(kb):
             {"role": "assistant", "content": "recovered"},
         ]
     )
-    answer = run_agent(kb, "hi", chat=chat, extra_tools=[FakeToolSet()])
-    assert answer == "recovered"
+    run = run_agent(kb, "hi", chat=chat, extra_tools=[FakeToolSet()])
+    assert run.answer == "recovered"
     tool_message = next(m for m in chat.seen[1] if m.get("role") == "tool")
     assert "error" in json.loads(tool_message["content"])
+
+
+# --- Observability: what the run cost -------------------------------------------
+
+
+def test_run_records_every_tool_call_with_size_and_error(kb):
+    chat = ScriptedChat(
+        [
+            {"role": "assistant", "tool_calls": [
+                _tool_call("open", "c1", concept_id="runbooks/slow-queries"),
+                _tool_call("open", "c2", concept_id="does/not/exist"),
+            ]},
+            {"role": "assistant", "content": "done"},
+        ]
+    )
+    run = run_agent(kb, "hi", chat=chat)
+
+    assert run.turns == 2 and not run.stopped_early
+    assert [(c.turn, c.name) for c in run.tool_calls] == [(1, "open"), (1, "open")]
+
+    opened, missing = run.tool_calls
+    assert opened.args == {"concept_id": "runbooks/slow-queries"}
+    assert opened.error is None
+    # The body the model read is what grows the context — it must be counted.
+    assert opened.result_bytes > 0
+    assert missing.error is not None and "does/not/exist" in missing.error
+
+    stats = run.summary()
+    assert stats["tool_calls"] == 2 and stats["errors"] == 1
+    assert stats["by_tool"]["open"] == {
+        "calls": 2, "errors": 1, "bytes": opened.result_bytes + missing.result_bytes
+    }
+    assert stats["result_bytes"] == stats["by_tool"]["open"]["bytes"]
+
+
+def test_summary_counts_repeated_identical_calls(kb):
+    """Re-opening the same concept is the signal worth surfacing."""
+    chat = ScriptedChat(
+        [
+            {"role": "assistant", "tool_calls": [_tool_call("browse", "c1", layer="runbooks")]},
+            {"role": "assistant", "tool_calls": [_tool_call("browse", "c2", layer="runbooks")]},
+            {"role": "assistant", "tool_calls": [_tool_call("browse", "c3", layer="glossary")]},
+            {"role": "assistant", "content": "done"},
+        ]
+    )
+    run = run_agent(kb, "hi", chat=chat)
+    # Two of the three browses are the same call; only the second one is repeat.
+    assert run.summary()["repeated_calls"] == 1
+
+
+def test_usage_is_aggregated_across_turns_when_the_chat_reports_it(kb):
+    turns = [
+        {"role": "assistant", "tool_calls": [_tool_call("browse", "c1")], "_usage": {
+            "input_tokens": 100, "cached_input_tokens": 0,
+            "cache_write_tokens": 80, "output_tokens": 10,
+        }},
+        {"role": "assistant", "content": "done", "_usage": {
+            "input_tokens": 150, "cached_input_tokens": 80,
+            "cache_write_tokens": 0, "output_tokens": 20,
+        }},
+    ]
+    run = run_agent(kb, "hi", chat=ScriptedChat(turns))
+    assert run.usage == {
+        "input_tokens": 250,
+        "cached_input_tokens": 80,
+        "cache_write_tokens": 80,
+        "output_tokens": 30,
+        "requests": 2,
+    }
+
+
+def test_usage_stays_empty_when_the_chat_reports_none(kb):
+    """A bring-your-own Chat that reports nothing must not produce fake numbers."""
+    run = run_agent(kb, "hi", chat=ScriptedChat([{"role": "assistant", "content": "done"}]))
+    assert run.usage == {} and run.summary()["usage"] == {}
+
+
+def test_agent_run_str_is_the_answer(kb):
+    run = run_agent(kb, "hi", chat=ScriptedChat([{"role": "assistant", "content": "the answer"}]))
+    assert f"{run}" == "the answer"
+    assert run.messages is not None and run.messages[-1]["content"] == "the answer"
+
+
+def test_private_keys_are_stripped_before_hitting_an_openai_endpoint():
+    """`_usage` / `_anthropic_content` are bookkeeping, not part of the wire format."""
+    from grafito.okf.agent import _without_private
+
+    sent = _without_private([
+        {"role": "assistant", "content": "hi", "_usage": {"input_tokens": 1}, "_anthropic_content": []},
+        {"role": "user", "content": "q"},
+    ])
+    assert sent == [{"role": "assistant", "content": "hi"}, {"role": "user", "content": "q"}]
+
+
+def test_anthropic_usage_sums_the_cache_buckets_into_input_tokens():
+    """Anthropic reports the uncached remainder; the loop reports the whole prompt."""
+    from grafito.okf.agent import _anthropic_usage
+
+    class Usage:
+        input_tokens = 100
+        cache_read_input_tokens = 900
+        cache_creation_input_tokens = 50
+        output_tokens = 7
+
+    class Response:
+        usage = Usage()
+
+    assert _anthropic_usage(Response()) == {
+        "input_tokens": 1050,
+        "cached_input_tokens": 900,
+        "cache_write_tokens": 50,
+        "output_tokens": 7,
+    }
+
+
+def test_openai_usage_keeps_prompt_tokens_as_the_total():
+    from grafito.okf.agent import _openai_usage
+
+    usage = _openai_usage({"usage": {
+        "prompt_tokens": 1000,
+        "completion_tokens": 7,
+        "prompt_tokens_details": {"cached_tokens": 900},
+    }})
+    assert usage == {
+        "input_tokens": 1000,
+        "cached_input_tokens": 900,
+        "cache_write_tokens": 0,
+        "output_tokens": 7,
+    }
+    assert _openai_usage({}) is None
 
 
 def test_tool_schemas_match_implementations(kb):
@@ -403,8 +534,8 @@ def test_run_agent_accepts_injected_scoped_tools(scoped_kb, scoped_tools):
             {"role": "assistant", "content": "I could not find that concept."},
         ]
     )
-    answer = run_agent(scoped_kb, "read the secret", chat=chat, tools=scoped_tools)
-    assert answer == "I could not find that concept."
+    run = run_agent(scoped_kb, "read the secret", chat=chat, tools=scoped_tools)
+    assert run.answer == "I could not find that concept."
     tool_messages = [m for m in chat.seen[-1] if m.get("role") == "tool"]
     assert json.loads(tool_messages[0]["content"]) == {"error": "Unknown concept: docs/secret"}
     # The system prompt is built from the filtered layers.

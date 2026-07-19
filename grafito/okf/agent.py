@@ -9,7 +9,10 @@ OpenAI-style tool calls:
   schemas and dispatch. Framework-free: the same tools drop into an OpenAI
   tool-calling loop, LangGraph, CrewAI, or an MCP server.
 * :func:`run_agent` — a minimal tool-calling loop: call the model, execute its
-  tool calls against the bundle, feed results back, until it answers.
+  tool calls against the bundle, feed results back, until it answers. It
+  returns an :class:`AgentRun`: the answer plus what it cost to get there
+  (turns, every tool call, tokens), so agentic retrieval can be measured
+  against the one-shot :meth:`OKFBundle.context` instead of guessed at.
 * :class:`Chat` — the model contract: **any callable**
   ``(messages, tools) -> assistant message`` in OpenAI chat format. Bring your
   own provider; two conveniences are bundled: :class:`OpenAIChat` for any
@@ -38,6 +41,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -357,6 +361,35 @@ class BundleTools:
         return {"saved": concept_id, "linked_to": [link["target"] for link in links or []]}
 
 
+def _without_private(messages: list[dict]) -> list[dict]:
+    """Drop the loop's ``_``-prefixed bookkeeping keys before sending upstream.
+
+    Assistant messages carry private annotations (``_usage``,
+    ``_anthropic_content``); an OpenAI-compatible endpoint would reject them as
+    unknown fields or, worse, bill for the extra bytes.
+    """
+    return [{k: v for k, v in message.items() if not k.startswith("_")} for message in messages]
+
+
+def _openai_usage(data: dict) -> dict | None:
+    """OpenAI ``usage`` -> the loop's normalized shape (see :class:`AgentRun`).
+
+    ``prompt_tokens`` already includes whatever was served from cache, so it
+    maps to ``input_tokens`` directly. OpenAI caches implicitly and never
+    reports a write, hence ``cache_write_tokens`` of 0.
+    """
+    usage = data.get("usage")
+    if not usage:
+        return None
+    details = usage.get("prompt_tokens_details") or {}
+    return {
+        "input_tokens": usage.get("prompt_tokens", 0),
+        "cached_input_tokens": details.get("cached_tokens", 0),
+        "cache_write_tokens": 0,
+        "output_tokens": usage.get("completion_tokens", 0),
+    }
+
+
 class OpenAIChat:
     """Minimal :class:`Chat` for any OpenAI-compatible ``/chat/completions``
     endpoint — OpenAI, Ollama, vLLM, LM Studio, OpenRouter, llama.cpp server.
@@ -390,12 +423,21 @@ class OpenAIChat:
     def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
         response = self._client.post(
             f"{self.base_url}/chat/completions",
-            json={"model": self.model, "messages": messages, "tools": tools, "tool_choice": "auto"},
+            json={
+                "model": self.model,
+                "messages": _without_private(messages),
+                "tools": tools,
+                "tool_choice": "auto",
+            },
         )
         data = response.json()
         if "choices" not in data:
             raise RuntimeError(f"Endpoint error: {data.get('error', data)}")
-        return data["choices"][0]["message"]
+        message = data["choices"][0]["message"]
+        usage = _openai_usage(data)
+        if usage is not None:
+            message["_usage"] = usage
+        return message
 
     def close(self) -> None:
         """Close the underlying HTTP client."""
@@ -480,11 +522,37 @@ def _anthropic_messages(messages: list[dict]) -> tuple[str | None, list[dict]]:
     return system, out
 
 
+def _anthropic_usage(response: Any) -> dict | None:
+    """Anthropic ``usage`` -> the loop's normalized shape (see :class:`AgentRun`).
+
+    The two providers count the prompt differently and the difference is easy
+    to get wrong: Anthropic's ``input_tokens`` is the **uncached remainder**,
+    with cache reads and writes reported alongside it, while OpenAI's
+    ``prompt_tokens`` is the whole prompt. Summing the three buckets here makes
+    ``input_tokens`` mean the same thing on both paths, with the cheap
+    (``cached_input_tokens``, ~0.1x) and expensive (``cache_write_tokens``,
+    ~1.25x) slices kept separate so cost math stays possible.
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    uncached = getattr(usage, "input_tokens", 0) or 0
+    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    return {
+        "input_tokens": uncached + cache_read + cache_write,
+        "cached_input_tokens": cache_read,
+        "cache_write_tokens": cache_write,
+        "output_tokens": getattr(usage, "output_tokens", 0) or 0,
+    }
+
+
 def _openai_message(response: Any) -> dict:
     """Anthropic Messages API response -> OpenAI-format assistant message.
 
     The raw content blocks ride along under ``_anthropic_content`` so the next
-    request can echo them back exactly (thinking blocks included).
+    request can echo them back exactly (thinking blocks included), and the
+    turn's token counts under ``_usage`` for :func:`run_agent` to aggregate.
     """
     text_parts: list[str] = []
     tool_calls: list[dict] = []
@@ -506,6 +574,9 @@ def _openai_message(response: Any) -> dict:
         "content": "\n".join(text_parts) or None,
         "_anthropic_content": raw_blocks,
     }
+    usage = _anthropic_usage(response)
+    if usage is not None:
+        message["_usage"] = usage
     if tool_calls:
         message["tool_calls"] = tool_calls
     if getattr(response, "stop_reason", None) == "refusal" and not tool_calls:
@@ -608,6 +679,141 @@ def _describe_result(name: str, result: str) -> str:
     return json.dumps(data, ensure_ascii=False)[:160]
 
 
+def _tool_error(result: str) -> str | None:
+    """The error message a tool result carries, or ``None`` when it succeeded."""
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(data, dict) and set(data) == {"error"}:
+        return data["error"]
+    return None
+
+
+_USAGE_FIELDS = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens")
+
+
+def _add_usage(total: dict, usage: dict | None) -> None:
+    """Accumulate one turn's normalized usage into the run total, in place."""
+    if not usage:
+        return
+    for name in _USAGE_FIELDS:
+        value = usage.get(name)
+        if value:
+            total[name] = total.get(name, 0) + value
+    total["requests"] = total.get("requests", 0) + 1
+
+
+@dataclass
+class ToolCall:
+    """One tool invocation the model made, as recorded by :func:`run_agent`.
+
+    ``result_bytes`` is the size of the JSON handed back to the model. It is
+    the honest proxy for what agentic exploration costs: tool results stay in
+    ``messages`` for the rest of the conversation, so a single ``open`` of a
+    long concept is re-sent on every later turn. Unlike token counts it needs
+    no cooperation from the model provider — Grafito produces this number
+    itself, so it is available even with a :class:`Chat` that reports no usage.
+
+    ``error`` is the message when the tool failed (a bad concept id, a filtered
+    one, an unknown tool), ``None`` otherwise.
+    """
+
+    turn: int
+    name: str
+    args: dict
+    result_bytes: int
+    error: str | None = None
+
+
+@dataclass
+class AgentRun:
+    """The result of :func:`run_agent`: the answer, plus what it cost to get it.
+
+    ``str(run)`` returns :attr:`answer`, so it drops straight into an f-string.
+
+    ``tool_calls`` lists every invocation in order and ``usage`` aggregates the
+    token counts the :class:`Chat` reported, normalized across providers:
+
+    * ``input_tokens`` — the whole prompt sent that turn, cached parts included
+    * ``cached_input_tokens`` — the slice served from cache (~0.1x the price)
+    * ``cache_write_tokens`` — the slice written to cache (~1.25x; Anthropic
+      only, since OpenAI-compatible endpoints cache implicitly)
+    * ``output_tokens``, ``requests``
+
+    Summing ``input_tokens`` across turns is the real billed cost, not the size
+    of the context: a tool-calling loop re-sends the full history every turn.
+    That is exactly why the cached slice is broken out — read it before
+    concluding that a long conversation is expensive.
+
+    ``usage`` is empty when the injected :class:`Chat` reports none; the loop
+    never fabricates numbers. ``stopped_early`` is True when ``max_turns`` ran
+    out before the model answered, in which case ``answer`` is empty.
+
+    :meth:`summary` folds all of it into the efficiency numbers worth watching.
+    """
+
+    answer: str
+    messages: list[dict]
+    turns: int
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    usage: dict = field(default_factory=dict)
+    stopped_early: bool = False
+
+    def __str__(self) -> str:
+        return self.answer
+
+    def summary(self) -> dict:
+        """Efficiency numbers for this run, as a plain dict.
+
+        ``repeated_calls`` counts invocations whose ``(name, args)`` the model
+        had already issued in this run — the classic failure mode of an agent
+        re-reading what is already sitting in its context, and the most
+        actionable signal here. ``by_tool`` breaks calls, errors and bytes down
+        per tool, which is where ``open`` usually shows up as the cost driver.
+        """
+        by_tool: dict[str, dict] = {}
+        seen: set[tuple[str, str]] = set()
+        repeated = 0
+        for call in self.tool_calls:
+            stats = by_tool.setdefault(call.name, {"calls": 0, "errors": 0, "bytes": 0})
+            stats["calls"] += 1
+            stats["bytes"] += call.result_bytes
+            if call.error is not None:
+                stats["errors"] += 1
+            key = (call.name, json.dumps(call.args, sort_keys=True, ensure_ascii=False))
+            if key in seen:
+                repeated += 1
+            seen.add(key)
+        return {
+            "turns": self.turns,
+            "tool_calls": len(self.tool_calls),
+            "errors": sum(1 for call in self.tool_calls if call.error is not None),
+            "repeated_calls": repeated,
+            "result_bytes": sum(call.result_bytes for call in self.tool_calls),
+            "by_tool": by_tool,
+            "usage": dict(self.usage),
+        }
+
+
+def _describe_run(run: AgentRun) -> str:
+    """One-line efficiency summary of a finished run, for ``verbose`` logs."""
+    stats = run.summary()
+    parts = [f"{stats['turns']} turn(s)", f"{stats['tool_calls']} tool call(s)"]
+    if stats["errors"]:
+        parts.append(f"{stats['errors']} error(s)")
+    if stats["repeated_calls"]:
+        parts.append(f"{stats['repeated_calls']} repeated")
+    parts.append(f"{stats['result_bytes']} tool byte(s)")
+    usage = stats["usage"]
+    if usage:
+        tokens = f"{usage.get('input_tokens', 0)} in"
+        if usage.get("cached_input_tokens"):
+            tokens += f" ({usage['cached_input_tokens']} cached)"
+        parts.append(f"{tokens} / {usage.get('output_tokens', 0)} out")
+    return ", ".join(parts)
+
+
 def run_agent(
     kb: "OKFBundle",
     question: str,
@@ -619,15 +825,20 @@ def run_agent(
     system: str | None = None,
     max_turns: int = 12,
     verbose: bool = False,
-) -> str:
+) -> AgentRun:
     """Drive a tool-calling loop over the bundle until the model answers.
 
     ``chat`` is any :class:`Chat` callable. ``system`` overrides the default
     system prompt (which embeds ``kb.layers()`` for orientation), used only
     when the conversation starts. The loop always executes tool calls
     through :class:`BundleTools` — including the ``remember`` write path, so
-    with ``autolog=True`` the bundle records what the agent learned. Returns
-    the model's final text (or a note when ``max_turns`` is exhausted).
+    with ``autolog=True`` the bundle records what the agent learned.
+
+    Returns an :class:`AgentRun`: the model's final text plus what the run
+    cost — turns taken, every tool call with its result size and error, and
+    aggregated token usage. ``str(run)`` is the answer, so it still drops
+    into an f-string; read ``run.summary()`` when comparing agentic
+    exploration against a one-shot :meth:`OKFBundle.context` pack.
 
     ``tools`` injects a pre-configured :class:`BundleTools` instead of the
     default one — the way to scope an agent to a subset of the bundle, since
@@ -647,11 +858,11 @@ def run_agent(
     Pass a list via ``messages`` to carry conversation memory across calls:
     it is extended in place with this turn's question, tool calls, and
     answer, so reusing the same list on the next call continues the same
-    conversation. Omit it (the default) for a one-shot question, matching
-    the original single-turn behavior exactly — the history is discarded
-    once this call returns. Note that tool results (e.g. full concept
-    bodies from ``open``) accumulate in ``messages`` turn over turn, so a
-    long-running conversation costs more tokens each turn.
+    conversation. Omit it (the default) for a one-shot question — the list
+    is then created here and reachable as ``run.messages``. Note that tool
+    results (e.g. full concept bodies from ``open``) accumulate in
+    ``messages`` turn over turn, so a long-running conversation costs more
+    tokens each turn; ``run.summary()["result_bytes"]`` measures it.
     """
     bundle_tools = tools if tools is not None else BundleTools(kb)
     toolsets: list[ToolSet] = [bundle_tools, *(extra_tools or [])]
@@ -676,12 +887,24 @@ def run_agent(
             }
         )
     messages.append({"role": "user", "content": question})
-    for _ in range(max_turns):
+    recorded: list[ToolCall] = []
+    usage: dict = {}
+    for turn in range(1, max_turns + 1):
         message = chat(messages, schemas)
         messages.append(message)
+        _add_usage(usage, message.get("_usage"))
         tool_calls = message.get("tool_calls") or []
         if not tool_calls:
-            return message.get("content") or ""
+            run = AgentRun(
+                answer=message.get("content") or "",
+                messages=messages,
+                turns=turn,
+                tool_calls=recorded,
+                usage=usage,
+            )
+            if verbose:
+                print(f"  [{_describe_run(run)}]")
+            return run
         for call in tool_calls:
             name = call["function"]["name"]
             args = json.loads(call["function"]["arguments"] or "{}")
@@ -694,7 +917,26 @@ def run_agent(
                 result = toolset.call(name, args)
             if verbose:
                 print(f"     {_describe_result(name, result)}")
+            recorded.append(
+                ToolCall(
+                    turn=turn,
+                    name=name,
+                    args=args,
+                    result_bytes=len(result.encode("utf-8")),
+                    error=_tool_error(result),
+                )
+            )
             messages.append(
                 {"role": "tool", "tool_call_id": call.get("id", name), "content": result}
             )
-    return "(stopped: max_turns reached without a final answer)"
+    run = AgentRun(
+        answer="",
+        messages=messages,
+        turns=max_turns,
+        tool_calls=recorded,
+        usage=usage,
+        stopped_early=True,
+    )
+    if verbose:
+        print(f"  [stopped: max_turns reached — {_describe_run(run)}]")
+    return run
