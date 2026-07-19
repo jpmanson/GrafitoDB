@@ -2052,6 +2052,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#scoping-the-tool-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoping the tool surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-agent-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other agent frameworks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#custom-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3152,6 +3185,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#scoping-the-tool-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoping the tool surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-agent-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other agent frameworks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threading
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#custom-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4035,9 +4101,11 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
   (progressive disclosure), <code>search</code> (hybrid), <code>open</code> (full concept + typed
   edges), <code>follow</code> (graph traversal by relationship type), <code>history</code>
   (changelog), and <code>remember</code> (write a linked, embedded, autologged note back
-  into the bundle). Schemas + dispatch, framework-free: the same tools drop
-  into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
-  <code>{"error": ...}</code> for the model to react to instead of killing the loop.</li>
+  into the bundle). Schemas + dispatch, framework-free: <code>tools.schemas</code> plus
+  <code>tools.call(name, args)</code> is the pair PydanticAI, CrewAI, LangGraph and MCP
+  all ask for — see <a href="#other-agent-frameworks">Other agent frameworks</a>. Tool
+  errors come back as <code>{"error": ...}</code> for the model to react to instead of
+  killing the loop (<code>raise_errors=True</code> propagates them instead).</li>
 <li><strong><code>run_agent(kb, question, chat=...)</code></strong> — a minimal tool-calling loop. One-shot
   by default; pass <code>messages=</code> to thread a multi-turn conversation, <code>tools=</code> to
   inject a scoped <code>BundleTools</code>, or <code>extra_tools=</code> to add app-specific tools.
@@ -4053,6 +4121,10 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
   function-tool schemas) and a matching <code>call(name, args) -&gt; str</code>.
   <code>BundleTools</code> is one; write your own the same shape to plug in via
   <code>extra_tools=</code>.</li>
+<li><strong><code>ThreadConfinedTools</code></strong> — the same toolset, reachable from any thread. A
+  bundle belongs to the thread that opened it; this wrapper gives one dedicated
+  thread ownership and queues every call onto it, for frameworks that run tools
+  off the main thread. See <a href="#threading">Threading</a>.</li>
 <li><strong><code>OpenAIChat</code></strong> — the bundled convenience for any OpenAI-compatible
   endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs <code>httpx</code>,
   reads <code>OPENAI_BASE_URL</code> / <code>OPENAI_API_KEY</code> / <code>OPENAI_MODEL</code>.</li>
@@ -4159,31 +4231,136 @@ belongs in the bundle.</p>
 fields — so with a filter active the agent may not read back what it just wrote.
 Grafito deliberately does not stamp the filter's values onto new notes, since
 that would let an agent mark its own output <code>status: approved</code>.</p>
+<h3 id="scoping-the-tool-surface">Scoping the tool surface</h3>
+<p><code>where=</code>/<code>tag=</code> scope <strong>what the tools can reach</strong>. <code>include=</code>/<code>exclude=</code> scope
+<strong>which tools exist</strong> — the two are independent:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;remember&quot;</span><span class="p">])</span>              <span class="c1"># read-only</span>
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;search&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">])</span>        <span class="c1"># retrieval only</span>
+</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;approved&quot;</span><span class="p">},</span> <span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;remember&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<p><code>schemas</code> reflects the choice, and <code>call()</code> enforces it: a disabled name is
+refused exactly like one that never existed, so a framework routing a stale or
+invented name cannot reach a tool you removed. Passing an unknown name to
+<code>include</code>/<code>exclude</code> — or both arguments at once — raises <code>ValueError</code> at
+construction, not at call time. <code>BundleTools.ALL_SCHEMAS</code> is always the full
+list, independent of any instance.</p>
+<p>This is the natural way to hand a toolset to a framework that owns its own
+write path, or to give one agent in a crew read access and another the ability
+to <code>remember</code>.</p>
+<h3 id="other-agent-frameworks">Other agent frameworks</h3>
+<p><code>run_agent</code> is Grafito's own loop, but the toolset — not the loop — is the
+integration point. <code>BundleTools</code> exposes exactly the pair every framework asks
+for: <code>tools.schemas</code> (OpenAI-style function schemas) and
+<code>tools.call(name, args) -&gt; str</code>. Adapting is a schema translation plus a
+closure. <code>examples/okf/okf_frameworks.py</code> is runnable (no framework needs to be
+installed) and carries the adapter code for each target:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>python<span class="w"> </span>examples/okf/okf_frameworks.py
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th>What it takes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LangChain / LangGraph</strong></td>
+<td>Nothing to translate — <code>bind_tools(tools.schemas)</code> accepts the OpenAI format as-is; wire <code>tools.call()</code> into the <code>ToolMessage</code>.</td>
+</tr>
+<tr>
+<td><strong>MCP</strong></td>
+<td>Peel the <code>"function"</code> wrapper and rename <code>parameters</code> → <code>inputSchema</code>. A server is ~20 lines.</td>
+</tr>
+<tr>
+<td><strong>PydanticAI</strong></td>
+<td><code>Tool.from_schema(fn, name=..., json_schema=...)</code> — no pydantic model to generate. Declare the tools <code>async def</code> (see threading below).</td>
+</tr>
+<tr>
+<td><strong>CrewAI</strong></td>
+<td>A <code>BaseTool</code> subclass per tool, with <code>args_schema</code> synthesized from the JSON Schema via <code>pydantic.create_model</code>, plus a <code>ThreadConfinedTools</code> wrapper.</td>
+</tr>
+</tbody>
+</table>
+<p>The PydanticAI and CrewAI adapters were verified end-to-end against a live
+model (pydantic-ai 2.13, crewai 1.15): the agent runs <code>search</code> → <code>open</code> and
+answers with a concept-id citation, <code>exclude=["remember"]</code> is honoured in the
+tool list it is offered, and the <code>where=</code> boundary still refuses hidden
+concepts through the framework.</p>
+<p>One thing worth knowing before you write one: <strong>build the toolset with
+<code>raise_errors=True</code>.</strong> PydanticAI turns exceptions into retries and CrewAI has
+its own error handling; the default <code>{"error": ...}</code> string would read as a
+<em>successful</em> call and defeat both. Keep the default for a raw tool-calling
+loop, where an error the model can read beats a crash.</p>
+<div class="admonition warning">
+<p class="admonition-title">Always route through <code>tools.call()</code></p>
+<p>Reimplementing the tools against <code>kb.search()</code> / <code>kb[concept_id]</code> directly
+is the tempting shortcut — it looks more native in a typed framework — and
+it silently drops the <code>where=</code>/<code>tag=</code> access boundary along with the edge-
+list stripping in <code>open</code>/<code>follow</code>. The filter lives in <code>BundleTools</code>, not
+in the bundle.</p>
+</div>
+<h3 id="threading">Threading</h3>
+<p><strong>A bundle belongs to the thread that opened it.</strong> <code>sqlite3</code> connections are
+created with <code>check_same_thread=True</code>, so reaching the bundle from another
+thread raises <code>sqlite3.ProgrammingError</code> — and agent frameworks routinely run
+tools off the main thread. This is the one part of an integration that is not a
+pure schema translation.</p>
+<p>It is <em>not</em> solved by <code>asyncio.to_thread</code>: that moves the call <strong>off</strong> the
+owning thread and causes the very error it looks like it would prevent.</p>
+<ul>
+<li><strong>PydanticAI</strong> — declare the tools <code>async def</code>, so they run on the event
+  loop's own thread. Its <em>sync</em> tools go to a worker thread and fail.</li>
+<li><strong>CrewAI</strong>, and anything else without an async tool path — wrap the toolset
+  in <code>ThreadConfinedTools</code>.</li>
+</ul>
+<p><code>ThreadConfinedTools</code> gives one dedicated thread ownership of the bundle and
+queues every call onto it. The factory runs <strong>on that thread</strong> and must open
+the bundle itself — opening it in the caller and closing over it defeats the
+purpose:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">BundleTools</span><span class="p">,</span> <span class="n">OKFBundle</span><span class="p">,</span> <span class="n">ThreadConfinedTools</span>
+</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>
+</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="k">with</span> <span class="n">ThreadConfinedTools</span><span class="p">(</span>
+</span><span id="__span-36-4"><a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>    <span class="k">lambda</span><span class="p">:</span> <span class="n">BundleTools</span><span class="p">(</span><span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">raise_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-36-5"><a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="p">)</span> <span class="k">as</span> <span class="n">tools</span><span class="p">:</span>
+</span><span id="__span-36-6"><a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>    <span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s2">&quot;KB analyst&quot;</span><span class="p">,</span> <span class="n">goal</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">crewai_tools</span><span class="p">(</span><span class="n">tools</span><span class="p">))</span>
+</span><span id="__span-36-7"><a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>    <span class="o">...</span>
+</span><span id="__span-36-8"><a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>    <span class="n">tools</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">())</span>   <span class="c1"># anything that is not a tool call</span>
+</span></code></pre></div>
+<p>It is a <code>ToolSet</code> like any other, so it also works as <code>run_agent(..., tools=)</code>
+or in <code>extra_tools=</code>. <code>run()</code> is the way to reach the bundle for everything
+that is not a tool call — <strong><code>kb.save()</code> included</strong>: calling it from the main
+thread after an agent's <code>remember</code> raises the same <code>ProgrammingError</code>.</p>
+<p>Calls are serialized, so this is a correctness device, not a scaling one:
+concurrent agents queue behind each other. That is the honest tradeoff while
+the bundle is single-threaded — the alternative, <code>check_same_thread=False</code>,
+would share mutable state (transaction flag, in-memory vector and text
+indexes) with no locking at all.</p>
 <h3 id="custom-tools">Custom tools</h3>
 <p><code>run_agent</code> always includes <code>BundleTools(kb)</code> — browse/search/open/follow/
 history/remember. Pass <code>extra_tools=</code> with your own <code>ToolSet</code>\ s to add
 tools that have nothing to do with the bundle, e.g. sending a message or
 calling an internal API. No base class required, just the same
 <code>schemas</code>/<code>call</code> shape as <code>BundleTools</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackTools</span><span class="p">:</span>
-</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    <span class="n">schemas</span> <span class="o">=</span> <span class="p">[{</span>
-</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>        <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;notify_channel&quot;</span><span class="p">,</span>
-</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Post a message to the team Slack channel.&quot;</span><span class="p">,</span>
-</span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-34-8"><a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-</span><span id="__span-34-9"><a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>                <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}},</span>
-</span><span id="__span-34-10"><a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>                <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
-</span><span id="__span-34-11"><a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a>            <span class="p">},</span>
-</span><span id="__span-34-12"><a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>        <span class="p">},</span>
-</span><span id="__span-34-13"><a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>    <span class="p">}]</span>
-</span><span id="__span-34-14"><a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a>
-</span><span id="__span-34-15"><a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-34-16"><a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a>        <span class="n">post_to_slack</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">])</span>  <span class="c1"># your own integration</span>
-</span><span id="__span-34-17"><a id="__codelineno-34-17" name="__codelineno-34-17" href="#__codelineno-34-17"></a>        <span class="k">return</span> <span class="s1">&#39;{&quot;posted&quot;: true}&#39;</span>
-</span><span id="__span-34-18"><a id="__codelineno-34-18" name="__codelineno-34-18" href="#__codelineno-34-18"></a>
-</span><span id="__span-34-19"><a id="__codelineno-34-19" name="__codelineno-34-19" href="#__codelineno-34-19"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">extra_tools</span><span class="o">=</span><span class="p">[</span><span class="n">SlackTools</span><span class="p">()])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-37-1"><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackTools</span><span class="p">:</span>
+</span><span id="__span-37-2"><a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>    <span class="n">schemas</span> <span class="o">=</span> <span class="p">[{</span>
+</span><span id="__span-37-3"><a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
+</span><span id="__span-37-4"><a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>        <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-37-5"><a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;notify_channel&quot;</span><span class="p">,</span>
+</span><span id="__span-37-6"><a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Post a message to the team Slack channel.&quot;</span><span class="p">,</span>
+</span><span id="__span-37-7"><a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a>            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-37-8"><a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+</span><span id="__span-37-9"><a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a>                <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}},</span>
+</span><span id="__span-37-10"><a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a>                <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
+</span><span id="__span-37-11"><a id="__codelineno-37-11" name="__codelineno-37-11" href="#__codelineno-37-11"></a>            <span class="p">},</span>
+</span><span id="__span-37-12"><a id="__codelineno-37-12" name="__codelineno-37-12" href="#__codelineno-37-12"></a>        <span class="p">},</span>
+</span><span id="__span-37-13"><a id="__codelineno-37-13" name="__codelineno-37-13" href="#__codelineno-37-13"></a>    <span class="p">}]</span>
+</span><span id="__span-37-14"><a id="__codelineno-37-14" name="__codelineno-37-14" href="#__codelineno-37-14"></a>
+</span><span id="__span-37-15"><a id="__codelineno-37-15" name="__codelineno-37-15" href="#__codelineno-37-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-37-16"><a id="__codelineno-37-16" name="__codelineno-37-16" href="#__codelineno-37-16"></a>        <span class="n">post_to_slack</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">])</span>  <span class="c1"># your own integration</span>
+</span><span id="__span-37-17"><a id="__codelineno-37-17" name="__codelineno-37-17" href="#__codelineno-37-17"></a>        <span class="k">return</span> <span class="s1">&#39;{&quot;posted&quot;: true}&#39;</span>
+</span><span id="__span-37-18"><a id="__codelineno-37-18" name="__codelineno-37-18" href="#__codelineno-37-18"></a>
+</span><span id="__span-37-19"><a id="__codelineno-37-19" name="__codelineno-37-19" href="#__codelineno-37-19"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">extra_tools</span><span class="o">=</span><span class="p">[</span><span class="n">SlackTools</span><span class="p">()])</span>
 </span></code></pre></div>
 <p>Tool names must be unique across <code>BundleTools</code> and every <code>extra_tools</code>
 entry — a collision (e.g. defining your own <code>search</code>) raises <code>ValueError</code>
@@ -4191,20 +4368,20 @@ before the model is ever called, rather than one tool silently shadowing
 another. A tool call for a name no toolset owns comes back as
 <code>{"error": ...}</code>, same as any other tool error the model can react to.</p>
 <p>For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
-</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>
-</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
-</span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
-</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
-</span><span id="__span-35-6"><a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
-</span><span id="__span-35-7"><a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>
-</span><span id="__span-35-8"><a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
+</span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>
+</span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
+</span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
+</span><span id="__span-38-5"><a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+</span><span id="__span-38-6"><a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+</span><span id="__span-38-7"><a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>
+</span><span id="__span-38-8"><a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>examples/okf/okf_agent.py</code> is the runnable end-to-end walkthrough (explore →
 answer with concept citations → remember a note → save bundle + <code>log.md</code>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
-</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
-</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-39-1"><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
+</span><span id="__span-39-2"><a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
+</span><span id="__span-39-3"><a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
 </span></code></pre></div>
 
 
