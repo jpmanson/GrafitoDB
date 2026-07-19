@@ -15,10 +15,20 @@ kb.db.execute("MATCH (n) RETURN count(n)")   # escape hatch
 ```
 """
 
+from ..filters import PropertyFilter, PropertyFilterGroup
 from ..importers.okf import BundleDiff, ConceptDelta, diff_okf_bundles
 from ..importers.okf import lint_bundle as lint_okf_bundle
 from ..importers.okf import validate_bundle as validate_okf_bundle
-from .agent import AnthropicChat, BundleTools, Chat, OpenAIChat, ToolSet, run_agent
+from .agent import (
+    AgentRun,
+    AnthropicChat,
+    BundleTools,
+    Chat,
+    OpenAIChat,
+    ToolCall,
+    ToolSet,
+    run_agent,
+)
 from .bundle import OKFBundle
 from .concept import Concept, ContextPack, Hit, Proposal
 from .rerank import (
@@ -44,10 +54,14 @@ __all__ = [
     "AnthropicChat",
     "OpenAIChat",
     "run_agent",
+    "AgentRun",
+    "ToolCall",
     "Concept",
     "ContextPack",
     "Hit",
     "Proposal",
+    "PropertyFilter",
+    "PropertyFilterGroup",
     "Reranker",
     "LexicalReranker",
     "CrossEncoderReranker",

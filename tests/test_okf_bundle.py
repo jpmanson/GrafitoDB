@@ -10,7 +10,16 @@ import pytest
 
 from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
-from grafito.okf import Concept, ContextPack, Hit, LexicalReranker, OKFBundle, Proposal
+from grafito.okf import (
+    Concept,
+    ContextPack,
+    Hit,
+    LexicalReranker,
+    OKFBundle,
+    Proposal,
+    PropertyFilter,
+    PropertyFilterGroup,
+)
 from grafito.okf.rerank import (
     DEFAULT_RERANK_FIELDS,
     CohereReranker,
@@ -1196,3 +1205,224 @@ def test_context_trace_shape_and_consistency(kb):
 def test_context_trace_omits_rerank_step_when_no_reranker(kb):
     pack = kb.context("query performance", k=3, include_trace=True)
     assert {s["step"] for s in pack.trace} == {"search", "expand", "pack"}
+
+
+# --- metadata filtering (where=/tag=) ---------------------------------------
+
+
+@pytest.fixture
+def meta_kb(tmp_path) -> OKFBundle:
+    """Bundle with varied frontmatter, for metadata-filter tests."""
+    decisions = tmp_path / "decisions"
+    decisions.mkdir()
+    (decisions / "a.md").write_text(
+        "---\ntype: Decision\ntitle: Use SQLite\nstatus: approved\nowner: data-team\n"
+        "timestamp: '2026-03-01'\ntags: [storage]\n---\n\n"
+        "Storage engine query performance.\n\n# Links\n[Draft](/decisions/b.md)\n",
+        encoding="utf-8",
+    )
+    (decisions / "b.md").write_text(
+        "---\ntype: Decision\ntitle: Maybe Postgres\nstatus: draft\nowner: data-team\n"
+        "timestamp: '2026-01-15'\ntags: [storage, draft]\n---\n\n"
+        "Storage engine query performance alternative.\n",
+        encoding="utf-8",
+    )
+    (decisions / "c.md").write_text(
+        "---\ntype: Decision\ntitle: Use hnswlib\nstatus: approved\nowner: ml-team\n"
+        "timestamp: '2025-06-01'\ntags: [vectors]\n---\n\n"
+        "Storage and vectors query performance.\n",
+        encoding="utf-8",
+    )
+    bundle = OKFBundle.load(str(tmp_path))
+    yield bundle
+    bundle.db.close()
+
+
+def _ids(hits):
+    return sorted(h.concept.id for h in hits)
+
+
+def test_search_where_single_key(meta_kb):
+    hits = meta_kb.search("storage query performance", where={"status": "approved"})
+    assert _ids(hits) == ["decisions/a", "decisions/c"]
+
+
+def test_search_where_multiple_keys_are_anded(meta_kb):
+    hits = meta_kb.search(
+        "storage query performance", where={"status": "approved", "owner": "data-team"}
+    )
+    assert _ids(hits) == ["decisions/a"]
+
+
+def test_search_where_accepts_property_filter_operators(meta_kb):
+    hits = meta_kb.search(
+        "storage query performance", where={"timestamp": PropertyFilter.gte("2026-01-01")}
+    )
+    assert _ids(hits) == ["decisions/a", "decisions/b"]
+
+
+def test_search_where_accepts_or_group(meta_kb):
+    hits = meta_kb.search(
+        "storage query performance",
+        where=PropertyFilterGroup.or_({"owner": "ml-team"}, {"status": "draft"}),
+    )
+    assert _ids(hits) == ["decisions/b", "decisions/c"]
+
+
+def test_search_where_accepts_nested_groups(meta_kb):
+    hits = meta_kb.search(
+        "storage query performance",
+        where=PropertyFilterGroup.and_(
+            PropertyFilterGroup.or_({"status": "approved"}, {"status": "draft"}),
+            {"owner": "data-team"},
+        ),
+    )
+    assert _ids(hits) == ["decisions/a", "decisions/b"]
+
+
+def test_search_tag_matches_list_membership(meta_kb):
+    # `tags` is a list, so membership needs tag= ...
+    assert _ids(meta_kb.search("storage query performance", tag="draft")) == ["decisions/b"]
+    # ... while where= compares the whole list and matches nothing.
+    assert meta_kb.search("storage query performance", where={"tags": "draft"}) == []
+
+
+def test_search_where_matching_nothing_returns_empty(meta_kb):
+    assert meta_kb.search("storage query performance", where={"status": "nope"}) == []
+
+
+def test_search_where_survives_selective_filter_in_text_mode(tmp_path):
+    """A selective filter must not silently return nothing (fixed over-fetch bug)."""
+    (tmp_path / "d").mkdir()
+    for i in range(200):
+        status = "approved" if i >= 195 else "draft"
+        (tmp_path / "d" / f"c{i:03d}.md").write_text(
+            f"---\ntype: D\ntitle: T{i}\nstatus: {status}\n---\n\nquery performance note\n",
+            encoding="utf-8",
+        )
+    bundle = OKFBundle.load(str(tmp_path))
+    try:
+        # Only 5 of 200 match, and they rank below any fixed over-fetch window.
+        hits = bundle.search("query performance", k=5, mode="text", where={"status": "approved"})
+        assert len(hits) == 5
+        assert all(h.concept.node.properties["status"] == "approved" for h in hits)
+    finally:
+        bundle.db.close()
+
+
+def test_search_where_interacts_with_include_superseded(meta_kb):
+    meta_kb.supersede("decisions/a", "decisions/c", note="test")
+    q = "storage query performance"
+    # The default superseded exclusion is itself a status filter, so this is empty.
+    assert meta_kb.search(q, where={"status": "superseded"}) == []
+    hits = meta_kb.search(q, where={"status": "superseded"}, include_superseded=True)
+    assert _ids(hits) == ["decisions/a"]
+
+
+def test_concepts_where_filter(meta_kb):
+    assert sorted(c.id for c in meta_kb.concepts(where={"status": "approved"})) == [
+        "decisions/a",
+        "decisions/c",
+    ]
+
+
+def test_context_where_filters_graph_expanded_neighbours(meta_kb):
+    """A filtered-out concept must not enter the pack through a link."""
+    # Without a filter, b is pulled in from a via LINKS_TO.
+    unfiltered = meta_kb.context("storage query performance", budget_tokens=4000)
+    assert "decisions/b" in {c.id for c in unfiltered.concepts}
+
+    pack = meta_kb.context(
+        "storage query performance", where={"status": "approved"}, budget_tokens=4000
+    )
+    assert "decisions/b" not in {c.id for c in pack.concepts}
+    filtered = [o for o in pack.omitted if o["reason"] == "filtered"]
+    assert filtered == [
+        {
+            "concept_id": "decisions/b",
+            "title": "Maybe Postgres",
+            "reason": "filtered",
+            "via": "LINKS_TO",
+        }
+    ]
+
+
+def test_context_trace_reports_filter_only_when_filtering(meta_kb):
+    pack = meta_kb.context(
+        "storage query performance", where={"status": "approved"}, include_trace=True
+    )
+    search_step = next(s for s in pack.trace if s["step"] == "search")
+    assert search_step["filtered_to"] == 2
+
+    plain = meta_kb.context("storage query performance", include_trace=True)
+    assert "filtered_to" not in next(s for s in plain.trace if s["step"] == "search")
+
+
+def test_context_trace_names_real_index_with_no_hits(meta_kb):
+    """mode="auto" must resolve in the trace even when nothing matched."""
+    pack = meta_kb.context(
+        "storage query performance", where={"status": "nope"}, include_trace=True
+    )
+    step = next(s for s in pack.trace if s["step"] == "search")
+    assert pack.concepts == []
+    assert step["mode"] == "text"  # the bundle has no vector index
+    assert step["hits"] == 0
+
+
+def test_index_where_and_tag_filters(meta_kb):
+    listing = meta_kb.index("decisions", where={"status": "approved"})
+    assert [c["id"] for c in listing["concepts"]] == ["decisions/a", "decisions/c"]
+    assert [c["id"] for c in meta_kb.index("decisions", tag="draft")["concepts"]] == [
+        "decisions/b"
+    ]
+
+
+@pytest.fixture
+def meta_kb_embedded(tmp_path) -> OKFBundle:
+    """Same shape as ``meta_kb`` but with a vector index, to exercise the
+    native `filter_props` pre-filter rather than the FTS post-filter path."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Only 3 of 40 pass the filter, and they are the *last* by insertion order —
+    # a post-filter over a fixed top-k would miss them.
+    for i in range(40):
+        status = "approved" if i >= 37 else "draft"
+        (docs / f"c{i:02d}.md").write_text(
+            f"---\ntype: Doc\ntitle: Doc {i}\nstatus: {status}\n---\n\n"
+            f"query performance and storage engines note {i}.\n",
+            encoding="utf-8",
+        )
+    bundle = OKFBundle.load(str(tmp_path), embed=_Embedder())
+    yield bundle
+    bundle.db.close()
+
+
+def test_search_where_is_a_native_prefilter_in_semantic_mode(meta_kb_embedded):
+    """A selective filter must still return a full k (pre-filter, not post-filter)."""
+    hits = meta_kb_embedded.search(
+        "query performance", k=3, mode="semantic", where={"status": "approved"}
+    )
+    assert len(hits) == 3
+    assert all(h.via == "semantic" for h in hits)
+    assert all(h.concept.node.properties["status"] == "approved" for h in hits)
+
+
+def test_search_where_applies_in_hybrid_mode(meta_kb_embedded):
+    hits = meta_kb_embedded.search(
+        "query performance", k=3, mode="hybrid", where={"status": "approved"}
+    )
+    assert hits and all(h.via == "hybrid" for h in hits)
+    assert all(h.concept.node.properties["status"] == "approved" for h in hits)
+
+
+def test_search_where_matching_nothing_is_empty_in_semantic_mode(meta_kb_embedded):
+    """An unmatched filter must be empty, not silently unfiltered."""
+    assert meta_kb_embedded.search("query performance", mode="semantic", where={"status": "x"}) == []
+
+
+def test_context_where_filters_expansion_with_vector_index(meta_kb_embedded):
+    pack = meta_kb_embedded.context(
+        "query performance", where={"status": "approved"}, budget_tokens=4000
+    )
+    assert pack.concepts
+    assert all(c.node.properties["status"] == "approved" for c in pack.concepts)
