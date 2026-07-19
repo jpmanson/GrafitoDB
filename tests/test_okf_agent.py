@@ -7,11 +7,20 @@ exercising the tool schemas, dispatch, error handling, and the write path.
 from __future__ import annotations
 
 import json
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
-from grafito.okf import BundleTools, Chat, OKFBundle, run_agent
+from grafito.okf import (
+    BundleTools,
+    Chat,
+    OKFBundle,
+    ThreadConfinedTools,
+    ToolSet,
+    run_agent,
+)
 
 pytest.importorskip("yaml")
 
@@ -35,7 +44,7 @@ class ScriptedChat:
         self.seen_tools: list[list[dict]] = []
 
     def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
-        assert any(t["function"]["name"] == "remember" for t in tools)
+        assert tools, "the loop must offer the toolset's schemas"
         self.seen.append(list(messages))
         self.seen_tools.append(list(tools))
         return self.turns.pop(0)
@@ -561,3 +570,183 @@ def test_scoped_layers_keep_root_concepts_visible(tmp_path):
         assert scoped.layers() == {".": 1, "d": 1}
     finally:
         bundle.db.close()
+
+
+# --- Tool-surface scoping (include/exclude) and error propagation -------------
+
+
+def test_include_and_exclude_shape_the_tool_surface(kb):
+    """`where=` scopes what tools reach; include/exclude scope which exist."""
+    assert [s["function"]["name"] for s in BundleTools(kb).schemas] == [
+        s["function"]["name"] for s in BundleTools.ALL_SCHEMAS
+    ]
+    read_only = BundleTools(kb, exclude=["remember"])
+    assert "remember" not in [s["function"]["name"] for s in read_only.schemas]
+    retrieval = BundleTools(kb, include=["search", "open"])
+    assert [s["function"]["name"] for s in retrieval.schemas] == ["search", "open"]
+    # ALL_SCHEMAS stays the full list regardless of any instance.
+    assert len(BundleTools.ALL_SCHEMAS) == 6
+
+
+def test_disabled_tool_is_refused_not_merely_hidden(kb):
+    """Dropping a schema is not enough — a stale name must not reach dispatch."""
+    tools = BundleTools(kb, exclude=["remember"])
+    result = json.loads(tools.call("remember", {"concept_id": "n/x", "title": "T", "body": "B"}))
+    assert result == {"error": "Unknown tool 'remember'"}
+    assert "n/x" not in [c.id for c in kb.concepts()]
+
+
+def test_call_rejects_names_that_are_not_tools(kb):
+    """Dispatch is bound to the schema list, not to any `_`-prefixed method."""
+    assert json.loads(BundleTools(kb).call("visible", {})) == {"error": "Unknown tool 'visible'"}
+    assert json.loads(BundleTools(kb).call("require_visible", {"concept_id": "x"})) == {
+        "error": "Unknown tool 'require_visible'"
+    }
+
+
+def test_unknown_tool_names_in_include_or_exclude_raise(kb):
+    with pytest.raises(ValueError, match="Unknown tool name"):
+        BundleTools(kb, include=["search", "teleport"])
+    with pytest.raises(ValueError, match="Unknown tool name"):
+        BundleTools(kb, exclude=["rememebr"])
+    with pytest.raises(ValueError, match="not both"):
+        BundleTools(kb, include=["search"], exclude=["remember"])
+
+
+def test_raise_errors_propagates_instead_of_wrapping(kb):
+    """Frameworks with their own retry handling want the exception."""
+    default = BundleTools(kb)
+    assert "error" in json.loads(default.call("open", {"concept_id": "nope/missing"}))
+
+    strict = BundleTools(kb, raise_errors=True)
+    with pytest.raises(KeyError):
+        strict.call("open", {"concept_id": "nope/missing"})
+    with pytest.raises(ValueError, match="Unknown tool"):
+        strict.call("teleport", {})
+    # Successful calls are unaffected: still JSON.
+    assert json.loads(strict.call("browse", {}))["concepts"] is not None
+
+
+def test_raise_errors_still_hides_filtered_concepts_as_absent(scoped_kb):
+    """The access boundary holds on the raising path too."""
+    strict = BundleTools(scoped_kb, where={"confidentiality": "public"}, raise_errors=True)
+    with pytest.raises(ValueError, match="Unknown concept: docs/secret"):
+        strict.call("open", {"concept_id": "docs/secret"})
+
+
+def test_run_agent_only_offers_the_enabled_tools(kb):
+    """The model is shown the scoped surface, not the full one."""
+    chat = ScriptedChat([{"role": "assistant", "content": "done"}])
+    run_agent(kb, "hi", chat=chat, tools=BundleTools(kb, exclude=["remember"]))
+    offered = [s["function"]["name"] for s in chat.seen_tools[-1]]
+    assert "remember" not in offered
+    assert "search" in offered
+
+
+# --- ThreadConfinedTools ------------------------------------------------------
+
+
+def _confined(**kwargs):
+    """A ThreadConfinedTools over the demo bundle, opened on the owning thread."""
+    return ThreadConfinedTools(lambda: BundleTools(OKFBundle.load(str(KB)), **kwargs))
+
+
+def test_bare_bundle_tools_fail_off_the_owning_thread(kb):
+    """The constraint that motivates the wrapper, pinned so it cannot silently change."""
+    tools = BundleTools(kb, raise_errors=True)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with pytest.raises(sqlite3.ProgrammingError):
+            pool.submit(tools.call, "browse", {}).result()
+
+
+def test_confined_tools_are_callable_from_other_threads():
+    tools = _confined()
+    try:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(
+                pool.map(lambda q: tools.call("search", {"query": q, "k": 1}), ["sqlite"] * 8)
+            )
+        assert all(json.loads(r)[0]["id"] == "decisions/0001-use-sqlite" for r in results)
+        # And the schemas survived the handshake.
+        assert [s["function"]["name"] for s in tools.schemas] == [
+            s["function"]["name"] for s in BundleTools.ALL_SCHEMAS
+        ]
+    finally:
+        tools.run(lambda t: t.kb.db.close())
+        tools.close()
+
+
+def test_confined_tools_forward_include_and_errors():
+    """The wrapped toolset's own configuration still governs behaviour."""
+    tools = _confined(exclude=["remember"], raise_errors=True)
+    try:
+        assert "remember" not in [s["function"]["name"] for s in tools.schemas]
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            # Errors raised on the owning thread surface in the caller's thread.
+            future = pool.submit(tools.call, "open", {"concept_id": "nope/missing"})
+            with pytest.raises(KeyError):
+                future.result()
+    finally:
+        tools.run(lambda t: t.kb.db.close())
+        tools.close()
+
+
+def test_run_reaches_the_bundle_for_non_tool_work(tmp_path):
+    """kb.save() only works on the owning thread — run() is the way there."""
+    tools = ThreadConfinedTools(
+        lambda: BundleTools(OKFBundle.load(str(KB), autolog=True))
+    )
+    try:
+        tools.call(
+            "remember",
+            {"concept_id": "notes/threaded", "title": "T", "body": "B"},
+        )
+        out = tmp_path / "saved"
+        tools.run(lambda t: t.kb.save(str(out)))
+        assert (out / "notes" / "threaded.md").exists()
+    finally:
+        tools.run(lambda t: t.kb.db.close())
+        tools.close()
+
+
+def test_factory_failure_propagates_to_the_constructor():
+    """A bundle that cannot be opened must not leave the caller blocked forever."""
+
+    def boom():
+        raise RuntimeError("no bundle here")
+
+    with pytest.raises(RuntimeError, match="no bundle here"):
+        ThreadConfinedTools(boom)
+
+
+def test_close_is_idempotent_and_rejects_later_calls():
+    tools = _confined()
+    tools.run(lambda t: t.kb.db.close())
+    tools.close()
+    tools.close()  # must not hang or raise
+    with pytest.raises(RuntimeError, match="closed"):
+        tools.call("browse", {})
+
+
+def test_confined_tools_satisfy_the_toolset_protocol_and_drive_run_agent():
+    tools = _confined()
+    try:
+        assert isinstance(tools, ToolSet)
+        chat = ScriptedChat(
+            [
+                {"role": "assistant", "tool_calls": [_tool_call("browse", "1")]},
+                {"role": "assistant", "content": "done"},
+            ]
+        )
+        # run_agent needs a kb for its default toolset; the confined one is the
+        # toolset actually driven here.
+        bundle = OKFBundle.load(str(KB))
+        try:
+            run = run_agent(bundle, "hi", chat=chat, tools=tools)
+        finally:
+            bundle.db.close()
+        assert run.answer == "done"
+        assert [c.name for c in run.tool_calls] == ["browse"]
+    finally:
+        tools.run(lambda t: t.kb.db.close())
+        tools.close()
