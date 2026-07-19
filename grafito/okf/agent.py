@@ -6,8 +6,16 @@ OpenAI-style tool calls:
 
 * :class:`BundleTools` — the bundle façade exposed as function tools
   (``browse``/``search``/``open``/``follow``/``history``/``remember``), with
-  schemas and dispatch. Framework-free: the same tools drop into an OpenAI
-  tool-calling loop, LangGraph, CrewAI, or an MCP server.
+  schemas and dispatch. Framework-free: ``tools.schemas`` plus
+  ``tools.call(name, args)`` is the pair PydanticAI, CrewAI, LangGraph and MCP
+  all ask for, so adapting is a schema translation and a closure rather than a
+  rewrite — see ``examples/okf/okf_frameworks.py``. Whatever the framework,
+  route through :meth:`BundleTools.call`: rebuilding the tools against
+  ``kb.search()``/``kb[concept_id]`` drops the ``where``/``tag`` boundary.
+* :class:`ThreadConfinedTools` — the same toolset, reachable from any thread.
+  A bundle belongs to the thread that opened it, and frameworks like CrewAI run
+  tools elsewhere; this wrapper gives one thread ownership and queues calls onto
+  it. The one part of an integration that is not a schema translation.
 * :func:`run_agent` — a minimal tool-calling loop: call the model, execute its
   tool calls against the bundle, feed results back, until it answers. It
   returns an :class:`AgentRun`: the answer plus what it cost to get there
@@ -41,8 +49,10 @@ from __future__ import annotations
 
 import json
 import os
+import queue
+import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from ..filters import PropertyFilterGroup
@@ -128,10 +138,30 @@ class BundleTools:
     Treat the filter as an access boundary on knowledge, not as redaction of
     text; if a body must not mention something, that belongs in the bundle.
 
-    Finally, ``remember`` writes plain notes: they do not inherit the filter's
-    fields, so with a filter active the agent may not be able to read back what
-    it just wrote. Grafito does not silently stamp the filter's values onto new
-    notes, since that would let an agent mark its own output ``status: approved``.
+    ``remember`` writes plain notes: they do not inherit the filter's fields, so
+    with a filter active the agent may not be able to read back what it just
+    wrote. Grafito does not silently stamp the filter's values onto new notes,
+    since that would let an agent mark its own output ``status: approved``.
+
+    Where ``where``/``tag`` scope *what the tools can reach*, ``include``/
+    ``exclude`` scope *which tools exist* — the natural way to hand a read-only
+    toolset to a framework that has its own write path::
+
+        BundleTools(kb, exclude=["remember"])     # read-only
+        BundleTools(kb, include=["search", "open"])  # retrieval only
+
+    :attr:`schemas` reflects the choice, and :meth:`call` enforces it: a
+    disabled name is rejected exactly like one that never existed, so a
+    framework routing a stale name cannot reach it. :attr:`ALL_SCHEMAS` is
+    always the full list, independent of any instance.
+
+    ``raise_errors=True`` makes :meth:`call` propagate the underlying exception
+    instead of returning ``{"error": ...}``. The default suits a raw
+    tool-calling loop, where an error the model can read beats a crash;
+    frameworks with their own tool-error handling (PydanticAI's ``ModelRetry``,
+    CrewAI's retries) want the exception instead. Note that :func:`run_agent`
+    has no such handling — a toolset with ``raise_errors=True`` will abort the
+    loop on the first bad concept id.
     """
 
     def __init__(
@@ -140,10 +170,33 @@ class BundleTools:
         *,
         tag: str | None = None,
         where: "dict | PropertyFilterGroup | None" = None,
+        include: "list[str] | None" = None,
+        exclude: "list[str] | None" = None,
+        raise_errors: bool = False,
     ) -> None:
         self.kb = kb
         self.tag = tag
         self.where = where
+        self.raise_errors = raise_errors
+        if include is not None and exclude is not None:
+            raise ValueError("Pass include or exclude, not both")
+        available = {schema["function"]["name"] for schema in self.ALL_SCHEMAS}
+        unknown = (set(include or []) | set(exclude or [])) - available
+        if unknown:
+            raise ValueError(
+                f"Unknown tool name(s) {sorted(unknown)}; available: {sorted(available)}"
+            )
+        if include is not None:
+            self.enabled = set(include)
+        elif exclude is not None:
+            self.enabled = available - set(exclude)
+        else:
+            self.enabled = available
+
+    @property
+    def schemas(self) -> list[dict]:
+        """The tool schemas this instance exposes, after ``include``/``exclude``."""
+        return [s for s in self.ALL_SCHEMAS if s["function"]["name"] in self.enabled]
 
     def _visible(self) -> set[str] | None:
         """Concept ids this toolset may expose, or ``None`` when unfiltered.
@@ -160,7 +213,7 @@ class BundleTools:
         if visible is not None and concept_id not in visible:
             raise ValueError(f"Unknown concept: {concept_id}")
 
-    schemas = [
+    ALL_SCHEMAS = [
         {
             "type": "function",
             "function": {
@@ -267,10 +320,23 @@ class BundleTools:
 
     def call(self, name: str, args: dict) -> str:
         """Execute one tool call and return its JSON result (or an error the
-        model can react to — a wrong concept id should not kill the loop)."""
+        model can react to — a wrong concept id should not kill the loop).
+
+        A name this instance does not expose — never defined, or dropped by
+        ``include``/``exclude`` — is rejected here, not just omitted from
+        :attr:`schemas`. An agent framework that routes a stale or invented
+        name must not reach a disabled tool.
+
+        With ``raise_errors=True`` the underlying exception propagates instead
+        of being wrapped, for frameworks that drive their own retry on it.
+        """
         try:
+            if name not in self.enabled:
+                raise ValueError(f"Unknown tool {name!r}")
             result = getattr(self, f"_{name}")(**args)
         except Exception as exc:  # surface tool misuse to the model, not the caller
+            if self.raise_errors:
+                raise
             result = {"error": str(exc)}
         return json.dumps(result, ensure_ascii=False)
 
@@ -359,6 +425,121 @@ class BundleTools:
         for link in links or []:
             self.kb.link(concept_id, link["target"], type=link.get("type") or "LINKS_TO")
         return {"saved": concept_id, "linked_to": [link["target"] for link in links or []]}
+
+
+class ThreadConfinedTools:
+    """A :class:`ToolSet` that serializes every call onto one owning thread.
+
+    An :class:`OKFBundle` belongs to the thread that opened it: SQLite
+    connections are created with ``check_same_thread=True``, so reaching the
+    bundle from anywhere else raises ``sqlite3.ProgrammingError``. Agent
+    frameworks routinely run tools off the main thread — CrewAI does, and
+    PydanticAI does for *sync* tools — which makes a bare :class:`BundleTools`
+    fail on every call there. This wrapper gives one dedicated thread ownership
+    of the bundle and hands it each call through a queue.
+
+    ``factory`` runs **on that thread** and must open the bundle *and* return
+    the toolset wrapping it. Opening the bundle in the caller and closing over
+    it defeats the entire purpose::
+
+        with ThreadConfinedTools(
+            lambda: BundleTools(OKFBundle.load(path, autolog=True))
+        ) as tools:
+            ...                                   # safe from any thread
+            tools.run(lambda t: t.kb.save())      # so is this
+
+    :meth:`run` is the escape hatch for everything that is not a tool call.
+    Anything touching the bundle has to happen on the owning thread, so
+    ``kb.save()`` after an agent's ``remember`` must go through it — calling it
+    directly from the main thread raises the same ``ProgrammingError`` the
+    wrapper exists to avoid.
+
+    Calls are serialized: this is a correctness device, not a scaling one, and
+    concurrent agents queue behind each other. That is the honest tradeoff while
+    the bundle is single-threaded — the alternative, opening the connection with
+    ``check_same_thread=False``, would share mutable state (transaction flag,
+    in-memory vector and text indexes) with no locking at all.
+
+    Errors are re-raised in the calling thread, so a wrapped toolset built with
+    ``raise_errors=True`` still behaves as the framework expects.
+    """
+
+    def __init__(self, factory: "Callable[[], ToolSet]", *, name: str = "okf-bundle") -> None:
+        self._requests: "queue.Queue" = queue.Queue()
+        handshake: "queue.Queue" = queue.Queue()
+        self._closed = False
+        self._thread = threading.Thread(
+            target=self._serve, args=(factory, handshake), name=name, daemon=True
+        )
+        self._thread.start()
+        ok, value = handshake.get()
+        if not ok:
+            raise value
+        self.schemas: list[dict] = value
+
+    def _serve(self, factory: "Callable[[], ToolSet]", handshake: "queue.Queue") -> None:
+        """Own the bundle for the life of the thread; serve one request at a time."""
+        try:
+            toolset = factory()
+        except Exception as exc:  # the constructor is blocked on the handshake
+            handshake.put((False, exc))
+            return
+        handshake.put((True, list(toolset.schemas)))
+        while True:
+            request = self._requests.get()
+            if request is None:
+                return
+            work, reply = request
+            try:
+                reply.put((True, work(toolset)))
+            except Exception as exc:  # re-raised in the calling thread
+                reply.put((False, exc))
+
+    def run(self, work: "Callable[[Any], Any]") -> Any:
+        """Run ``work(toolset)`` on the owning thread and return its result.
+
+        The way to reach the bundle for anything that is not a tool call —
+        ``tools.run(lambda t: t.kb.save())`` to persist an agent's notes, or
+        ``tools.run(lambda t: len(t.kb))`` to inspect it. Exceptions propagate
+        to the caller.
+        """
+        if self._closed:
+            raise RuntimeError("ThreadConfinedTools is closed")
+        reply: "queue.Queue" = queue.Queue()
+        self._requests.put((work, reply))
+        ok, value = reply.get()
+        if not ok:
+            raise value
+        return value
+
+    def call(self, name: str, args: dict) -> str:
+        """Dispatch one tool call on the owning thread (the :class:`ToolSet` API)."""
+        return self.run(lambda toolset: toolset.call(name, args))
+
+    def layers(self) -> dict:
+        """Delegate :meth:`BundleTools.layers`, so this is accepted as
+        ``run_agent(..., tools=...)`` wherever a :class:`BundleTools` is —
+        the loop builds its system prompt from the toolset's layer counts."""
+        return self.run(lambda toolset: toolset.layers())
+
+    def close(self) -> None:
+        """Stop the owning thread. Idempotent.
+
+        The bundle is *not* closed for you: it may still be needed (to save, or
+        by another wrapper), and only this thread could have done it anyway.
+        Close it first if you own it — ``tools.run(lambda t: t.kb.db.close())``.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        self._requests.put(None)
+        self._thread.join(timeout=5)
+
+    def __enter__(self) -> "ThreadConfinedTools":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
 
 
 def _without_private(messages: list[dict]) -> list[dict]:
@@ -846,6 +1027,12 @@ def run_agent(
 
         run_agent(kb, question, chat=chat,
                   tools=BundleTools(kb, where={"confidentiality": "public"}))
+
+    ``include``/``exclude`` on that same toolset narrow which tools the model
+    is offered at all (e.g. ``exclude=["remember"]`` for a read-only agent).
+    Leave its ``raise_errors`` at the default: this loop has no tool-error
+    handling of its own, so a raising toolset aborts the run on the first bad
+    concept id instead of letting the model recover.
 
     ``extra_tools`` adds app-specific :class:`ToolSet`\\ s (own ``schemas``
     plus a matching ``call``) alongside the bundle's own, for tools that

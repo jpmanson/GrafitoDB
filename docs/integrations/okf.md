@@ -816,9 +816,11 @@ drive the exploration itself** through OpenAI-style tool calls:
   (progressive disclosure), `search` (hybrid), `open` (full concept + typed
   edges), `follow` (graph traversal by relationship type), `history`
   (changelog), and `remember` (write a linked, embedded, autologged note back
-  into the bundle). Schemas + dispatch, framework-free: the same tools drop
-  into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
-  `{"error": ...}` for the model to react to instead of killing the loop.
+  into the bundle). Schemas + dispatch, framework-free: `tools.schemas` plus
+  `tools.call(name, args)` is the pair PydanticAI, CrewAI, LangGraph and MCP
+  all ask for — see [Other agent frameworks](#other-agent-frameworks). Tool
+  errors come back as `{"error": ...}` for the model to react to instead of
+  killing the loop (`raise_errors=True` propagates them instead).
 - **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop. One-shot
   by default; pass `messages=` to thread a multi-turn conversation, `tools=` to
   inject a scoped `BundleTools`, or `extra_tools=` to add app-specific tools.
@@ -834,6 +836,10 @@ drive the exploration itself** through OpenAI-style tool calls:
   function-tool schemas) and a matching `call(name, args) -> str`.
   `BundleTools` is one; write your own the same shape to plug in via
   `extra_tools=`.
+- **`ThreadConfinedTools`** — the same toolset, reachable from any thread. A
+  bundle belongs to the thread that opened it; this wrapper gives one dedicated
+  thread ownership and queues every call onto it, for frameworks that run tools
+  off the main thread. See [Threading](#threading).
 - **`OpenAIChat`** — the bundled convenience for any OpenAI-compatible
   endpoint (OpenAI, Ollama, vLLM, LM Studio, OpenRouter, ...); needs `httpx`,
   reads `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`.
@@ -958,6 +964,110 @@ Likewise, `remember` writes plain notes that do **not** inherit the filter's
 fields — so with a filter active the agent may not read back what it just wrote.
 Grafito deliberately does not stamp the filter's values onto new notes, since
 that would let an agent mark its own output `status: approved`.
+
+### Scoping the tool surface
+
+`where=`/`tag=` scope **what the tools can reach**. `include=`/`exclude=` scope
+**which tools exist** — the two are independent:
+
+```python
+BundleTools(kb, exclude=["remember"])              # read-only
+BundleTools(kb, include=["search", "open"])        # retrieval only
+BundleTools(kb, where={"status": "approved"}, exclude=["remember"])
+```
+
+`schemas` reflects the choice, and `call()` enforces it: a disabled name is
+refused exactly like one that never existed, so a framework routing a stale or
+invented name cannot reach a tool you removed. Passing an unknown name to
+`include`/`exclude` — or both arguments at once — raises `ValueError` at
+construction, not at call time. `BundleTools.ALL_SCHEMAS` is always the full
+list, independent of any instance.
+
+This is the natural way to hand a toolset to a framework that owns its own
+write path, or to give one agent in a crew read access and another the ability
+to `remember`.
+
+### Other agent frameworks
+
+`run_agent` is Grafito's own loop, but the toolset — not the loop — is the
+integration point. `BundleTools` exposes exactly the pair every framework asks
+for: `tools.schemas` (OpenAI-style function schemas) and
+`tools.call(name, args) -> str`. Adapting is a schema translation plus a
+closure. `examples/okf/okf_frameworks.py` is runnable (no framework needs to be
+installed) and carries the adapter code for each target:
+
+```bash
+python examples/okf/okf_frameworks.py
+```
+
+| Framework | What it takes |
+| --- | --- |
+| **LangChain / LangGraph** | Nothing to translate — `bind_tools(tools.schemas)` accepts the OpenAI format as-is; wire `tools.call()` into the `ToolMessage`. |
+| **MCP** | Peel the `"function"` wrapper and rename `parameters` → `inputSchema`. A server is ~20 lines. |
+| **PydanticAI** | `Tool.from_schema(fn, name=..., json_schema=...)` — no pydantic model to generate. Declare the tools `async def` (see threading below). |
+| **CrewAI** | A `BaseTool` subclass per tool, with `args_schema` synthesized from the JSON Schema via `pydantic.create_model`, plus a `ThreadConfinedTools` wrapper. |
+
+The PydanticAI and CrewAI adapters were verified end-to-end against a live
+model (pydantic-ai 2.13, crewai 1.15): the agent runs `search` → `open` and
+answers with a concept-id citation, `exclude=["remember"]` is honoured in the
+tool list it is offered, and the `where=` boundary still refuses hidden
+concepts through the framework.
+
+One thing worth knowing before you write one: **build the toolset with
+`raise_errors=True`.** PydanticAI turns exceptions into retries and CrewAI has
+its own error handling; the default `{"error": ...}` string would read as a
+*successful* call and defeat both. Keep the default for a raw tool-calling
+loop, where an error the model can read beats a crash.
+
+!!! warning "Always route through `tools.call()`"
+    Reimplementing the tools against `kb.search()` / `kb[concept_id]` directly
+    is the tempting shortcut — it looks more native in a typed framework — and
+    it silently drops the `where=`/`tag=` access boundary along with the edge-
+    list stripping in `open`/`follow`. The filter lives in `BundleTools`, not
+    in the bundle.
+
+### Threading
+
+**A bundle belongs to the thread that opened it.** `sqlite3` connections are
+created with `check_same_thread=True`, so reaching the bundle from another
+thread raises `sqlite3.ProgrammingError` — and agent frameworks routinely run
+tools off the main thread. This is the one part of an integration that is not a
+pure schema translation.
+
+It is *not* solved by `asyncio.to_thread`: that moves the call **off** the
+owning thread and causes the very error it looks like it would prevent.
+
+- **PydanticAI** — declare the tools `async def`, so they run on the event
+  loop's own thread. Its *sync* tools go to a worker thread and fail.
+- **CrewAI**, and anything else without an async tool path — wrap the toolset
+  in `ThreadConfinedTools`.
+
+`ThreadConfinedTools` gives one dedicated thread ownership of the bundle and
+queues every call onto it. The factory runs **on that thread** and must open
+the bundle itself — opening it in the caller and closing over it defeats the
+purpose:
+
+```python
+from grafito.okf import BundleTools, OKFBundle, ThreadConfinedTools
+
+with ThreadConfinedTools(
+    lambda: BundleTools(OKFBundle.load(path, autolog=True), raise_errors=True)
+) as tools:
+    agent = Agent(role="KB analyst", goal="...", tools=crewai_tools(tools))
+    ...
+    tools.run(lambda t: t.kb.save())   # anything that is not a tool call
+```
+
+It is a `ToolSet` like any other, so it also works as `run_agent(..., tools=)`
+or in `extra_tools=`. `run()` is the way to reach the bundle for everything
+that is not a tool call — **`kb.save()` included**: calling it from the main
+thread after an agent's `remember` raises the same `ProgrammingError`.
+
+Calls are serialized, so this is a correctness device, not a scaling one:
+concurrent agents queue behind each other. That is the honest tradeoff while
+the bundle is single-threaded — the alternative, `check_same_thread=False`,
+would share mutable state (transaction flag, in-memory vector and text
+indexes) with no locking at all.
 
 ### Custom tools
 
