@@ -284,6 +284,46 @@ def test_usage_is_aggregated_across_turns_when_the_chat_reports_it(kb):
     }
 
 
+def test_turn_usage_keeps_the_growth_curve_and_resent_share(kb):
+    """Aggregate usage hides the shape; per-turn shows the re-send."""
+    turns = [
+        {"role": "assistant", "tool_calls": [_tool_call("browse", "c1")],
+         "_usage": {"input_tokens": 700, "output_tokens": 10}},
+        {"role": "assistant", "tool_calls": [_tool_call("browse", "c2", layer="runbooks")],
+         "_usage": {"input_tokens": 900, "output_tokens": 10}},
+        {"role": "assistant", "content": "done",
+         "_usage": {"input_tokens": 1500, "output_tokens": 20}},
+    ]
+    run = run_agent(kb, "hi", chat=ScriptedChat(turns))
+
+    assert [u["input_tokens"] for u in run.turn_usage] == [700, 900, 1500]
+    assert run.usage["input_tokens"] == 3100
+    # The last prompt contains every distinct token; the rest was billed twice.
+    assert run.resent_input_tokens() == 3100 - 1500
+    stats = run.summary()
+    assert stats["input_per_turn"] == [700, 900, 1500]
+    assert stats["resent_input_tokens"] == 1600
+
+
+def test_turn_usage_stays_aligned_when_a_turn_reports_nothing(kb):
+    turns = [
+        {"role": "assistant", "tool_calls": [_tool_call("browse", "c1")]},  # no _usage
+        {"role": "assistant", "content": "done", "_usage": {"input_tokens": 500}},
+    ]
+    run = run_agent(kb, "hi", chat=ScriptedChat(turns))
+    # Position must still mean "turn i+1", so the silent turn is an empty dict.
+    assert run.turn_usage == [{}, {"input_tokens": 500}]
+    assert run.usage["requests"] == 1
+    # One reported turn means nothing was measurably re-sent.
+    assert run.resent_input_tokens() == 0
+
+
+def test_resent_is_zero_without_usage(kb):
+    run = run_agent(kb, "hi", chat=ScriptedChat([{"role": "assistant", "content": "x"}]))
+    assert run.resent_input_tokens() == 0
+    assert run.summary()["resent_input_tokens"] == 0
+
+
 def test_usage_stays_empty_when_the_chat_reports_none(kb):
     """A bring-your-own Chat that reports nothing must not produce fake numbers."""
     run = run_agent(kb, "hi", chat=ScriptedChat([{"role": "assistant", "content": "done"}]))

@@ -927,6 +927,11 @@ class AgentRun:
     That is exactly why the cached slice is broken out — read it before
     concluding that a long conversation is expensive.
 
+    ``turn_usage`` keeps the same counts **per model call**, in order, which is
+    what ``usage`` alone cannot show: the shape of the growth. Entry ``i`` is
+    turn ``i + 1``, and a turn the :class:`Chat` reported nothing for is an
+    empty dict, so positions always line up with turns.
+
     ``usage`` is empty when the injected :class:`Chat` reports none; the loop
     never fabricates numbers. ``stopped_early`` is True when ``max_turns`` ran
     out before the model answered, in which case ``answer`` is empty.
@@ -939,10 +944,29 @@ class AgentRun:
     turns: int
     tool_calls: list[ToolCall] = field(default_factory=list)
     usage: dict = field(default_factory=dict)
+    turn_usage: list[dict] = field(default_factory=list)
     stopped_early: bool = False
 
     def __str__(self) -> str:
         return self.answer
+
+    def resent_input_tokens(self) -> int:
+        """Input tokens that were re-sent rather than new — the cacheable part.
+
+        The loop only ever appends to ``messages``, so each turn's prompt
+        contains the previous turn's prompt in full: the last turn alone
+        accounts for every distinct token the run ever sent, and everything
+        billed before it was a repeat. Hence ``sum(inputs) - max(inputs)``.
+
+        This is the quantity prompt caching bills at roughly a tenth — read it
+        next to ``usage["cached_input_tokens"]`` to see how much of the
+        available saving a given endpoint is actually delivering. Returns 0
+        when the :class:`Chat` reports no usage.
+        """
+        inputs = [u.get("input_tokens", 0) for u in self.turn_usage if u]
+        if not inputs:
+            return 0
+        return sum(inputs) - max(inputs)
 
     def summary(self) -> dict:
         """Efficiency numbers for this run, as a plain dict.
@@ -952,6 +976,9 @@ class AgentRun:
         re-reading what is already sitting in its context, and the most
         actionable signal here. ``by_tool`` breaks calls, errors and bytes down
         per tool, which is where ``open`` usually shows up as the cost driver.
+
+        ``input_per_turn`` is the raw growth curve and ``resent_input_tokens``
+        the part of it that was a repeat — see :meth:`resent_input_tokens`.
         """
         by_tool: dict[str, dict] = {}
         seen: set[tuple[str, str]] = set()
@@ -974,6 +1001,8 @@ class AgentRun:
             "result_bytes": sum(call.result_bytes for call in self.tool_calls),
             "by_tool": by_tool,
             "usage": dict(self.usage),
+            "input_per_turn": [u.get("input_tokens", 0) for u in self.turn_usage],
+            "resent_input_tokens": self.resent_input_tokens(),
         }
 
 
@@ -992,6 +1021,11 @@ def _describe_run(run: AgentRun) -> str:
         if usage.get("cached_input_tokens"):
             tokens += f" ({usage['cached_input_tokens']} cached)"
         parts.append(f"{tokens} / {usage.get('output_tokens', 0)} out")
+        resent = stats["resent_input_tokens"]
+        if resent:
+            # The gap between this and cached_input_tokens is the saving the
+            # endpoint left on the table.
+            parts.append(f"{resent} re-sent")
     return ", ".join(parts)
 
 
@@ -1076,10 +1110,14 @@ def run_agent(
     messages.append({"role": "user", "content": question})
     recorded: list[ToolCall] = []
     usage: dict = {}
+    per_turn: list[dict] = []
     for turn in range(1, max_turns + 1):
         message = chat(messages, schemas)
         messages.append(message)
-        _add_usage(usage, message.get("_usage"))
+        turn_usage = message.get("_usage") or {}
+        # Recorded even when empty, so index i always means turn i + 1.
+        per_turn.append(dict(turn_usage))
+        _add_usage(usage, turn_usage)
         tool_calls = message.get("tool_calls") or []
         if not tool_calls:
             run = AgentRun(
@@ -1088,6 +1126,7 @@ def run_agent(
                 turns=turn,
                 tool_calls=recorded,
                 usage=usage,
+                turn_usage=per_turn,
             )
             if verbose:
                 print(f"  [{_describe_run(run)}]")
@@ -1122,6 +1161,7 @@ def run_agent(
         turns=max_turns,
         tool_calls=recorded,
         usage=usage,
+        turn_usage=per_turn,
         stopped_early=True,
     )
     if verbose:

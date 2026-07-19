@@ -893,6 +893,7 @@ run.stopped_early   # True when max_turns ran out before an answer
 run.turns           # model calls made
 run.tool_calls      # [ToolCall(turn, name, args, result_bytes, error), ...]
 run.usage           # aggregated tokens, {} if the Chat reports none
+run.turn_usage      # the same counts per model call, in order
 run.messages        # the conversation (the same list you passed as messages=)
 
 run.summary()
@@ -901,7 +902,9 @@ run.summary()
 #  'by_tool': {'search': {'calls': 2, 'errors': 0, 'bytes': 731},
 #              'open':   {'calls': 2, 'errors': 1, 'bytes': 7483}},
 #  'usage': {'input_tokens': 18400, 'cached_input_tokens': 12000,
-#            'cache_write_tokens': 0, 'output_tokens': 430, 'requests': 3}}
+#            'cache_write_tokens': 0, 'output_tokens': 430, 'requests': 3},
+#  'input_per_turn': [1121, 5482, 11797],
+#  'resent_input_tokens': 6603}
 ```
 
 What each number is actually for:
@@ -923,6 +926,15 @@ What each number is actually for:
   billed cost, not the size of the context — a tool loop re-sends the full
   history every turn. Read the cached slice before concluding a long
   conversation was expensive.
+- **`input_per_turn` / `resent_input_tokens`** — the growth curve, and how
+  much of it was a repeat. The loop only appends to `messages`, so the last
+  turn's prompt already contains every distinct token the run sent; everything
+  billed before it was re-sent. That figure is what prompt caching bills at
+  roughly a tenth, so the gap between it and `cached_input_tokens` is the
+  saving your endpoint is leaving on the table — on an OpenAI-compatible
+  gateway with no cache support, a measured run spent 61% of its input tokens
+  re-sending. See [Which one should you use?](okf-agentic-search.md#which-one-should-you-use)
+  for what that costs against a one-shot `context()` call.
 
 `usage` stays `{}` for an injected `Chat` that reports nothing; the loop never
 invents numbers. `OpenAIChat` and `AnthropicChat` both report.

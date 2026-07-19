@@ -32,6 +32,13 @@ This mirrors how a person skims a folder of notes: check the directory
 listing, skim titles, open the two or three files that look relevant — not
 read every file front to back.
 
+Note what this does and does not bound. It bounds how much of the *bundle*
+reaches the model — that part holds, and it is why bundle size stops
+mattering. It does not make the loop cheap: each turn re-sends everything
+read so far, so total spend grows with the number of turns, not with the
+size of the knowledge base. [Which one should you use?](#which-one-should-you-use)
+has the measured numbers.
+
 ## Step by step
 
 ### 0. Bootstrap: the system prompt (near-zero cost)
@@ -224,6 +231,67 @@ Graph-expanded blocks are annotated with the relationship that pulled them in
 [Grounded context for agents](okf.md#grounded-context-for-agents-context) for
 the full option list.
 
+## Which one should you use?
+
+Progressive disclosure bounds what the agent *reads*. It does not bound what
+you *pay*, and those come apart in a way that is worth seeing measured. The
+Messages API is stateless, so every turn re-sends the whole conversation:
+the system prompt, the tool schemas, and every tool result so far are billed
+again on each model call.
+
+Measured on the demo bundle against Claude Sonnet 4.6 through an
+OpenAI-compatible gateway — same question, same model, both paths calling
+the model for real:
+
+| path | input tokens | model calls |
+|---|---|---|
+| `context()` one-shot | 2 132 | 1 |
+| `run_agent()` | 7 961 | 4 |
+| PydanticAI over the same `BundleTools` | 9 719 | 4 |
+
+The agentic path cost **~3.7x** the one-shot for the same answer, and a
+third-party framework cost more still — it adds prompt scaffolding on top of
+the same re-send. On a 202-concept bundle the gap widened to ~5x, because
+`context()` is capped by `budget_tokens` and therefore does not grow with the
+bundle, while the loop keeps paying its prefix every turn.
+
+`run.summary()` breaks the spend down:
+
+```python
+run.summary()["input_per_turn"]        # [1121, 1582, 2187, 3071]
+run.summary()["resent_input_tokens"]   # 4890 — 61% of the spend was a repeat
+run.usage["cached_input_tokens"]       # 0 on this endpoint
+```
+
+**So the agentic path is not the cheap one.** What it buys is the ability to
+*write* (`remember`, which `context()` cannot do), to decide what to read
+when a fixed `budget_tokens` would be the wrong guess, and to amortize its
+exploration across a multi-turn conversation.
+
+Two things genuinely reduce the overhead:
+
+- **Prompt caching.** The re-sent prefix is billed at roughly a tenth when
+  the endpoint supports it, which is most of the gap above. Compare
+  `resent_input_tokens()` against `usage["cached_input_tokens"]` to see how
+  much of that saving you are actually getting — a large gap means caching
+  is not reaching your requests.
+- **A smaller tool surface.** The schema block is re-sent every turn, so it
+  is charged once per model call. Trimming six tools to the two an agent
+  actually needs took it from ~29% of the run's spend to ~9%:
+
+  ```python
+  BundleTools(kb, include=["search", "open"])
+  ```
+
+Rule of thumb: reach for `context()` to *answer* a question, and
+`run_agent()` when the agent has to *act* — write back to the bundle,
+explore across several turns, or work without a budget you can pick in
+advance. Then trim the toolset to what that job needs.
+
+> These are single runs against one model, and turn counts vary between runs
+> on the same question — treat the ratios as an order of magnitude, not a
+> constant. Re-measure with `run.summary()` on your own bundle and model.
+
 ## Summary
 
 | Tool / API | Returns bodies? | Cost per call | When the agent uses it |
@@ -239,4 +307,7 @@ the full option list.
 
 The bundle can grow indefinitely; what enters the model's context is bounded
 by how many concepts the agent (or `context()`'s budget) actually decided
-were worth reading — never the whole knowledge base.
+were worth reading — never the whole knowledge base. What *does* grow is the
+number of turns, and each one re-sends what came before — which is why
+`run_agent()` costs several times a `context()` call for the same answer and
+why the choice between them is about what the job needs, not about size.
