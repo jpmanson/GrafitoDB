@@ -1902,6 +1902,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#which-one-should-you-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which one should you use?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2791,6 +2802,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#which-one-should-you-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which one should you use?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2848,6 +2870,12 @@ chooses to <code>open()</code> after triaging with cheaper tools.</p>
 <p>This mirrors how a person skims a folder of notes: check the directory
 listing, skim titles, open the two or three files that look relevant — not
 read every file front to back.</p>
+<p>Note what this does and does not bound. It bounds how much of the <em>bundle</em>
+reaches the model — that part holds, and it is why bundle size stops
+mattering. It does not make the loop cheap: each turn re-sends everything
+read so far, so total spend grows with the number of turns, not with the
+size of the knowledge base. <a href="#which-one-should-you-use">Which one should you use?</a>
+has the measured numbers.</p>
 <h2 id="step-by-step">Step by step</h2>
 <h3 id="0-bootstrap-the-system-prompt-near-zero-cost">0. Bootstrap: the system prompt (near-zero cost)</h3>
 <p>Before any tool call, the agent already knows the <em>shape</em> of the bundle, not
@@ -2993,6 +3021,77 @@ Graph-expanded blocks are annotated with the relationship that pulled them in
 (<code>via JOINS_WITH</code>, etc.) — see
 <a href="../okf/#grounded-context-for-agents-context">Grounded context for agents</a> for
 the full option list.</p>
+<h2 id="which-one-should-you-use">Which one should you use?</h2>
+<p>Progressive disclosure bounds what the agent <em>reads</em>. It does not bound what
+you <em>pay</em>, and those come apart in a way that is worth seeing measured. The
+Messages API is stateless, so every turn re-sends the whole conversation:
+the system prompt, the tool schemas, and every tool result so far are billed
+again on each model call.</p>
+<p>Measured on the demo bundle against Claude Sonnet 4.6 through an
+OpenAI-compatible gateway — same question, same model, both paths calling
+the model for real:</p>
+<table>
+<thead>
+<tr>
+<th>path</th>
+<th>input tokens</th>
+<th>model calls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>context()</code> one-shot</td>
+<td>2 132</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>run_agent()</code></td>
+<td>7 961</td>
+<td>4</td>
+</tr>
+<tr>
+<td>PydanticAI over the same <code>BundleTools</code></td>
+<td>9 719</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p>The agentic path cost <strong>~3.7x</strong> the one-shot for the same answer, and a
+third-party framework cost more still — it adds prompt scaffolding on top of
+the same re-send. On a 202-concept bundle the gap widened to ~5x, because
+<code>context()</code> is capped by <code>budget_tokens</code> and therefore does not grow with the
+bundle, while the loop keeps paying its prefix every turn.</p>
+<p><code>run.summary()</code> breaks the spend down:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">&quot;input_per_turn&quot;</span><span class="p">]</span>        <span class="c1"># [1121, 1582, 2187, 3071]</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">&quot;resent_input_tokens&quot;</span><span class="p">]</span>   <span class="c1"># 4890 — 61% of the spend was a repeat</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">run</span><span class="o">.</span><span class="n">usage</span><span class="p">[</span><span class="s2">&quot;cached_input_tokens&quot;</span><span class="p">]</span>       <span class="c1"># 0 on this endpoint</span>
+</span></code></pre></div>
+<p><strong>So the agentic path is not the cheap one.</strong> What it buys is the ability to
+<em>write</em> (<code>remember</code>, which <code>context()</code> cannot do), to decide what to read
+when a fixed <code>budget_tokens</code> would be the wrong guess, and to amortize its
+exploration across a multi-turn conversation.</p>
+<p>Two things genuinely reduce the overhead:</p>
+<ul>
+<li><strong>Prompt caching.</strong> The re-sent prefix is billed at roughly a tenth when
+  the endpoint supports it, which is most of the gap above. Compare
+  <code>resent_input_tokens()</code> against <code>usage["cached_input_tokens"]</code> to see how
+  much of that saving you are actually getting — a large gap means caching
+  is not reaching your requests.</li>
+<li><strong>A smaller tool surface.</strong> The schema block is re-sent every turn, so it
+  is charged once per model call. Trimming six tools to the two an agent
+  actually needs took it from ~29% of the run's spend to ~9%:</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;search&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<p>Rule of thumb: reach for <code>context()</code> to <em>answer</em> a question, and
+<code>run_agent()</code> when the agent has to <em>act</em> — write back to the bundle,
+explore across several turns, or work without a budget you can pick in
+advance. Then trim the toolset to what that job needs.</p>
+<blockquote>
+<p>These are single runs against one model, and turn counts vary between runs
+on the same question — treat the ratios as an order of magnitude, not a
+constant. Re-measure with <code>run.summary()</code> on your own bundle and model.</p>
+</blockquote>
 <h2 id="summary">Summary</h2>
 <table>
 <thead>
@@ -3056,7 +3155,10 @@ the full option list.</p>
 </table>
 <p>The bundle can grow indefinitely; what enters the model's context is bounded
 by how many concepts the agent (or <code>context()</code>'s budget) actually decided
-were worth reading — never the whole knowledge base.</p>
+were worth reading — never the whole knowledge base. What <em>does</em> grow is the
+number of turns, and each one re-sends what came before — which is why
+<code>run_agent()</code> costs several times a <code>context()</code> call for the same answer and
+why the choice between them is about what the job needs, not about size.</p>
 
 
 
