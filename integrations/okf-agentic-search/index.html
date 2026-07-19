@@ -2913,15 +2913,16 @@ part of the knowledge base for next time, rather than being lost when the
 conversation ends.</p>
 <h2 id="the-loop-that-ties-it-together">The loop that ties it together</h2>
 <p><code>run_agent()</code> is a plain tool-calling loop (<code>grafito/okf/agent.py</code>):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_turns</span><span class="p">):</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">for</span> <span class="n">turn</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_turns</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">message</span> <span class="o">=</span> <span class="n">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">schemas</span><span class="p">)</span>      <span class="c1"># model sees the conversation + tool schemas</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">tool_calls</span><span class="p">:</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="k">return</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># no more tools requested -&gt; final answer</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="k">return</span> <span class="n">AgentRun</span><span class="p">(</span><span class="n">answer</span><span class="o">=</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>  <span class="c1"># final answer</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">dispatch</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>   <span class="c1"># execute against the bundle</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">recorded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ToolCall</span><span class="p">(</span><span class="n">turn</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="n">_tool_error</span><span class="p">(</span><span class="n">result</span><span class="p">)))</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
 </span></code></pre></div>
 <p>Each iteration, the model decides — based on what it has read <em>so far</em> — what
 to do next: browse another directory, run a different search, open one more
@@ -2944,9 +2945,13 @@ with <code>verbose=True</code>:</p>
 </span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>     runbooks/slow-queries - Triaging a slow graph query (4 link(s), 2 citation(s))
 </span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  -&gt; remember({&quot;concept_id&quot;: &quot;notes/slow-query-checklist&quot;, ...})
 </span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>     saved notes/slow-query-checklist, linked to [...]
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>A: ...(cites runbooks/slow-queries)...
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  [4 turn(s), 3 tool call(s), 6120 tool byte(s), 21400 in (14200 cached) / 512 out]
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>A: ...(cites runbooks/slow-queries)...
 </span></code></pre></div>
+<p>That closing line is <code>run.summary()</code> — see
+<a href="../okf/#measuring-a-run">Measuring a run</a> for the full breakdown, including
+which tool the bytes came from and how many calls were repeats.</p>
 <p>Three tool calls. Only <strong>one</strong> (<code>open</code>) pulled a full document body into
 context — the other four concepts <code>search</code> surfaced stayed as one-line
 metadata and were never read, because the model judged the top hit was
@@ -2962,6 +2967,10 @@ needs its own past reasoning to stay coherent. This is the one place context
 conversation has opened so far. For a long-running session, that's the
 signal to eventually trim or summarize older turns — bundle size was never
 the bottleneck, accumulated conversation is.</p>
+<p>You don't have to guess where that line is: <code>run.summary()["result_bytes"]</code>
+is how much tool output the run added to the conversation, and
+<code>run.usage["input_tokens"]</code> is what the model was actually charged for
+re-reading it each turn.</p>
 <h2 id="the-non-agentic-alternative-context">The non-agentic alternative: <code>context()</code></h2>
 <p>Not every use case needs an iterative agent loop. <code>OKFBundle.context()</code> does
 the same <em>kind</em> of budgeted retrieval in one deterministic pass instead of a

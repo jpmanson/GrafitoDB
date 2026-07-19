@@ -1914,6 +1914,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#filtering-on-frontmatter-where-and-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering on frontmatter: where= and tag=
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#grounded-context-for-agents-context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2012,6 +2023,28 @@
     <span class="md-ellipsis">
       
         Multi-turn conversations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measuring-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measuring a run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scoping-an-agent-to-part-of-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoping an agent to part of the bundle
       
     </span>
   </a>
@@ -2981,6 +3014,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#filtering-on-frontmatter-where-and-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering on frontmatter: where= and tag=
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#grounded-context-for-agents-context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3079,6 +3123,28 @@
     <span class="md-ellipsis">
       
         Multi-turn conversations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measuring-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measuring a run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scoping-an-agent-to-part-of-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoping an agent to part of the bundle
       
     </span>
   </a>
@@ -3586,11 +3652,58 @@ of nodes/relationships, while exposing the full graph via <code>bundle.db</code>
 </span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>        <span class="c1"># semantic / text / hybrid</span>
 </span><span id="__span-14-15"><a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;make it faster&quot;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>            <span class="c1"># scoped to a layer</span>
 </span><span id="__span-14-16"><a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;vector similarity&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;hybrid&quot;</span><span class="p">)</span>             <span class="c1"># RRF fusion of FTS + vector</span>
-</span><span id="__span-14-17"><a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="c1"># hybrid degrades to text-only when the bundle was loaded without embed=</span>
-</span><span id="__span-14-18"><a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>
-</span><span id="__span-14-19"><a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
-</span><span id="__span-14-20"><a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
+</span><span id="__span-14-17"><a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;storage&quot;</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;approved&quot;</span><span class="p">})</span>        <span class="c1"># filter on frontmatter</span>
+</span><span id="__span-14-18"><a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="c1"># hybrid degrades to text-only when the bundle was loaded without embed=</span>
+</span><span id="__span-14-19"><a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>
+</span><span id="__span-14-20"><a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="n">kb</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (n) RETURN count(n)&quot;</span><span class="p">)</span>    <span class="c1"># escape hatch: full graph power</span>
+</span><span id="__span-14-21"><a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;out/bundle&quot;</span><span class="p">,</span> <span class="n">write_viz</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>         <span class="c1"># round-trip back to markdown</span>
 </span></code></pre></div>
+<h3 id="filtering-on-frontmatter-where-and-tag">Filtering on frontmatter: <code>where=</code> and <code>tag=</code></h3>
+<p>OKF keeps every producer-defined frontmatter key as a node property, so
+<code>status</code>, <code>owner</code>, <code>confidentiality</code> or <code>timestamp</code> are all queryable. <code>search()</code>
+and <code>context()</code> accept <code>where=</code> to filter retrieval on them — without dropping
+to Cypher and losing ranking, graph expansion, and budgeting:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">PropertyFilter</span><span class="p">,</span> <span class="n">PropertyFilterGroup</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;approved&quot;</span><span class="p">})</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;approved&quot;</span><span class="p">,</span> <span class="s2">&quot;owner&quot;</span><span class="p">:</span> <span class="s2">&quot;data-team&quot;</span><span class="p">})</span>   <span class="c1"># AND</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">PropertyFilter</span><span class="o">.</span><span class="n">gte</span><span class="p">(</span><span class="s2">&quot;2026-01-01&quot;</span><span class="p">)})</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">PropertyFilterGroup</span><span class="o">.</span><span class="n">or_</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;approved&quot;</span><span class="p">},</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>                                            <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ratified&quot;</span><span class="p">}))</span>
+</span></code></pre></div>
+<p><code>where=</code> speaks the same dialect as <code>match_nodes</code>, so there is nothing new to
+learn: <strong>multiple keys in one dict combine with AND</strong>, <code>PropertyFilter</code> adds
+operators (<code>gte</code>, <code>between</code>, <code>contains</code>, <code>regex</code>, ...), and <code>PropertyFilterGroup</code>
+adds OR and nesting. <code>concepts(where=...)</code> takes the same argument for listing.</p>
+<p><code>tag=</code> is a <strong>separate</strong> parameter rather than a <code>where</code> key, because <code>tags</code> is a
+list: <code>where={"tags": "draft"}</code> compares against the whole list and matches
+nothing, while <code>tag="draft"</code> tests membership.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;draft&quot;</span><span class="p">)</span>                    <span class="c1"># concepts tagged draft</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">kb</span><span class="o">.</span><span class="n">concepts</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">&quot;draft&quot;</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;owner&quot;</span><span class="p">:</span> <span class="s2">&quot;data-team&quot;</span><span class="p">})</span>
+</span></code></pre></div>
+<p>Two behaviours worth knowing:</p>
+<ul>
+<li><strong>The filter also governs graph expansion in <code>context()</code>.</strong> A concept the
+  filter excludes cannot slip into the pack through a <code>LINKS_TO</code> edge either; it
+  is recorded in <code>pack.omitted</code> with reason <code>"filtered"</code>. That makes
+  <code>where={"confidentiality": "public"}</code> a real guarantee about what reaches the
+  prompt, not a hint expansion can route around. <code>type</code>/<code>layer</code> remain
+  seed-only — they scope <em>retrieval</em>, whereas <code>where</code>/<code>tag</code> express what may be
+  <em>shown</em>.</li>
+<li><strong><code>include_superseded</code> is itself a <code>status</code> filter.</strong> So
+  <code>where={"status": "superseded"}</code> returns nothing unless you also pass
+  <code>include_superseded=True</code>.</li>
+</ul>
+<p>On the retrieval path, <code>where=</code> is pushed into the vector index as a true
+pre-filter, so a highly selective filter still returns a full <code>k</code>. Full-text
+search (FTS5) has no property filtering, so there the filter runs after BM25 and
+the search window widens automatically until it yields <code>k</code> survivors or the
+corpus is exhausted — a selective filter never silently returns an empty result.</p>
+<p>That widening is not free: it re-runs BM25 over a growing window, so a <em>very</em>
+selective filter in text mode costs several times an unfiltered search (~270 ms
+vs ~35 ms over 20k concepts; unmeasurable on small bundles, and unaffected when
+no filter is passed). Semantic and hybrid modes do not pay it — they pre-filter.
+Prefer loading with <code>embed=</code> if you filter aggressively over a large bundle.</p>
 <h3 id="grounded-context-for-agents-context">Grounded context for agents: <code>context()</code></h3>
 <p><code>search()</code> returns ranked hits; <code>context()</code> turns them into a prompt. It is the
 framework-agnostic bridge to <em>any</em> agent loop — no LangChain, LlamaIndex, or SDK
@@ -3609,18 +3722,18 @@ required. Given a question it:</p>
    that happens to sit nearby. Seed hits (found directly by <code>search()</code>) carry
    no <code>via</code>.</li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">budget_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nb">str</span><span class="p">(</span><span class="n">pack</span><span class="p">)</span>          <span class="c1"># prompt-ready text (same as pack.text)</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">pack</span><span class="o">.</span><span class="n">citations</span>     <span class="c1"># [{&#39;url&#39;|&#39;concept&#39;, &#39;anchor&#39;, &#39;cited_by&#39;: [...]}, ...] — deduped</span>
-</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">pack</span><span class="o">.</span><span class="n">concepts</span>      <span class="c1"># the Concepts that made it into the budget, in order</span>
-</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">pack</span><span class="o">.</span><span class="n">hits</span>          <span class="c1"># the seed search Hits (scores/provenance)</span>
-</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="n">pack</span><span class="o">.</span><span class="n">tokens</span>        <span class="c1"># estimated token count of the packed text</span>
-</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="n">pack</span><span class="o">.</span><span class="n">truncated</span>     <span class="c1"># True if anything was dropped/cut to fit</span>
-</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="n">pack</span><span class="o">.</span><span class="n">omitted</span>       <span class="c1"># [{&#39;concept_id&#39;, &#39;title&#39;, &#39;reason&#39;, &#39;via&#39;}, ...] — what was left out</span>
-</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="n">pack</span><span class="o">.</span><span class="n">trace</span>         <span class="c1"># step log when include_trace=True, else None</span>
-</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
-</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Answer using only this context:</span><span class="se">\n\n</span><span class="si">{</span><span class="n">pack</span><span class="si">}</span><span class="s2">&quot;</span>   <span class="c1"># drops straight into a prompt</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">budget_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="nb">str</span><span class="p">(</span><span class="n">pack</span><span class="p">)</span>          <span class="c1"># prompt-ready text (same as pack.text)</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">pack</span><span class="o">.</span><span class="n">citations</span>     <span class="c1"># [{&#39;url&#39;|&#39;concept&#39;, &#39;anchor&#39;, &#39;cited_by&#39;: [...]}, ...] — deduped</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">pack</span><span class="o">.</span><span class="n">concepts</span>      <span class="c1"># the Concepts that made it into the budget, in order</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="n">pack</span><span class="o">.</span><span class="n">hits</span>          <span class="c1"># the seed search Hits (scores/provenance)</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">pack</span><span class="o">.</span><span class="n">tokens</span>        <span class="c1"># estimated token count of the packed text</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">pack</span><span class="o">.</span><span class="n">truncated</span>     <span class="c1"># True if anything was dropped/cut to fit</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="n">pack</span><span class="o">.</span><span class="n">omitted</span>       <span class="c1"># [{&#39;concept_id&#39;, &#39;title&#39;, &#39;reason&#39;, &#39;via&#39;}, ...] — what was left out</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="n">pack</span><span class="o">.</span><span class="n">trace</span>         <span class="c1"># step log when include_trace=True, else None</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Answer using only this context:</span><span class="se">\n\n</span><span class="si">{</span><span class="n">pack</span><span class="si">}</span><span class="s2">&quot;</span>   <span class="c1"># drops straight into a prompt</span>
 </span></code></pre></div>
 <p>The pack is <strong>auditable</strong>: <code>pack.omitted</code> spells out what retrieval reached but
 left out, so nothing is dropped silently. Each entry has a <code>reason</code>:</p>
@@ -3628,19 +3741,22 @@ left out, so nothing is dropped silently. Each entry has a <code>reason</code>:<
 <li><code>"budget"</code> — a candidate that didn't fit the token budget;</li>
 <li><code>"superseded"</code> — a retracted claim reached via graph expansion (see
   <a href="#trust-model-supersede-and-conflicts_with">Trust model</a>);</li>
+<li><code>"filtered"</code> — a graph-expanded neighbour excluded by <code>where</code>/<code>tag</code> (see
+  <a href="#filtering-on-frontmatter-where-and-tag">Filtering on frontmatter</a>);</li>
 <li><code>"reranked_out"</code> — a candidate a reranker's <code>top_n</code> discarded.</li>
 </ul>
 <p><code>context(..., include_trace=True)</code> additionally fills <code>pack.trace</code> with a compact,
-deterministic step log — one step each for <code>search</code> (the index actually used and
-hit count), <code>expand</code> (hops and neighbours added), <code>rerank</code> (pool in/out, only when
-a reranker runs), and <code>pack</code> (budget, included/omitted counts, final tokens,
-truncated) — so an agent can explain <em>why</em> the context is what it is:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">include_trace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">pack</span><span class="o">.</span><span class="n">trace</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># [{&#39;step&#39;: &#39;search&#39;, &#39;mode&#39;: &#39;semantic&#39;, &#39;hits&#39;: 8},</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1">#  {&#39;step&#39;: &#39;expand&#39;, &#39;hops&#39;: 1, &#39;added&#39;: 5},</span>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1">#  {&#39;step&#39;: &#39;pack&#39;, &#39;budget_tokens&#39;: 2000, &#39;included&#39;: 6,</span>
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">#   &#39;omitted&#39;: 2, &#39;tokens&#39;: 1974, &#39;truncated&#39;: True}]</span>
+deterministic step log — one step each for <code>search</code> (the index actually used, hit
+count, plus <code>filtered_to</code> when <code>where</code>/<code>tag</code> narrowed the corpus), <code>expand</code> (hops
+and neighbours added), <code>rerank</code> (pool in/out, only when a reranker runs), and
+<code>pack</code> (budget, included/omitted counts, final tokens, truncated) — so an agent
+can explain <em>why</em> the context is what it is:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">include_trace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">pack</span><span class="o">.</span><span class="n">trace</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="c1"># [{&#39;step&#39;: &#39;search&#39;, &#39;mode&#39;: &#39;semantic&#39;, &#39;hits&#39;: 8},</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1">#  {&#39;step&#39;: &#39;expand&#39;, &#39;hops&#39;: 1, &#39;added&#39;: 5},</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="c1">#  {&#39;step&#39;: &#39;pack&#39;, &#39;budget_tokens&#39;: 2000, &#39;included&#39;: 6,</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="c1">#   &#39;omitted&#39;: 2, &#39;tokens&#39;: 1974, &#39;truncated&#39;: True}]</span>
 </span></code></pre></div>
 <table>
 <thead>
@@ -3669,7 +3785,12 @@ truncated) — so an agent can explain <em>why</em> the context is what it is:</
 <tr>
 <td><code>type</code>, <code>layer</code></td>
 <td><code>None</code></td>
-<td>Restrict retrieval to a concept type / directory layer.</td>
+<td>Restrict retrieval to a concept type / directory layer (seeds only).</td>
+</tr>
+<tr>
+<td><code>where</code>, <code>tag</code></td>
+<td><code>None</code></td>
+<td>Filter on frontmatter — also applied to graph-expanded neighbours (see <a href="#filtering-on-frontmatter-where-and-tag">Filtering on frontmatter</a>).</td>
 </tr>
 <tr>
 <td><code>expand_hops</code></td>
@@ -3701,23 +3822,23 @@ related neighbours, and the reranker decides which of them deserve the token
 budget. It runs over the seed + expanded pool <strong>before</strong> packing.</p>
 <p>A <code>Reranker</code> is <strong>any callable</strong> <code>(query, candidates) -&gt; [(concept, score), ...]</code>
 (most relevant first) — inject your own, or use one of the bundled ones:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="n">LexicalReranker</span><span class="p">,</span>        <span class="c1"># dependency-free (query-term overlap); offline default</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="n">CrossEncoderReranker</span><span class="p">,</span>   <span class="c1"># local HuggingFace cross-encoder (sentence-transformers)</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">CohereReranker</span><span class="p">,</span>         <span class="c1"># Cohere rerank API</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="n">VoyageReranker</span><span class="p">,</span>         <span class="c1"># Voyage AI rerank API</span>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="n">JinaReranker</span><span class="p">,</span>           <span class="c1"># Jina AI rerank API</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="p">)</span>
-</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
-</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">LexicalReranker</span><span class="p">())</span>                          <span class="c1"># offline, no deps</span>
-</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">CrossEncoderReranker</span><span class="p">(</span><span class="s2">&quot;BAAI/bge-reranker-base&quot;</span><span class="p">))</span>  <span class="c1"># local HF</span>
-</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">CohereReranker</span><span class="p">())</span>                          <span class="c1"># needs COHERE_API_KEY</span>
-</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>
-</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="c1"># Custom: any matching callable works — no subclassing required.</span>
-</span><span id="__span-17-14"><a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_reranker</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">candidates</span><span class="p">):</span>
-</span><span id="__span-17-15"><a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(((</span><span class="n">c</span><span class="p">,</span> <span class="n">score</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="__span-17-16"><a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>
-</span><span id="__span-17-17"><a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">my_reranker</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="n">LexicalReranker</span><span class="p">,</span>        <span class="c1"># dependency-free (query-term overlap); offline default</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="n">CrossEncoderReranker</span><span class="p">,</span>   <span class="c1"># local HuggingFace cross-encoder (sentence-transformers)</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="n">CohereReranker</span><span class="p">,</span>         <span class="c1"># Cohere rerank API</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="n">VoyageReranker</span><span class="p">,</span>         <span class="c1"># Voyage AI rerank API</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    <span class="n">JinaReranker</span><span class="p">,</span>           <span class="c1"># Jina AI rerank API</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="p">)</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">LexicalReranker</span><span class="p">())</span>                          <span class="c1"># offline, no deps</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">CrossEncoderReranker</span><span class="p">(</span><span class="s2">&quot;BAAI/bge-reranker-base&quot;</span><span class="p">))</span>  <span class="c1"># local HF</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">CohereReranker</span><span class="p">())</span>                          <span class="c1"># needs COHERE_API_KEY</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="c1"># Custom: any matching callable works — no subclassing required.</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_reranker</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">candidates</span><span class="p">):</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(((</span><span class="n">c</span><span class="p">,</span> <span class="n">score</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="o">-</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="n">question</span><span class="p">,</span> <span class="n">rerank</span><span class="o">=</span><span class="n">my_reranker</span><span class="p">)</span>
 </span></code></pre></div>
 <p>The API rerankers (<code>Cohere</code>/<code>Voyage</code>/<code>Jina</code>) need <code>httpx</code> and read their API key
 from the matching environment variable (e.g. <code>COHERE_API_KEY</code>) or an explicit
@@ -3727,15 +3848,15 @@ needs <code>sentence-transformers</code> but runs offline. A reranker may return
 (e.g. its own <code>top_n</code>); <code>context()</code> packs exactly the order and subset it
 returns.</p>
 <p>Mutating a bundle (agent-memory write path):</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>               <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;draft&quot;</span><span class="p">])</span>   <span class="c1"># embedded + FTS-indexed</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">Revised…&quot;</span><span class="p">,</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>                  <span class="n">status</span><span class="o">=</span><span class="s2">&quot;reviewed&quot;</span><span class="p">)</span>                   <span class="c1"># partial update; re-embeds</span>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>      <span class="c1"># None removes a field</span>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;builds on&quot;</span><span class="p">)</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="n">kb</span><span class="o">.</span><span class="n">cite</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/paper&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;source&quot;</span><span class="p">)</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="n">kb</span><span class="o">.</span><span class="n">remove_concept</span><span class="p">(</span><span class="s2">&quot;notes/old&quot;</span><span class="p">)</span>
-</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                                              <span class="c1"># persist to markdown</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>               <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;draft&quot;</span><span class="p">])</span>   <span class="c1"># embedded + FTS-indexed</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Notes</span><span class="se">\n</span><span class="s2">Revised…&quot;</span><span class="p">,</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>                  <span class="n">status</span><span class="o">=</span><span class="s2">&quot;reviewed&quot;</span><span class="p">)</span>                   <span class="c1"># partial update; re-embeds</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>      <span class="c1"># None removes a field</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;builds on&quot;</span><span class="p">)</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="n">kb</span><span class="o">.</span><span class="n">cite</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com/paper&quot;</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="s2">&quot;source&quot;</span><span class="p">)</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="n">kb</span><span class="o">.</span><span class="n">remove_concept</span><span class="p">(</span><span class="s2">&quot;notes/old&quot;</span><span class="p">)</span>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                                              <span class="c1"># persist to markdown</span>
 </span></code></pre></div>
 <p><code>update_concept</code> changes only the fields you pass (including <code>type</code>, which
 relabels the node, and any producer-defined frontmatter key); the FTS index and
@@ -3748,12 +3869,12 @@ a hallucinated one if edits always land in place. <code>supersede()</code> and
 <code>conflicts_with()</code> give the write path the <strong>append-only-on-meaning</strong> discipline
 from the OKF trust model: corrections create a new concept and link it to the
 old one, rather than rewriting the old one's meaning.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">new</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;decisions/0002-use-hnswlib&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span>
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>                      <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Use hnswlib for ANN&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Context</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">)</span>
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">supersede</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;scaled past 50k vectors&quot;</span><span class="p">)</span>
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
-</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">conflicts_with</span><span class="p">(</span><span class="s2">&quot;glossary/latency&quot;</span><span class="p">,</span> <span class="s2">&quot;glossary/throughput&quot;</span><span class="p">,</span>
-</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>                   <span class="n">note</span><span class="o">=</span><span class="s2">&quot;one source defines these interchangeably&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">new</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;decisions/0002-use-hnswlib&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>                      <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Use hnswlib for ANN&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Context</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">)</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">supersede</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;scaled past 50k vectors&quot;</span><span class="p">)</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">conflicts_with</span><span class="p">(</span><span class="s2">&quot;glossary/latency&quot;</span><span class="p">,</span> <span class="s2">&quot;glossary/throughput&quot;</span><span class="p">,</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>                   <span class="n">note</span><span class="o">=</span><span class="s2">&quot;one source defines these interchangeably&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>supersede(old, new)</code> sets <code>status="superseded"</code> / <code>superseded_by</code> on <code>old</code>,
 appends to <code>supersedes</code> on <code>new</code>, and links <code>new -[:SUPERSEDES]-&gt; old</code> (typed,
@@ -3768,10 +3889,10 @@ without changing either.</p>
 (<code>include_superseded=True</code> opts back in), so retrieval never hands an agent a
 retracted claim as if it were current truth — while <code>concepts()</code>/<code>concept()</code>
 still surface them for provenance and history browsing.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">is_superseded</span>   <span class="c1"># True</span>
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">superseded_by</span>   <span class="c1"># &#39;decisions/0002-use-hnswlib&#39;</span>
-</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">new</span><span class="o">.</span><span class="n">supersedes</span>                                               <span class="c1"># [&#39;decisions/0001-use-bruteforce&#39;]</span>
-</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;glossary/latency&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">conflicts</span><span class="p">()</span>                   <span class="c1"># [Concept(&#39;glossary/throughput&#39;)]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">is_superseded</span>   <span class="c1"># True</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-bruteforce&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">superseded_by</span>   <span class="c1"># &#39;decisions/0002-use-hnswlib&#39;</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">new</span><span class="o">.</span><span class="n">supersedes</span>                                               <span class="c1"># [&#39;decisions/0001-use-bruteforce&#39;]</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;glossary/latency&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">conflicts</span><span class="p">()</span>                   <span class="c1"># [Concept(&#39;glossary/throughput&#39;)]</span>
 </span></code></pre></div>
 <h3 id="review-queue-propose-approve-reject">Review queue: <code>propose()</code>, <code>approve()</code>, <code>reject()</code></h3>
 <p><code>add_concept()</code> always writes immediately — right for a human curating the
@@ -3779,13 +3900,13 @@ bundle, or a pipeline you trust. An autonomous agent proposing <em>new</em> fact
 a different trust level: it might be duplicating something that already
 exists, or contradicting it under a different id. <code>propose()</code> is the
 agent-facing entry point that gates on that:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">propose</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span>
-</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>                     <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Use hnswlib for ANN&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Context</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">)</span>
-</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
-</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Proposal</span><span class="p">):</span>
-</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="n">result</span><span class="o">.</span><span class="n">similar</span>          <span class="c1"># [{&#39;concept_id&#39;, &#39;title&#39;, &#39;score&#39;, &#39;via&#39;}, ...]</span>
-</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    <span class="n">kb</span><span class="o">.</span><span class="n">approve</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>       <span class="c1"># materializes it (same node id) — or:</span>
-</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    <span class="n">kb</span><span class="o">.</span><span class="n">reject</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;duplicate of 0003&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">propose</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Decision&quot;</span><span class="p">,</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>                     <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Use hnswlib for ANN&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;# Context</span><span class="se">\n</span><span class="s2">...&quot;</span><span class="p">)</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Proposal</span><span class="p">):</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    <span class="n">result</span><span class="o">.</span><span class="n">similar</span>          <span class="c1"># [{&#39;concept_id&#39;, &#39;title&#39;, &#39;score&#39;, &#39;via&#39;}, ...]</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    <span class="n">kb</span><span class="o">.</span><span class="n">approve</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>       <span class="c1"># materializes it (same node id) — or:</span>
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>    <span class="n">kb</span><span class="o">.</span><span class="n">reject</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;duplicate of 0003&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Three modes, controlled by <code>auto_approve</code>:</p>
 <ul>
@@ -3805,24 +3926,24 @@ round-trip to markdown while undecided. It carries no links/citations of its
 own; wire those up with <code>link()</code>/<code>cite()</code> after approval. An id collision
 with an existing concept always raises — that's a hard conflict, not a
 similarity judgment call, so it isn't staged for review either.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">pending_reviews</span><span class="p">()</span>                    <span class="c1"># [Proposal, ...], ordered by id</span>
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="n">kb</span><span class="o">.</span><span class="n">approve</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">)</span>  <span class="c1"># or an id string</span>
-</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">reject</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;duplicate of 0003&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">pending_reviews</span><span class="p">()</span>                    <span class="c1"># [Proposal, ...], ordered by id</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">kb</span><span class="o">.</span><span class="n">approve</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">)</span>  <span class="c1"># or an id string</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">reject</span><span class="p">(</span><span class="s2">&quot;decisions/0004-use-hnswlib&quot;</span><span class="p">,</span> <span class="n">note</span><span class="o">=</span><span class="s2">&quot;duplicate of 0003&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="changelog-log_entry-and-autolog">Changelog: <code>log_entry()</code> and autolog</h3>
 <p>An agent that writes memory should also leave a history. <code>log_entry()</code> appends
 a changelog entry (a <code>LogEntry</code> node, SPEC §7) that <code>save()</code> serializes to the
 scope's <code>log.md</code> — and <code>autolog=True</code> at load time does it automatically for
 every <code>add_concept</code> / <code>update_concept</code> / <code>remove_concept</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
-</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">)</span>
-</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Refined.&quot;</span><span class="p">)</span>
-</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log_entry</span><span class="p">(</span><span class="s2">&quot;Consolidated duplicate notes.&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;Update&quot;</span><span class="p">,</span>
-</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>             <span class="n">concepts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">])</span>          <span class="c1"># manual entry, MENTIONS the concept</span>
-</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
-</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                    <span class="c1"># entries newest first, including the imported history</span>
-</span><span id="__span-23-9"><a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                   <span class="c1"># regenerates log.md per scope (git-diffable history)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Note&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;An idea&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="p">)</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">update_concept</span><span class="p">(</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Refined.&quot;</span><span class="p">)</span>
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log_entry</span><span class="p">(</span><span class="s2">&quot;Consolidated duplicate notes.&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;Update&quot;</span><span class="p">,</span>
+</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>             <span class="n">concepts</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;notes/idea&quot;</span><span class="p">])</span>          <span class="c1"># manual entry, MENTIONS the concept</span>
+</span><span id="__span-25-7"><a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>
+</span><span id="__span-25-8"><a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                    <span class="c1"># entries newest first, including the imported history</span>
+</span><span id="__span-25-9"><a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>                   <span class="c1"># regenerates log.md per scope (git-diffable history)</span>
 </span></code></pre></div>
 <p>Autolog entries embed a markdown link to the concept
 (<code>**Creation**: Created [An idea](/notes/idea.md).</code>), so <code>MENTIONS</code> edges
@@ -3839,17 +3960,17 @@ markdown — the edges remain queryable in the graph regardless.</p>
 want to do once. Back the bundle with a database <em>file</em> and persist the
 embeddings, then later sessions <code>open()</code> the file directly: no markdown
 parsing, no re-embedding.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1"># Session 1 — import once, persist graph + embeddings.</span>
-</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
-</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    <span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span>
-</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>    <span class="n">db</span><span class="o">=</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span>
-</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>    <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span>
-</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    <span class="n">embed_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;store_embeddings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
-</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="p">)</span>
-</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>
-</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="c1"># Session 2+ — open the database file; the vector index rehydrates from it.</span>
-</span><span id="__span-24-10"><a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
-</span><span id="__span-24-11"><a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">)</span>   <span class="c1"># semantic, no re-embedding</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1"># Session 1 — import once, persist graph + embeddings.</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    <span class="s2">&quot;path/to/bundle&quot;</span><span class="p">,</span>
+</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>    <span class="n">db</span><span class="o">=</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span>
+</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span>
+</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    <span class="n">embed_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;store_embeddings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+</span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="p">)</span>
+</span><span id="__span-26-8"><a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>
+</span><span id="__span-26-9"><a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="c1"># Session 2+ — open the database file; the vector index rehydrates from it.</span>
+</span><span id="__span-26-10"><a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;kb.db&quot;</span><span class="p">),</span> <span class="n">source_path</span><span class="o">=</span><span class="s2">&quot;path/to/bundle&quot;</span><span class="p">)</span>
+</span><span id="__span-26-11"><a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">)</span>   <span class="c1"># semantic, no re-embedding</span>
 </span></code></pre></div>
 <p>Pass <code>embed=</code> to <code>open()</code> only when the embedding function is a custom one the
 registry cannot rebuild by name (built-ins such as the SentenceTransformer
@@ -3864,12 +3985,12 @@ db=GrafitoDatabase("kb.db"), embed=embedder, incremental=True)</code> re-parses 
 re-embeds only what changed since the last <code>load()</code>.</p>
 <p>Materializing the directory tree and history (opt-in) lets you traverse the
 hierarchy as a graph and query the changelog:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
-</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
-</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
-</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
-</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">directory_nodes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">import_log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">()</span>                 <span class="c1"># {&#39;subdirs&#39;: [&#39;decisions&#39;, ...], &#39;concepts&#39;: [...]}</span>
+</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">children</span><span class="p">(</span><span class="s2">&quot;decisions&quot;</span><span class="p">)</span>      <span class="c1"># one level down, via CONTAINS edges</span>
+</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">()</span>                      <span class="c1"># all log.md entries, newest first</span>
+</span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;decisions/0001-use-sqlite&quot;</span><span class="p">)</span>   <span class="c1"># entries that mention this concept</span>
 </span></code></pre></div>
 <p><code>directory_nodes=True</code> adds <code>Directory</code> nodes + <code>CONTAINS</code> edges (root → subdir →
 concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked to mentioned concepts via
@@ -3894,7 +4015,7 @@ concept); <code>import_log=True</code> adds <code>LogEntry</code> nodes linked t
 <p>Both runnable examples use the <code>OKFBundle</code> façade. <code>examples/okf/okf_import.py</code> is a
 short intro (load → concept/links → search → save with <code>viz.html</code>) over the
 tabular sample bundle in <code>examples/okf/okf_bundle/</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>python<span class="w"> </span>examples/okf/okf_import.py
 </span></code></pre></div>
 <p>OKF shines on <em>narrative</em>, cross-linked knowledge rather than tabular data.
 <code>examples/okf/okf_knowledge_base/</code> is a small engineering knowledge base —
@@ -3904,7 +4025,7 @@ the directory tree, aggregation via the <code>kb.execute</code> escape hatch, se
 search, grounded <code>context()</code> assembly with a reranker, the agent-memory write
 path, and visualization (it retrieves a "slow query" runbook for the query
 <em>"how do I make a query run faster"</em>, which never uses those words):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>python<span class="w"> </span>examples/okf/okf_knowledge_base.py
 </span></code></pre></div>
 <h2 id="agentic-graphrag-grafitookfagent">Agentic GraphRAG: <code>grafito.okf.agent</code></h2>
 <p>Where <code>context()</code> is <em>one-shot</em> GraphRAG, <code>grafito.okf.agent</code> lets the <strong>model
@@ -3918,8 +4039,13 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
   into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
   <code>{"error": ...}</code> for the model to react to instead of killing the loop.</li>
 <li><strong><code>run_agent(kb, question, chat=...)</code></strong> — a minimal tool-calling loop. One-shot
-  by default; pass <code>messages=</code> to thread a multi-turn conversation, or
-  <code>extra_tools=</code> to add app-specific tools (see below for both).</li>
+  by default; pass <code>messages=</code> to thread a multi-turn conversation, <code>tools=</code> to
+  inject a scoped <code>BundleTools</code>, or <code>extra_tools=</code> to add app-specific tools.
+  Returns an <strong><code>AgentRun</code></strong> (below), not a bare string.</li>
+<li><strong><code>AgentRun</code></strong> — the answer plus what the run cost: <code>turns</code>, every <code>ToolCall</code>
+  (name, args, result size, error), aggregated token <code>usage</code>, and the final
+  <code>messages</code>. <code>str(run)</code> is the answer; <code>run.summary()</code> gives the efficiency
+  numbers. See <a href="#measuring-a-run">Measuring a run</a>.</li>
 <li><strong><code>Chat</code></strong> — the model contract: <em>any callable</em>
   <code>(messages, tools) -&gt; assistant message</code> in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like <code>rerank=</code>.</li>
@@ -3938,11 +4064,12 @@ drive the exploration itself</strong> through OpenAI-style tool calls:</p>
   resolve from <code>ANTHROPIC_API_KEY</code> (or an <code>ant auth login</code> profile), and
   <code>ANTHROPIC_MODEL</code> overrides the model.</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span><span class="p">,</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">run_agent</span>
-</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
-</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="n">answer</span> <span class="o">=</span> <span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">OpenAIChat</span><span class="p">())</span>
-</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>   <span class="c1"># the agent&#39;s remember()ed notes + changelog land in git</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span><span class="p">,</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">run_agent</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>
+</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;bundle&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">,</span> <span class="n">autolog</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="n">run</span> <span class="o">=</span> <span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">OpenAIChat</span><span class="p">())</span>
+</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">run</span><span class="p">)</span>  <span class="c1"># str(run) is the answer</span>
+</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>   <span class="c1"># the agent&#39;s remember()ed notes + changelog land in git</span>
 </span></code></pre></div>
 <h3 id="multi-turn-conversations">Multi-turn conversations</h3>
 <p><code>run_agent</code> is one-shot by default: each call builds a fresh <code>messages</code> list
@@ -3950,39 +4077,113 @@ and discards it on return. Pass a list via <code>messages=</code> to thread a
 conversation across calls instead — <code>run_agent</code> extends it in place with this
 turn's question, tool calls, and answer, so the next call (same list) can
 refer back to earlier turns without re-exploring the bundle:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="n">history</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
-</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;and what did we rule out?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="n">history</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;and what did we rule out?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">messages</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Tool results (e.g. full concept bodies from <code>open</code>) accumulate in <code>history</code>
 turn over turn, so a long-running conversation costs more tokens each turn —
 fine for a modest back-and-forth, but a very long session will eventually
 need trimming or summarization of older turns (not handled automatically).</p>
+<h3 id="measuring-a-run">Measuring a run</h3>
+<p><code>run_agent</code> returns an <code>AgentRun</code>, so the cost of agentic exploration is
+observable rather than inferred. <code>str(run)</code> is the answer; the rest is the
+receipt:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="n">run</span> <span class="o">=</span> <span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="s2">&quot;why did we pick SQLite?&quot;</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>
+</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="n">run</span><span class="o">.</span><span class="n">answer</span>          <span class="c1"># the model&#39;s final text (&quot;&quot; if stopped_early)</span>
+</span><span id="__span-32-4"><a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="n">run</span><span class="o">.</span><span class="n">stopped_early</span>   <span class="c1"># True when max_turns ran out before an answer</span>
+</span><span id="__span-32-5"><a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="n">run</span><span class="o">.</span><span class="n">turns</span>           <span class="c1"># model calls made</span>
+</span><span id="__span-32-6"><a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="n">run</span><span class="o">.</span><span class="n">tool_calls</span>      <span class="c1"># [ToolCall(turn, name, args, result_bytes, error), ...]</span>
+</span><span id="__span-32-7"><a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="n">run</span><span class="o">.</span><span class="n">usage</span>           <span class="c1"># aggregated tokens, {} if the Chat reports none</span>
+</span><span id="__span-32-8"><a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="n">run</span><span class="o">.</span><span class="n">messages</span>        <span class="c1"># the conversation (the same list you passed as messages=)</span>
+</span><span id="__span-32-9"><a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>
+</span><span id="__span-32-10"><a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+</span><span id="__span-32-11"><a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="c1"># {&#39;turns&#39;: 3, &#39;tool_calls&#39;: 4, &#39;errors&#39;: 1, &#39;repeated_calls&#39;: 0,</span>
+</span><span id="__span-32-12"><a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a><span class="c1">#  &#39;result_bytes&#39;: 8214,</span>
+</span><span id="__span-32-13"><a id="__codelineno-32-13" name="__codelineno-32-13" href="#__codelineno-32-13"></a><span class="c1">#  &#39;by_tool&#39;: {&#39;search&#39;: {&#39;calls&#39;: 2, &#39;errors&#39;: 0, &#39;bytes&#39;: 731},</span>
+</span><span id="__span-32-14"><a id="__codelineno-32-14" name="__codelineno-32-14" href="#__codelineno-32-14"></a><span class="c1">#              &#39;open&#39;:   {&#39;calls&#39;: 2, &#39;errors&#39;: 1, &#39;bytes&#39;: 7483}},</span>
+</span><span id="__span-32-15"><a id="__codelineno-32-15" name="__codelineno-32-15" href="#__codelineno-32-15"></a><span class="c1">#  &#39;usage&#39;: {&#39;input_tokens&#39;: 18400, &#39;cached_input_tokens&#39;: 12000,</span>
+</span><span id="__span-32-16"><a id="__codelineno-32-16" name="__codelineno-32-16" href="#__codelineno-32-16"></a><span class="c1">#            &#39;cache_write_tokens&#39;: 0, &#39;output_tokens&#39;: 430, &#39;requests&#39;: 3}}</span>
+</span></code></pre></div>
+<p>What each number is actually for:</p>
+<ul>
+<li><strong><code>repeated_calls</code></strong> — invocations with a <code>(name, args)</code> the model already
+  issued in this run. Non-zero means it is re-reading what is already in its
+  context: the most actionable inefficiency signal here.</li>
+<li><strong><code>errors</code> / <code>by_tool[...]['errors']</code></strong> — with a scoped <code>BundleTools</code>, this
+  is how many <code>Unknown concept</code> responses the filter fed the model.</li>
+<li><strong><code>result_bytes</code></strong> — the size of tool output handed back. This is the real
+  driver of per-turn cost, since results stay in <code>messages</code> for the rest of
+  the conversation, and <code>open</code> is usually where it concentrates. Grafito
+  computes it itself, so it is available even with a <code>Chat</code> that reports no
+  tokens.</li>
+<li><strong><code>usage</code></strong> — token counts, normalized across providers:
+  <code>input_tokens</code> is the <em>whole</em> prompt sent that turn (cached parts included),
+  with <code>cached_input_tokens</code> (≈0.1× price) and <code>cache_write_tokens</code> (≈1.25×,
+  Anthropic only) broken out. Summing <code>input_tokens</code> across turns is the real
+  billed cost, not the size of the context — a tool loop re-sends the full
+  history every turn. Read the cached slice before concluding a long
+  conversation was expensive.</li>
+</ul>
+<p><code>usage</code> stays <code>{}</code> for an injected <code>Chat</code> that reports nothing; the loop never
+invents numbers. <code>OpenAIChat</code> and <code>AnthropicChat</code> both report.</p>
+<p><code>verbose=True</code> prints the same summary as a closing line after the trace.</p>
+<h3 id="scoping-an-agent-to-part-of-the-bundle">Scoping an agent to part of the bundle</h3>
+<p><code>where=</code>/<code>tag=</code> also apply to the agentic path, by scoping the whole toolset:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">BundleTools</span><span class="p">,</span> <span class="n">run_agent</span>
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>
+</span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="n">tools</span> <span class="o">=</span> <span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;confidentiality&quot;</span><span class="p">:</span> <span class="s2">&quot;public&quot;</span><span class="p">})</span>
+</span><span id="__span-33-4"><a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The filter is <strong>fixed by the application, not chosen by the model</strong> — it appears
+in no tool schema, so the agent cannot widen or disable it. Every read path
+honours it (<code>browse</code>, <code>search</code>, <code>open</code>, <code>follow</code>, <code>history</code>), which is the whole
+point: a filter covering only <code>search</code> would be theatre, because the model reads
+a concept id out of a link and opens it directly. Excluded concepts are also
+stripped from the edge lists <code>open</code> returns and from <code>follow</code> results, and the
+system prompt is built from the <em>filtered</em> layer counts.</p>
+<p>A hidden concept is reported exactly like a nonexistent one
+(<code>{"error": "Unknown concept: ..."}</code>), so the agent cannot probe for what exists
+behind the filter.</p>
+<div class="admonition warning">
+<p class="admonition-title">The filter is an access boundary, not redaction</p>
+<p>It governs <em>structure and retrieval</em> — what can be listed, matched, opened,
+and traversed. It cannot redact prose inside a concept you chose to show: a
+visible body linking to a hidden concept still contains that markdown, and a
+<code>log.md</code> line may name one. The model may learn a hidden id exists, though
+every tool refuses to open it. If a body must not mention something, that
+belongs in the bundle.</p>
+</div>
+<p>Likewise, <code>remember</code> writes plain notes that do <strong>not</strong> inherit the filter's
+fields — so with a filter active the agent may not read back what it just wrote.
+Grafito deliberately does not stamp the filter's values onto new notes, since
+that would let an agent mark its own output <code>status: approved</code>.</p>
 <h3 id="custom-tools">Custom tools</h3>
 <p><code>run_agent</code> always includes <code>BundleTools(kb)</code> — browse/search/open/follow/
 history/remember. Pass <code>extra_tools=</code> with your own <code>ToolSet</code>\ s to add
 tools that have nothing to do with the bundle, e.g. sending a message or
 calling an internal API. No base class required, just the same
 <code>schemas</code>/<code>call</code> shape as <code>BundleTools</code>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackTools</span><span class="p">:</span>
-</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="n">schemas</span> <span class="o">=</span> <span class="p">[{</span>
-</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
-</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>        <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;notify_channel&quot;</span><span class="p">,</span>
-</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Post a message to the team Slack channel.&quot;</span><span class="p">,</span>
-</span><span id="__span-30-7"><a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-30-8"><a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
-</span><span id="__span-30-9"><a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>                <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}},</span>
-</span><span id="__span-30-10"><a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a>                <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
-</span><span id="__span-30-11"><a id="__codelineno-30-11" name="__codelineno-30-11" href="#__codelineno-30-11"></a>            <span class="p">},</span>
-</span><span id="__span-30-12"><a id="__codelineno-30-12" name="__codelineno-30-12" href="#__codelineno-30-12"></a>        <span class="p">},</span>
-</span><span id="__span-30-13"><a id="__codelineno-30-13" name="__codelineno-30-13" href="#__codelineno-30-13"></a>    <span class="p">}]</span>
-</span><span id="__span-30-14"><a id="__codelineno-30-14" name="__codelineno-30-14" href="#__codelineno-30-14"></a>
-</span><span id="__span-30-15"><a id="__codelineno-30-15" name="__codelineno-30-15" href="#__codelineno-30-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-30-16"><a id="__codelineno-30-16" name="__codelineno-30-16" href="#__codelineno-30-16"></a>        <span class="n">post_to_slack</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">])</span>  <span class="c1"># your own integration</span>
-</span><span id="__span-30-17"><a id="__codelineno-30-17" name="__codelineno-30-17" href="#__codelineno-30-17"></a>        <span class="k">return</span> <span class="s1">&#39;{&quot;posted&quot;: true}&#39;</span>
-</span><span id="__span-30-18"><a id="__codelineno-30-18" name="__codelineno-30-18" href="#__codelineno-30-18"></a>
-</span><span id="__span-30-19"><a id="__codelineno-30-19" name="__codelineno-30-19" href="#__codelineno-30-19"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">extra_tools</span><span class="o">=</span><span class="p">[</span><span class="n">SlackTools</span><span class="p">()])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlackTools</span><span class="p">:</span>
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    <span class="n">schemas</span> <span class="o">=</span> <span class="p">[{</span>
+</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
+</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>        <span class="s2">&quot;function&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;notify_channel&quot;</span><span class="p">,</span>
+</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Post a message to the team Slack channel.&quot;</span><span class="p">,</span>
+</span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="__span-34-8"><a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+</span><span id="__span-34-9"><a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>                <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span><span class="p">}},</span>
+</span><span id="__span-34-10"><a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>                <span class="s2">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
+</span><span id="__span-34-11"><a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a>            <span class="p">},</span>
+</span><span id="__span-34-12"><a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>        <span class="p">},</span>
+</span><span id="__span-34-13"><a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>    <span class="p">}]</span>
+</span><span id="__span-34-14"><a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a>
+</span><span id="__span-34-15"><a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-34-16"><a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a>        <span class="n">post_to_slack</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">])</span>  <span class="c1"># your own integration</span>
+</span><span id="__span-34-17"><a id="__codelineno-34-17" name="__codelineno-34-17" href="#__codelineno-34-17"></a>        <span class="k">return</span> <span class="s1">&#39;{&quot;posted&quot;: true}&#39;</span>
+</span><span id="__span-34-18"><a id="__codelineno-34-18" name="__codelineno-34-18" href="#__codelineno-34-18"></a>
+</span><span id="__span-34-19"><a id="__codelineno-34-19" name="__codelineno-34-19" href="#__codelineno-34-19"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">,</span> <span class="n">extra_tools</span><span class="o">=</span><span class="p">[</span><span class="n">SlackTools</span><span class="p">()])</span>
 </span></code></pre></div>
 <p>Tool names must be unique across <code>BundleTools</code> and every <code>extra_tools</code>
 entry — a collision (e.g. defining your own <code>search</code>) raises <code>ValueError</code>
@@ -3990,20 +4191,20 @@ before the model is ever called, rather than one tool silently shadowing
 another. A tool call for a name no toolset owns comes back as
 <code>{"error": ...}</code>, same as any other tool error the model can react to.</p>
 <p>For a non-OpenAI-format provider, the adapter is a few lines — e.g. litellm:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
-</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>
-</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
-</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
-</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
-</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
-</span><span id="__span-31-7"><a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>
-</span><span id="__span-31-8"><a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">litellm</span>
+</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>
+</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="p">):</span>
+</span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">litellm</span><span class="o">.</span><span class="n">completion</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-5&quot;</span><span class="p">,</span>
+</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>                                  <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">)</span>
+</span><span id="__span-35-6"><a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+</span><span id="__span-35-7"><a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>
+</span><span id="__span-35-8"><a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a><span class="n">run_agent</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="n">chat</span><span class="o">=</span><span class="n">chat</span><span class="p">)</span>
 </span></code></pre></div>
 <p><code>examples/okf/okf_agent.py</code> is the runnable end-to-end walkthrough (explore →
 answer with concept citations → remember a note → save bundle + <code>log.md</code>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
-</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
-</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
+</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
+</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
 </span></code></pre></div>
 
 
