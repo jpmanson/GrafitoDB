@@ -41,6 +41,7 @@ import os
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from ..filters import PropertyFilterGroup
     from .bundle import OKFBundle
 
 DEFAULT_SYSTEM_PROMPT = """\
@@ -96,10 +97,64 @@ class BundleTools:
     one tool call and returns its JSON result. Tool errors (e.g. a wrong
     concept id) are returned as ``{"error": ...}`` for the model to react to,
     instead of raising.
+
+    ``where``/``tag`` scope the whole toolset to a subset of the bundle, with the
+    same semantics as :meth:`OKFBundle.search`. The filter is **fixed by the
+    application, not chosen by the model**: it is not exposed in any tool schema,
+    so the agent cannot widen or disable it. Every read path honours it —
+    ``browse``, ``search``, ``open``, ``follow`` and ``history`` — because a
+    filter that only covered ``search`` would be theatre: the model reads a
+    concept id out of a link and opens it directly.
+
+    ::
+
+        tools = BundleTools(kb, where={"confidentiality": "public"})
+        run_agent(kb, question, chat=chat, tools=tools)
+
+    A concept the filter excludes is reported exactly like a nonexistent one
+    (``Unknown concept: ...``), so the agent cannot probe for the existence of
+    hidden concepts by opening ids it saw elsewhere.
+
+    The filter governs *structure and retrieval*: which concepts can be listed,
+    matched, opened, and traversed. It cannot redact **prose inside a concept
+    you chose to show**. A visible concept whose body links to a hidden one
+    (``[Secret](/docs/secret.md)``) still carries that markdown in its ``body``,
+    and a ``log.md`` line may name a hidden concept the same way — so the model
+    can learn a hidden id exists, even though every tool refuses to open it.
+    Treat the filter as an access boundary on knowledge, not as redaction of
+    text; if a body must not mention something, that belongs in the bundle.
+
+    Finally, ``remember`` writes plain notes: they do not inherit the filter's
+    fields, so with a filter active the agent may not be able to read back what
+    it just wrote. Grafito does not silently stamp the filter's values onto new
+    notes, since that would let an agent mark its own output ``status: approved``.
     """
 
-    def __init__(self, kb: "OKFBundle") -> None:
+    def __init__(
+        self,
+        kb: "OKFBundle",
+        *,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
+    ) -> None:
         self.kb = kb
+        self.tag = tag
+        self.where = where
+
+    def _visible(self) -> set[str] | None:
+        """Concept ids this toolset may expose, or ``None`` when unfiltered.
+
+        Recomputed per call rather than cached: ``remember`` mutates the bundle
+        mid-conversation, and a stale allow-list would be wrong in both
+        directions.
+        """
+        return self.kb._filter_concept_ids(tag=self.tag, where=self.where)
+
+    def _require_visible(self, concept_id: str) -> None:
+        """Raise as if the concept did not exist when the filter excludes it."""
+        visible = self._visible()
+        if visible is not None and concept_id not in visible:
+            raise ValueError(f"Unknown concept: {concept_id}")
 
     schemas = [
         {
@@ -215,11 +270,27 @@ class BundleTools:
             result = {"error": str(exc)}
         return json.dumps(result, ensure_ascii=False)
 
+    def layers(self) -> dict:
+        """Top-level layers with concept counts, honouring the toolset's filter.
+
+        Used to orient the model in the system prompt: an unfiltered
+        ``kb.layers()`` would leak the size of what the filter hides.
+        """
+        if self.where is None and self.tag is None:
+            return self.kb.layers()
+        listing = self.kb.index(tag=self.tag, where=self.where)
+        layers = dict(listing["subdirs"])
+        if listing["concepts"]:
+            # Root-level concepts are their own layer in kb.layers(); keep the
+            # filtered view shaped the same so the prompt stays comparable.
+            layers["."] = len(listing["concepts"])
+        return layers
+
     def _browse(self, layer: str | None = None) -> dict:
-        return self.kb.index(layer)
+        return self.kb.index(layer, tag=self.tag, where=self.where)
 
     def _search(self, query: str, k: int = 5) -> list[dict]:
-        hits = self.kb.search(query, k=k, mode="hybrid")
+        hits = self.kb.search(query, k=k, mode="hybrid", tag=self.tag, where=self.where)
         return [
             {
                 "id": h.concept.id,
@@ -231,12 +302,18 @@ class BundleTools:
         ]
 
     def _open(self, concept_id: str) -> dict:
+        self._require_visible(concept_id)
         concept = self.kb[concept_id]
         edges = self.kb.execute(
             "MATCH (a)-[r]->(b) WHERE a.concept_id = $cid AND b.concept_id IS NOT NULL "
             "RETURN type(r) AS type, b.concept_id AS target",
             cid=concept_id,
         )
+        # Links to hidden concepts are dropped too — an edge list is a directory
+        # of ids, and leaking one invites the model to try opening it.
+        visible = self._visible()
+        if visible is not None:
+            edges = [e for e in edges if e["target"] in visible]
         return {
             "id": concept.id,
             "type": concept.type,
@@ -251,11 +328,17 @@ class BundleTools:
     def _follow(
         self, concept_id: str, direction: str = "out", type: str | None = None
     ) -> list[dict]:
+        self._require_visible(concept_id)
         concept = self.kb[concept_id]
         neighbors = concept.links(type=type) if direction == "out" else concept.linked_by(type=type)
+        visible = self._visible()
+        if visible is not None:
+            neighbors = [c for c in neighbors if c.id in visible]
         return [{"id": c.id, "title": c.title, "description": c.description} for c in neighbors]
 
     def _history(self, concept_id: str | None = None) -> list[dict]:
+        if concept_id is not None:
+            self._require_visible(concept_id)
         return self.kb.log(concept_id)
 
     def _remember(
@@ -530,6 +613,7 @@ def run_agent(
     question: str,
     *,
     chat: Chat,
+    tools: "BundleTools | None" = None,
     extra_tools: "list[ToolSet] | None" = None,
     messages: list[dict] | None = None,
     system: str | None = None,
@@ -544,6 +628,13 @@ def run_agent(
     through :class:`BundleTools` — including the ``remember`` write path, so
     with ``autolog=True`` the bundle records what the agent learned. Returns
     the model's final text (or a note when ``max_turns`` is exhausted).
+
+    ``tools`` injects a pre-configured :class:`BundleTools` instead of the
+    default one — the way to scope an agent to a subset of the bundle, since
+    the filter belongs to the application rather than the model::
+
+        run_agent(kb, question, chat=chat,
+                  tools=BundleTools(kb, where={"confidentiality": "public"}))
 
     ``extra_tools`` adds app-specific :class:`ToolSet`\\ s (own ``schemas``
     plus a matching ``call``) alongside the bundle's own, for tools that
@@ -562,7 +653,8 @@ def run_agent(
     bodies from ``open``) accumulate in ``messages`` turn over turn, so a
     long-running conversation costs more tokens each turn.
     """
-    toolsets: list[ToolSet] = [BundleTools(kb), *(extra_tools or [])]
+    bundle_tools = tools if tools is not None else BundleTools(kb)
+    toolsets: list[ToolSet] = [bundle_tools, *(extra_tools or [])]
     schemas: list[dict] = []
     dispatch: dict[str, ToolSet] = {}
     for toolset in toolsets:
@@ -577,7 +669,11 @@ def run_agent(
         messages = []
     if not messages:
         messages.append(
-            {"role": "system", "content": system or DEFAULT_SYSTEM_PROMPT.format(layers=kb.layers())}
+            {
+                "role": "system",
+                "content": system
+                or DEFAULT_SYSTEM_PROMPT.format(layers=bundle_tools.layers()),
+            }
         )
     messages.append({"role": "user", "content": question})
     for _ in range(max_turns):

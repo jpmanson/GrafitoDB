@@ -308,3 +308,125 @@ def test_anthropic_chat_requires_sdk_or_builds():
     with AnthropicChat(api_key="x", model="m") as chat:
         assert chat.model == "m"
         assert isinstance(chat, Chat)
+
+
+# --- scoped toolsets (where=/tag=) ------------------------------------------
+
+
+@pytest.fixture
+def scoped_kb(tmp_path) -> OKFBundle:
+    """Bundle with a public/restricted split, for toolset-scoping tests."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "public.md").write_text(
+        "---\ntype: Doc\ntitle: Public doc\nconfidentiality: public\n---\n\n"
+        "Deployment runbook.\n\n# Links\n[Secret](/docs/secret.md)\n",
+        encoding="utf-8",
+    )
+    (docs / "secret.md").write_text(
+        "---\ntype: Doc\ntitle: Secret doc\nconfidentiality: restricted\n---\n\n"
+        "Deployment credentials rotation.\n",
+        encoding="utf-8",
+    )
+    bundle = OKFBundle.load(str(tmp_path), import_log=True)
+    yield bundle
+    bundle.db.close()
+
+
+@pytest.fixture
+def scoped_tools(scoped_kb) -> BundleTools:
+    return BundleTools(scoped_kb, where={"confidentiality": "public"})
+
+
+def test_scoped_tools_hide_concepts_from_browse_and_search(scoped_tools):
+    listing = json.loads(scoped_tools.call("browse", {"layer": "docs"}))
+    assert [c["id"] for c in listing["concepts"]] == ["docs/public"]
+    hits = json.loads(scoped_tools.call("search", {"query": "deployment"}))
+    assert [h["id"] for h in hits] == ["docs/public"]
+
+
+def test_scoped_tools_refuse_hidden_concept_as_if_absent(scoped_tools):
+    """A filtered concept is indistinguishable from a nonexistent one."""
+    hidden = json.loads(scoped_tools.call("open", {"concept_id": "docs/secret"}))
+    absent = json.loads(scoped_tools.call("open", {"concept_id": "docs/nope"}))
+    assert hidden == {"error": "Unknown concept: docs/secret"}
+    assert absent == {"error": "Unknown concept: docs/nope"}
+
+
+def test_scoped_tools_filter_edges_and_traversal(scoped_tools):
+    # public links to secret, but neither the edge list nor follow exposes it.
+    assert json.loads(scoped_tools.call("open", {"concept_id": "docs/public"}))["links"] == []
+    assert json.loads(scoped_tools.call("follow", {"concept_id": "docs/public"})) == []
+    assert json.loads(scoped_tools.call("follow", {"concept_id": "docs/secret"})) == {
+        "error": "Unknown concept: docs/secret"
+    }
+
+
+def test_scoped_tools_never_expose_hidden_content(scoped_tools):
+    """Structure is filtered; hidden titles and bodies never appear."""
+    blob = " ".join(
+        [
+            scoped_tools.call("browse", {"layer": "docs"}),
+            scoped_tools.call("search", {"query": "deployment credentials rotation"}),
+            scoped_tools.call("follow", {"concept_id": "docs/public"}),
+            scoped_tools.call("open", {"concept_id": "docs/public"}),
+        ]
+    )
+    assert "Secret doc" not in blob
+    assert "credentials rotation" not in blob
+
+
+def test_scoped_tools_history_refuses_hidden_concept(scoped_tools):
+    assert json.loads(scoped_tools.call("history", {"concept_id": "docs/secret"})) == {
+        "error": "Unknown concept: docs/secret"
+    }
+
+
+def test_scoped_tools_layers_do_not_leak_hidden_counts(scoped_kb, scoped_tools):
+    assert scoped_kb.layers() == {"docs": 2}      # unfiltered sees both
+    assert scoped_tools.layers() == {"docs": 1}   # the prompt sees one
+
+
+def test_unscoped_tools_see_everything(scoped_kb):
+    """No filter means no behaviour change (regression guard)."""
+    tools = BundleTools(scoped_kb)
+    listing = json.loads(tools.call("browse", {"layer": "docs"}))
+    assert [c["id"] for c in listing["concepts"]] == ["docs/public", "docs/secret"]
+    assert "error" not in json.loads(tools.call("open", {"concept_id": "docs/secret"}))
+
+
+def test_run_agent_accepts_injected_scoped_tools(scoped_kb, scoped_tools):
+    """The model cannot reach a hidden concept through the loop either."""
+    chat = ScriptedChat(
+        [
+            {"role": "assistant", "tool_calls": [_tool_call("open", "1", concept_id="docs/secret")]},
+            {"role": "assistant", "content": "I could not find that concept."},
+        ]
+    )
+    answer = run_agent(scoped_kb, "read the secret", chat=chat, tools=scoped_tools)
+    assert answer == "I could not find that concept."
+    tool_messages = [m for m in chat.seen[-1] if m.get("role") == "tool"]
+    assert json.loads(tool_messages[0]["content"]) == {"error": "Unknown concept: docs/secret"}
+    # The system prompt is built from the filtered layers.
+    assert "Secret" not in chat.seen[-1][0]["content"]
+
+
+def test_scoped_layers_keep_root_concepts_visible(tmp_path):
+    """Filtered layers keep kb.layers()' shape, root bucket included."""
+    (tmp_path / "d").mkdir()
+    (tmp_path / "root.md").write_text(
+        "---\ntype: Doc\ntitle: Root\nstatus: approved\n---\n\nbody\n", encoding="utf-8"
+    )
+    (tmp_path / "d" / "x.md").write_text(
+        "---\ntype: Doc\ntitle: X\nstatus: approved\n---\n\nbody\n", encoding="utf-8"
+    )
+    (tmp_path / "d" / "y.md").write_text(
+        "---\ntype: Doc\ntitle: Y\nstatus: draft\n---\n\nbody\n", encoding="utf-8"
+    )
+    bundle = OKFBundle.load(str(tmp_path))
+    try:
+        assert bundle.layers() == {".": 1, "d": 2}
+        scoped = BundleTools(bundle, where={"status": "approved"})
+        assert scoped.layers() == {".": 1, "d": 1}
+    finally:
+        bundle.db.close()

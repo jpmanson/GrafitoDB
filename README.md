@@ -872,6 +872,9 @@ c.cites()                                       # [{'url'|'concept', 'anchor'}, 
 # Retrieve by meaning (semantic / text / hybrid), results as a uniform Hit.
 kb.search("how do I make a query run faster", k=3)
 
+# Filter retrieval on frontmatter (any producer-defined key); several keys AND.
+kb.search("storage engines", where={"status": "approved", "owner": "data-team"})
+
 # Agent-ready context: retrieve, graph-expand, and pack into a token budget,
 # returning prompt-ready text plus the citations that back it. The optional
 # rerank= hook accepts any callable (here a dependency-free lexical reranker;

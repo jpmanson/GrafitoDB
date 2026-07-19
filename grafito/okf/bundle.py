@@ -24,6 +24,7 @@ from .concept import Concept, ContextPack, Hit, Proposal
 
 if TYPE_CHECKING:
     from ..database import GrafitoDatabase
+    from ..filters import PropertyFilterGroup
     from .rerank import Reranker
 
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -276,13 +277,18 @@ class OKFBundle:
         type: str | None = None,
         layer: str | None = None,
         tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
     ) -> list[Concept]:
         """List concepts (ordered by ID), optionally filtered by type/layer/tag.
+
+        ``where`` filters on arbitrary frontmatter, with the same semantics as in
+        :meth:`search` (multiple keys AND together; ``PropertyFilter``/
+        ``PropertyFilterGroup`` add operators and OR).
 
         Filtering runs in SQL — only matching nodes are hydrated, so this stays
         fast on large bundles.
         """
-        rows = self._concept_query("n.id", type=type, layer=layer, tag=tag)
+        rows = self._concept_query("n.id", type=type, layer=layer, tag=tag, where=where)
         return [Concept(self, self._db.get_node(row["id"])) for row in rows]
 
     def __getitem__(self, concept_id: str) -> Concept:
@@ -317,7 +323,13 @@ class OKFBundle:
         ).fetchall()
         return {row["layer"]: int(row["n"]) for row in rows}
 
-    def index(self, layer: str | None = None) -> dict:
+    def index(
+        self,
+        layer: str | None = None,
+        *,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
+    ) -> dict:
         """Reconstruct the OKF index view for a directory (progressive disclosure).
 
         The in-memory equivalent of an ``index.md``: child subdirectories and the
@@ -325,28 +337,23 @@ class OKFBundle:
         bodies** — so an agent can triage before opening any document.
 
         ``layer`` is a directory path (``None``/``""`` = bundle root, ``"decisions"``,
-        ``"references/joins"``, ...). Returns
+        ``"references/joins"``, ...). ``where``/``tag`` filter on frontmatter with
+        the same semantics as in :meth:`search`, so a listing can be narrowed to
+        exactly what retrieval would surface. Returns
         ``{"layer", "subdirs": {name: count}, "concepts": [{"id","title","description","type"}]}``.
         """
         path = (layer or "").strip("/")
         prefix = f"{path}/" if path else ""
-        params: list[Any] = []
-        where = _CONCEPT_SQL
-        if prefix:
-            where += " AND json_extract(n.properties, '$.concept_id') LIKE ? ESCAPE '\\'"
-            params.append(f"{_escape_like(prefix)}%")
         # Listing needs only id/title/description/type — bodies stay on disk.
-        rows = self._db.conn.execute(
-            f"""
-            SELECT json_extract(n.properties, '$.concept_id') AS cid,
-                   json_extract(n.properties, '$.title') AS title,
-                   json_extract(n.properties, '$.description') AS description,
-                   {_FIRST_LABEL_SQL} AS type
-            FROM nodes n WHERE {where}
-            ORDER BY cid
-            """,
-            params,
-        ).fetchall()
+        rows = self._concept_query(
+            f"""json_extract(n.properties, '$.concept_id') AS cid,
+                json_extract(n.properties, '$.title') AS title,
+                json_extract(n.properties, '$.description') AS description,
+                {_FIRST_LABEL_SQL} AS type""",
+            layer=path or None,
+            tag=tag,
+            where=where,
+        )
         subdirs: dict[str, int] = {}
         concepts: list[dict] = []
         for row in rows:
@@ -430,6 +437,8 @@ class OKFBundle:
         mode: str = "auto",
         type: str | None = None,
         layer: str | None = None,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
         include_superseded: bool = False,
     ) -> list[Hit]:
         """Search concepts by text or meaning, with a unified result shape.
@@ -439,27 +448,51 @@ class OKFBundle:
         ``"hybrid"`` degrades to text-only when the bundle has no embeddings;
         ``"semantic"`` requires them (load with ``embed=``).
 
+        ``where`` filters on frontmatter — any producer-defined key, since OKF
+        keeps unknown keys as node properties. It speaks the same dialect as
+        :meth:`~grafito.database.GrafitoDatabase.match_nodes`: several keys in
+        one dict combine with **AND**, and
+        :class:`~grafito.filters.PropertyFilter` /
+        :class:`~grafito.filters.PropertyFilterGroup` add operators and OR::
+
+            kb.search(q, where={"status": "approved", "owner": "data-team"})
+            kb.search(q, where={"timestamp": PropertyFilter.gte("2026-01-01")})
+            kb.search(q, where=PropertyFilterGroup.or_({"status": "approved"},
+                                                        {"status": "ratified"}))
+
+        ``tag`` is separate rather than a ``where`` key because ``tags`` is a
+        list: ``where={"tags": "draft"}`` would compare against the *whole* list
+        and never match, while ``tag="draft"`` tests membership.
+
         Concepts marked ``status="superseded"`` (see :meth:`supersede`) are
         excluded by default, so retrieval never surfaces retracted claims as
-        current truth; pass ``include_superseded=True`` to see them anyway.
+        current truth; pass ``include_superseded=True`` to see them anyway. That
+        exclusion is itself a ``status`` filter, so ``where={"status":
+        "superseded"}`` returns nothing unless you also pass
+        ``include_superseded=True``.
         """
-        if mode == "auto":
-            mode = "semantic" if self._has_vector_index() else "text"
-        elif mode == "hybrid" and not self._has_vector_index():
-            mode = "text"
+        mode = self._resolve_mode(mode)
 
-        # Post-filters (layer, superseded) need over-fetch to keep k results.
-        fetch = k * 4 if (layer or not include_superseded) else k
+        # Post-filters (layer, superseded, tag, and `where` in text mode) need
+        # over-fetch to keep k results.
+        filtered = layer or tag or where or not include_superseded
+        fetch = k * 4 if filtered else k
+
+        # `where` is pushed into the vector search natively; `tag` needs json_each,
+        # so it resolves to an ID set both backends post-filter against.
+        tag_ids = self._filter_ids(tag=tag) if tag is not None else None
 
         if mode == "semantic":
-            hits = self._semantic(query, fetch, type)
+            hits = self._semantic(query, fetch, type, where)
         elif mode == "text":
-            hits = self._text(query, fetch, type)
+            hits = self._text(query, fetch, type, where)
         elif mode == "hybrid":
-            hits = self._hybrid(query, fetch, type)
+            hits = self._hybrid(query, fetch, type, where)
         else:
             raise ValueError(f"Unknown search mode: {mode!r}")
 
+        if tag_ids is not None:
+            hits = [h for h in hits if h.concept.node.id in tag_ids]
         if layer is not None:
             prefix = f"{layer.strip('/')}/"
             hits = [h for h in hits if h.concept.id.startswith(prefix)]
@@ -476,6 +509,8 @@ class OKFBundle:
         mode: str = "auto",
         type: str | None = None,
         layer: str | None = None,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
         expand_hops: int = 1,
         include_citations: bool = True,
         include_superseded: bool = False,
@@ -501,6 +536,15 @@ class OKFBundle:
         expanded pool is re-scored against the query text *before* budgeting — so
         graph-expanded neighbours compete on relevance instead of insertion order.
 
+        ``where``/``tag`` filter on frontmatter exactly as in :meth:`search` —
+        and, like ``include_superseded``, they also govern **graph-expanded
+        neighbours**, not just the seeds. A concept the filter excludes cannot
+        enter the pack through a link either (it is recorded in ``omitted`` with
+        reason ``"filtered"``), so a filter such as ``where={"confidentiality":
+        "public"}`` is a real guarantee about the prompt rather than a hint
+        expansion can route around. ``type``/``layer`` remain seed-only: they
+        scope *retrieval*, whereas ``where``/``tag`` express what may be shown.
+
         ``include_superseded`` (default ``False``) also governs graph-expanded
         neighbours: superseded concepts pulled in via ``SUPERSEDES`` or a stale
         ``LINKS_TO`` edge are dropped unless requested, so a retracted claim
@@ -513,7 +557,8 @@ class OKFBundle:
 
         The pack is auditable: ``pack.omitted`` lists what retrieval reached but
         left out — concepts dropped for ``"budget"`` (didn't fit), ``"superseded"``
-        (a retracted claim reached via expansion), or ``"reranked_out"`` (cut by a
+        (a retracted claim reached via expansion), ``"filtered"`` (a neighbour the
+        ``where``/``tag`` filter excluded), or ``"reranked_out"`` (cut by a
         reranker's ``top_n``) — each as ``{"concept_id", "title", "reason", "via"}``.
         ``include_trace=True`` additionally fills ``pack.trace`` with a compact,
         deterministic step log (search -> expand -> rerank -> pack) so an agent can
@@ -521,8 +566,19 @@ class OKFBundle:
         """
         count = token_counter or self._estimate_tokens
         hits = self.search(
-            query, k=k, mode=mode, type=type, layer=layer, include_superseded=include_superseded
+            query,
+            k=k,
+            mode=mode,
+            type=type,
+            layer=layer,
+            tag=tag,
+            where=where,
+            include_superseded=include_superseded,
         )
+
+        # The same metadata filter the seeds passed, applied to expanded neighbours
+        # so a link can't smuggle an excluded concept into the prompt.
+        allowed_ids = self._filter_ids(tag=tag, where=where)
 
         # What retrieval reached but left out — accrued as we filter/pack, so the
         # pack can explain itself (their `reason`s: superseded/reranked_out/budget).
@@ -546,6 +602,9 @@ class OKFBundle:
                     seen.add(nbr.node.id)
                     if not include_superseded and nbr.is_superseded:
                         omitted.append(self._omission(nbr, "superseded", rel_type))
+                        continue
+                    if allowed_ids is not None and nbr.node.id not in allowed_ids:
+                        omitted.append(self._omission(nbr, "filtered", rel_type))
                         continue
                     candidates.append(nbr)
                     neighbor_via[nbr.node.id] = rel_type
@@ -598,8 +657,19 @@ class OKFBundle:
         trace: list[dict] | None = None
         if include_trace:
             # `hits[0].via` is the index actually used (resolves mode="auto").
+            # Resolve "auto"/unbacked "hybrid" ourselves rather than reading it off
+            # hits[0], so an empty result still names the index that actually ran.
+            search_step = {
+                "step": "search",
+                "mode": self._resolve_mode(mode),
+                "hits": len(hits),
+            }
+            if allowed_ids is not None:
+                # Only present when a metadata filter ran, so an unfiltered trace
+                # keeps its existing shape.
+                search_step["filtered_to"] = len(allowed_ids)
             trace = [
-                {"step": "search", "mode": hits[0].via if hits else mode, "hits": len(hits)},
+                search_step,
                 {"step": "expand", "hops": expand_hops, "added": expanded},
             ]
             if rerank is not None:
@@ -1103,8 +1173,9 @@ class OKFBundle:
         type: str | None = None,
         layer: str | None = None,
         tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
     ) -> list:
-        """Select concept rows with SQL-side type/layer/tag filtering."""
+        """Select concept rows with SQL-side type/layer/tag/frontmatter filtering."""
         sql = f"SELECT {columns} FROM nodes n"
         params: list[Any] = []
         conds = [_CONCEPT_SQL]
@@ -1120,9 +1191,50 @@ class OKFBundle:
                 "EXISTS (SELECT 1 FROM json_each(n.properties, '$.tags') jt WHERE jt.value = ?)"
             )
             params.append(tag)
+        if where:
+            # Reuses the database's own filter compiler, so `where` speaks exactly
+            # the same dialect (PropertyFilter / PropertyFilterGroup) as match_nodes.
+            where_conds, where_params = self._db._build_property_conditions(where, "n")
+            conds.extend(where_conds)
+            params.extend(where_params)
         sql += " WHERE " + " AND ".join(conds)
         sql += " ORDER BY json_extract(n.properties, '$.concept_id')"
         return self._db.conn.execute(sql, params).fetchall()
+
+    def _filter_ids(
+        self,
+        *,
+        type: str | None = None,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
+    ) -> set[int] | None:
+        """Node IDs passing the metadata filters, or ``None`` when unfiltered.
+
+        ``None`` means "no filter at all" and is distinct from an empty set
+        ("filter matched nothing") — callers must not conflate them.
+        """
+        if where is None and tag is None:
+            return None
+        rows = self._concept_query("n.id", type=type, tag=tag, where=where)
+        return {int(row["id"]) for row in rows}
+
+    def _filter_concept_ids(
+        self,
+        *,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
+    ) -> set[str] | None:
+        """Concept IDs passing the metadata filters, or ``None`` when unfiltered.
+
+        The concept-id counterpart of :meth:`_filter_ids`, for callers that work
+        in OKF ids rather than node ids (see :class:`~grafito.okf.agent.BundleTools`).
+        """
+        if where is None and tag is None:
+            return None
+        rows = self._concept_query(
+            "json_extract(n.properties, '$.concept_id') AS cid", tag=tag, where=where
+        )
+        return {row["cid"] for row in rows}
 
     def _resolve(self, value: "Concept | str") -> Concept:
         if isinstance(value, Concept):
@@ -1274,9 +1386,29 @@ class OKFBundle:
                 cites.append({"concept": target.properties.get("concept_id"), "anchor": anchor})
         return cites
 
-    def _semantic(self, query: str, k: int, type: str | None) -> list[Hit]:
+    def _resolve_mode(self, mode: str) -> str:
+        """Resolve ``"auto"`` (and an unbacked ``"hybrid"``) to the index actually used.
+
+        Shared by :meth:`search` and :meth:`context` so the trace can name the
+        real index even when the search returns no hits to read it from.
+        """
+        if mode == "auto":
+            return "semantic" if self._has_vector_index() else "text"
+        if mode == "hybrid" and not self._has_vector_index():
+            return "text"
+        return mode
+
+    def _semantic(
+        self, query: str, k: int, type: str | None, where: "dict | PropertyFilterGroup | None" = None
+    ) -> list[Hit]:
+        # `filter_props` is a true pre-filter: the vector index searches only the
+        # matching IDs, so a selective `where` still returns a full k.
         results = self._db.semantic_search(
-            query, k=k, index=self._embed_index, filter_labels=[type] if type else None
+            query,
+            k=k,
+            index=self._embed_index,
+            filter_labels=[type] if type else None,
+            filter_props=where or None,
         )
         return [
             Hit(Concept(self, r["node"]), float(r["score"]), "semantic")
@@ -1284,23 +1416,44 @@ class OKFBundle:
             if self._is_concept(r["node"])
         ]
 
-    def _text(self, query: str, k: int, type: str | None) -> list[Hit]:
+    def _text(
+        self, query: str, k: int, type: str | None, where: "dict | PropertyFilterGroup | None" = None
+    ) -> list[Hit]:
         safe_query = _safe_fts_query(query)
         if not safe_query:
             return []
-        results = self._db.text_search(safe_query, k=k, labels=[type] if type else None)
-        hits: list[Hit] = []
-        for r in results:
-            if r.get("entity_type") != "node":
-                continue
-            node = r["entity"]
-            if self._is_concept(node):
-                hits.append(Hit(Concept(self, node), float(r["score"]), "text"))
-        return hits
+        # FTS5 has no property filtering, so `where` is applied after BM25. A
+        # fixed over-fetch would silently return nothing when the matches sit
+        # below it (5 approved concepts out of 200 -> 0 hits), so widen the BM25
+        # window until it yields k survivors or the corpus is exhausted.
+        allowed = self._filter_ids(where=where) if where else None
+        if allowed is not None and not allowed:
+            return []
 
-    def _hybrid(self, query: str, k: int, type: str | None) -> list[Hit]:
-        semantic = self._semantic(query, k, type)
-        text = self._text(query, k, type)
+        limit = k
+        cap = max(k, len(self))
+        while True:
+            results = self._db.text_search(safe_query, k=limit, labels=[type] if type else None)
+            hits: list[Hit] = []
+            for r in results:
+                if r.get("entity_type") != "node":
+                    continue
+                node = r["entity"]
+                if allowed is not None and node.id not in allowed:
+                    continue
+                if self._is_concept(node):
+                    hits.append(Hit(Concept(self, node), float(r["score"]), "text"))
+            # Enough survivors, BM25 ran out of matches, or the whole corpus was
+            # scanned — widening further cannot add anything.
+            if allowed is None or len(hits) >= k or len(results) < limit or limit >= cap:
+                return hits
+            limit = min(limit * 4, cap)
+
+    def _hybrid(
+        self, query: str, k: int, type: str | None, where: "dict | PropertyFilterGroup | None" = None
+    ) -> list[Hit]:
+        semantic = self._semantic(query, k, type, where)
+        text = self._text(query, k, type, where)
         scores: dict[str, float] = {}
         concepts: dict[str, Concept] = {}
         for ranked in (semantic, text):

@@ -411,11 +411,68 @@ c.cites()                                     # [{'url'|'concept', 'anchor'}, ..
 kb.search("how do I make a query run faster", k=3)        # semantic / text / hybrid
 kb.search("make it faster", layer="decisions")            # scoped to a layer
 kb.search("vector similarity", mode="hybrid")             # RRF fusion of FTS + vector
+kb.search("storage", where={"status": "approved"})        # filter on frontmatter
 # hybrid degrades to text-only when the bundle was loaded without embed=
 
 kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
 kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
 ```
+
+### Filtering on frontmatter: `where=` and `tag=`
+
+OKF keeps every producer-defined frontmatter key as a node property, so
+`status`, `owner`, `confidentiality` or `timestamp` are all queryable. `search()`
+and `context()` accept `where=` to filter retrieval on them — without dropping
+to Cypher and losing ranking, graph expansion, and budgeting:
+
+```python
+from grafito.okf import PropertyFilter, PropertyFilterGroup
+
+kb.search(q, where={"status": "approved"})
+kb.search(q, where={"status": "approved", "owner": "data-team"})   # AND
+kb.search(q, where={"timestamp": PropertyFilter.gte("2026-01-01")})
+kb.search(q, where=PropertyFilterGroup.or_({"status": "approved"},
+                                            {"status": "ratified"}))
+```
+
+`where=` speaks the same dialect as `match_nodes`, so there is nothing new to
+learn: **multiple keys in one dict combine with AND**, `PropertyFilter` adds
+operators (`gte`, `between`, `contains`, `regex`, ...), and `PropertyFilterGroup`
+adds OR and nesting. `concepts(where=...)` takes the same argument for listing.
+
+`tag=` is a **separate** parameter rather than a `where` key, because `tags` is a
+list: `where={"tags": "draft"}` compares against the whole list and matches
+nothing, while `tag="draft"` tests membership.
+
+```python
+kb.search(q, tag="draft")                    # concepts tagged draft
+kb.concepts(tag="draft", where={"owner": "data-team"})
+```
+
+Two behaviours worth knowing:
+
+- **The filter also governs graph expansion in `context()`.** A concept the
+  filter excludes cannot slip into the pack through a `LINKS_TO` edge either; it
+  is recorded in `pack.omitted` with reason `"filtered"`. That makes
+  `where={"confidentiality": "public"}` a real guarantee about what reaches the
+  prompt, not a hint expansion can route around. `type`/`layer` remain
+  seed-only — they scope *retrieval*, whereas `where`/`tag` express what may be
+  *shown*.
+- **`include_superseded` is itself a `status` filter.** So
+  `where={"status": "superseded"}` returns nothing unless you also pass
+  `include_superseded=True`.
+
+On the retrieval path, `where=` is pushed into the vector index as a true
+pre-filter, so a highly selective filter still returns a full `k`. Full-text
+search (FTS5) has no property filtering, so there the filter runs after BM25 and
+the search window widens automatically until it yields `k` survivors or the
+corpus is exhausted — a selective filter never silently returns an empty result.
+
+That widening is not free: it re-runs BM25 over a growing window, so a *very*
+selective filter in text mode costs several times an unfiltered search (~270 ms
+vs ~35 ms over 20k concepts; unmeasurable on small bundles, and unaffected when
+no filter is passed). Semantic and hybrid modes do not pay it — they pre-filter.
+Prefer loading with `embed=` if you filter aggressively over a large bundle.
 
 ### Grounded context for agents: `context()`
 
@@ -457,13 +514,16 @@ left out, so nothing is dropped silently. Each entry has a `reason`:
 - `"budget"` — a candidate that didn't fit the token budget;
 - `"superseded"` — a retracted claim reached via graph expansion (see
   [Trust model](#trust-model-supersede-and-conflicts_with));
+- `"filtered"` — a graph-expanded neighbour excluded by `where`/`tag` (see
+  [Filtering on frontmatter](#filtering-on-frontmatter-where-and-tag));
 - `"reranked_out"` — a candidate a reranker's `top_n` discarded.
 
 `context(..., include_trace=True)` additionally fills `pack.trace` with a compact,
-deterministic step log — one step each for `search` (the index actually used and
-hit count), `expand` (hops and neighbours added), `rerank` (pool in/out, only when
-a reranker runs), and `pack` (budget, included/omitted counts, final tokens,
-truncated) — so an agent can explain *why* the context is what it is:
+deterministic step log — one step each for `search` (the index actually used, hit
+count, plus `filtered_to` when `where`/`tag` narrowed the corpus), `expand` (hops
+and neighbours added), `rerank` (pool in/out, only when a reranker runs), and
+`pack` (budget, included/omitted counts, final tokens, truncated) — so an agent
+can explain *why* the context is what it is:
 
 ```python
 pack = kb.context(question, include_trace=True)
@@ -479,7 +539,8 @@ pack.trace
 | `budget_tokens` | `2000` | Token budget for the packed text. |
 | `k` | `8` | Seed hits to retrieve before expansion. |
 | `mode` | `"auto"` | `"semantic"` / `"text"` / `"hybrid"` / `"auto"`. |
-| `type`, `layer` | `None` | Restrict retrieval to a concept type / directory layer. |
+| `type`, `layer` | `None` | Restrict retrieval to a concept type / directory layer (seeds only). |
+| `where`, `tag` | `None` | Filter on frontmatter — also applied to graph-expanded neighbours (see [Filtering on frontmatter](#filtering-on-frontmatter-where-and-tag)). |
 | `expand_hops` | `1` | Outgoing link hops to graph-expand (`0` disables); follows any relationship type except `CITES`. |
 | `include_citations` | `True` | Render `Sources:` lines and collect `pack.citations`. |
 | `token_counter` | heuristic | Callable `str -> int`; default ≈ 4 chars/token. Pass your model's tokenizer for exact budgeting. |
@@ -759,8 +820,8 @@ drive the exploration itself** through OpenAI-style tool calls:
   into LangGraph, CrewAI, or an MCP server unchanged. Tool errors come back as
   `{"error": ...}` for the model to react to instead of killing the loop.
 - **`run_agent(kb, question, chat=...)`** — a minimal tool-calling loop. One-shot
-  by default; pass `messages=` to thread a multi-turn conversation, or
-  `extra_tools=` to add app-specific tools (see below for both).
+  by default; pass `messages=` to thread a multi-turn conversation, `tools=` to
+  inject a scoped `BundleTools`, or `extra_tools=` to add app-specific tools.
 - **`Chat`** — the model contract: *any callable*
   `(messages, tools) -> assistant message` in OpenAI chat format. Grafito
   never imports an LLM SDK — the client is injected, like `rerank=`.
@@ -805,6 +866,42 @@ Tool results (e.g. full concept bodies from `open`) accumulate in `history`
 turn over turn, so a long-running conversation costs more tokens each turn —
 fine for a modest back-and-forth, but a very long session will eventually
 need trimming or summarization of older turns (not handled automatically).
+
+### Scoping an agent to part of the bundle
+
+`where=`/`tag=` also apply to the agentic path, by scoping the whole toolset:
+
+```python
+from grafito.okf import BundleTools, run_agent
+
+tools = BundleTools(kb, where={"confidentiality": "public"})
+run_agent(kb, question, chat=chat, tools=tools)
+```
+
+The filter is **fixed by the application, not chosen by the model** — it appears
+in no tool schema, so the agent cannot widen or disable it. Every read path
+honours it (`browse`, `search`, `open`, `follow`, `history`), which is the whole
+point: a filter covering only `search` would be theatre, because the model reads
+a concept id out of a link and opens it directly. Excluded concepts are also
+stripped from the edge lists `open` returns and from `follow` results, and the
+system prompt is built from the *filtered* layer counts.
+
+A hidden concept is reported exactly like a nonexistent one
+(`{"error": "Unknown concept: ..."}`), so the agent cannot probe for what exists
+behind the filter.
+
+!!! warning "The filter is an access boundary, not redaction"
+    It governs *structure and retrieval* — what can be listed, matched, opened,
+    and traversed. It cannot redact prose inside a concept you chose to show: a
+    visible body linking to a hidden concept still contains that markdown, and a
+    `log.md` line may name one. The model may learn a hidden id exists, though
+    every tool refuses to open it. If a body must not mention something, that
+    belongs in the bundle.
+
+Likewise, `remember` writes plain notes that do **not** inherit the filter's
+fields — so with a filter active the agent may not read back what it just wrote.
+Grafito deliberately does not stamp the filter's values onto new notes, since
+that would let an agent mark its own output `status: approved`.
 
 ### Custom tools
 
