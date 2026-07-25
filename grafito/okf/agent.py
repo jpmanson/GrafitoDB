@@ -54,6 +54,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 
+from ..tools import ToolRegistry, ToolSet  # generic tool contract, defined in core
+
 if TYPE_CHECKING:
     from ..filters import PropertyFilterGroup
     from .bundle import OKFBundle
@@ -86,74 +88,6 @@ class Chat(Protocol):
 
     def __call__(self, messages: list[dict], tools: list[dict]) -> dict:
         ...
-
-
-@runtime_checkable
-class ToolSet(Protocol):
-    """Anything with OpenAI-style tool ``schemas`` plus a matching ``call``.
-
-    :class:`BundleTools` is one such toolset; pass additional instances via
-    ``run_agent(..., extra_tools=[...])`` to give the agent app-specific
-    tools (send a message, query an internal API, ...) alongside the
-    bundle's own browse/search/open/follow/history/remember. No base class
-    needed — any object with this shape works, same spirit as :class:`Chat`.
-    """
-
-    schemas: list[dict]
-
-    def call(self, name: str, args: dict) -> str:
-        ...
-
-
-class ToolRegistry:
-    """Several :class:`ToolSet`\\ s presented as one: merged ``schemas`` plus a
-    single ``call`` that routes each tool to the toolset that owns it.
-
-    This is the seam every tool *consumer* shares — :func:`run_agent`, an MCP
-    server, any other loop — so the aggregation lives here once instead of
-    being re-implemented against each. Consumers depend on this and on the
-    :class:`ToolSet` protocol, never on a concrete toolset like
-    :class:`BundleTools`: that is what lets the same server front an OKF bundle
-    (``BundleTools(kb)``) and, later, a plain graph (a ``ToolSet`` over
-    ``GrafitoDatabase``) without change. A registry is itself a
-    :class:`ToolSet` — it has ``schemas`` and ``call`` — so registries nest.
-
-    Tool names must be unique across the toolsets; a collision raises
-    ``ValueError`` at construction, before any tool can run. A call for a name
-    no toolset owns comes back as ``{"error": ...}`` (JSON), the same shape an
-    individual tool error takes, so the caller handles both the same way.
-    """
-
-    def __init__(self, toolsets: "list[ToolSet]") -> None:
-        self.schemas: list[dict] = []
-        self._dispatch: dict[str, ToolSet] = {}
-        for toolset in toolsets:
-            for schema in toolset.schemas:
-                name = schema["function"]["name"]
-                if name in self._dispatch:
-                    raise ValueError(f"Duplicate tool name {name!r} across toolsets")
-                self._dispatch[name] = toolset
-                self.schemas.append(schema)
-
-    @property
-    def names(self) -> list[str]:
-        """The tool names this registry can dispatch, in schema order."""
-        return [schema["function"]["name"] for schema in self.schemas]
-
-    def __contains__(self, name: str) -> bool:
-        return name in self._dispatch
-
-    def call(self, name: str, args: dict) -> str:
-        """Route one tool call to its owning toolset; unknown names error.
-
-        The routed toolset owns its own error policy (JSON ``{"error": ...}``
-        by default, or raising when built with ``raise_errors=True``); this
-        only adds the unknown-name case.
-        """
-        toolset = self._dispatch.get(name)
-        if toolset is None:
-            return json.dumps({"error": f"Unknown tool {name!r}"})
-        return toolset.call(name, args)
 
 
 class BundleTools:

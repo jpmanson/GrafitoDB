@@ -1,6 +1,6 @@
 """Model Context Protocol server for Grafito.
 
-Exposes a :class:`~grafito.okf.ToolRegistry` to any MCP client over stdio, so a
+Exposes a :class:`~grafito.ToolRegistry` to any MCP client over stdio, so a
 bundle (or, later, a graph) is usable from Claude Desktop / Claude Code without
 writing integration code. :func:`serve_mcp` is the generic server; the
 ``grafito-mcp`` CLI (:mod:`grafito.mcp.cli`) wires an OKF bundle into it.

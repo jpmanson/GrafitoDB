@@ -1,7 +1,7 @@
 """``grafito-mcp`` — expose an OKF bundle to any MCP client over stdio.
 
 This is the OKF-specific half: it turns command-line configuration into a
-:class:`~grafito.okf.ToolRegistry` and hands it to the generic
+:class:`~grafito.ToolRegistry` and hands it to the generic
 :func:`grafito.mcp.server.serve_mcp`. The registry is the only thing the server
 sees, so widening the surface later (a graph tool tier, a ``context`` tool) is a
 matter of adding ``ToolSet``\\ s here, not touching the server.
@@ -26,18 +26,13 @@ import argparse
 import json
 from typing import TYPE_CHECKING, Callable
 
-from ..okf import (
-    BundleTools,
-    ContextTools,
-    OKFBundle,
-    ThreadConfinedTools,
-    ToolRegistry,
-)
+from ..okf import BundleTools, ContextTools, OKFBundle, ThreadConfinedTools
+from ..tools import ToolRegistry
 from .server import serve_mcp
 
 if TYPE_CHECKING:
     from ..embedding_functions import EmbeddingFunction
-    from ..okf import ToolSet
+    from ..tools import ToolSet
 
 # BundleTools' only write tool; a call to it that succeeds is what we persist on.
 _WRITE_TOOLS = frozenset({"remember"})

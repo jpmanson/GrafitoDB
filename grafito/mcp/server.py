@@ -1,4 +1,4 @@
-"""A Model Context Protocol server over a :class:`~grafito.okf.ToolRegistry`.
+"""A Model Context Protocol server over a :class:`~grafito.ToolRegistry`.
 
 This is the generic half of the MCP integration: it hangs on a
 :class:`ToolRegistry` — a bag of :class:`ToolSet`\\ s — and knows nothing about
@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from grafito.okf import ToolRegistry
+    from grafito import ToolRegistry
 
 
 def _to_mcp_tools(schemas: list[dict]) -> list[Any]:
@@ -77,7 +77,7 @@ async def _run(registry: "ToolRegistry", name: str) -> None:
 def serve_mcp(registry: "ToolRegistry", *, name: str = "grafito") -> None:
     """Serve ``registry``'s tools over MCP on stdio until the client disconnects.
 
-    Blocks. ``registry`` is any :class:`~grafito.okf.ToolRegistry`; the server
+    Blocks. ``registry`` is any :class:`~grafito.ToolRegistry`; the server
     exposes every tool it dispatches and routes each ``tools/call`` back through
     it, so tool errors surface as the tool's own ``{"error": ...}`` payload
     (text content) rather than as protocol errors.

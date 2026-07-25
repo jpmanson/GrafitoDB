@@ -29,7 +29,7 @@ from .filters import (
     SortOrder,
 )
 from .models import Node, Relationship, Point
-from .tools import CypherTools, GraphTools
+from .tools import CypherTools, GraphTools, ToolRegistry, ToolSet
 
 def _resolve_version() -> str:
     """Resolve the package version without hardcoding it (avoids drift).
@@ -71,4 +71,6 @@ __all__ = [
     'SortOrder',
     'GraphTools',
     'CypherTools',
+    'ToolSet',
+    'ToolRegistry',
 ]

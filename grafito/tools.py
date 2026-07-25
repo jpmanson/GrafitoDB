@@ -1,31 +1,102 @@
-"""Graph tools: a :class:`GrafitoDatabase` exposed as OpenAI-style function tools.
+"""Tools: the framework-free contract for exposing capabilities as LLM tools.
 
-These are the escalón 2-3 tiers of the MCP proposal — structured read-only
-access (:class:`GraphTools`) and a read-only Cypher escape hatch
-(:class:`CypherTools`) — and, unlike :class:`~grafito.okf.BundleTools`, they hang
-on a plain :class:`~grafito.GrafitoDatabase`, not on an OKF bundle. That is the
-whole point: the same MCP server that fronts a bundle today fronts an arbitrary
-graph tomorrow by loading these instead, with no change to the server. This
-module imports nothing from :mod:`grafito.okf` on purpose — a graph deployment
-must not drag OKF in.
+This module hosts three things, in ascending specificity:
 
-Each class is a *toolset* in the structural sense the tool consumers expect
-(``schemas`` plus ``call(name, args) -> str``), so a
-:class:`~grafito.okf.ToolRegistry` aggregates them alongside any others. Altitude
-climbs across the tiers: ``graph_schema``/``graph_neighbors``/``text_search`` are
-intent-shaped and safe; ``graph_query`` is raw Cypher, read-only and row-capped,
-the escape hatch for exact structural questions the higher tools cannot express.
+* :class:`ToolSet` — the contract every tool provider satisfies: OpenAI-style
+  ``schemas`` plus a matching ``call(name, args) -> str``. It lives here, in the
+  core, rather than in :mod:`grafito.okf`, because it is not OKF-specific:
+  :class:`~grafito.okf.BundleTools` is one toolset, :class:`GraphTools` another.
+* :class:`ToolRegistry` — several toolsets presented as one, the seam every tool
+  *consumer* shares (an agent loop, an MCP server). Consumers depend on this and
+  the :class:`ToolSet` protocol, never on a concrete toolset, which is what lets
+  the same server front an OKF bundle or a plain graph unchanged.
+* :class:`GraphTools` / :class:`CypherTools` — the graph tool tiers (escalón 2-3
+  of the MCP proposal), over a plain :class:`~grafito.GrafitoDatabase`.
+
+This module imports nothing from :mod:`grafito.okf` on purpose — a graph
+deployment must not drag OKF in. Altitude climbs across the graph tiers:
+``graph_schema``/``graph_neighbors``/``text_search`` are intent-shaped and safe;
+``graph_query`` is raw Cypher, read-only and row-capped, the escape hatch for
+exact structural questions the higher tools cannot express.
 """
 
 from __future__ import annotations
 
 import json
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from .database import GrafitoDatabase
     from .models import Node
+
+
+@runtime_checkable
+class ToolSet(Protocol):
+    """Anything with OpenAI-style tool ``schemas`` plus a matching ``call``.
+
+    :class:`~grafito.okf.BundleTools` and :class:`GraphTools` are two such
+    toolsets; a :class:`ToolRegistry` is a third (it aggregates others). No base
+    class needed — any object with this shape works, the same spirit as an
+    injected model callable. Tool errors are conventionally returned as a JSON
+    ``{"error": ...}`` string so a bad call does not kill the consumer's loop.
+    """
+
+    schemas: list[dict]
+
+    def call(self, name: str, args: dict) -> str:
+        ...
+
+
+class ToolRegistry:
+    """Several :class:`ToolSet`\\ s presented as one: merged ``schemas`` plus a
+    single ``call`` that routes each tool to the toolset that owns it.
+
+    This is the seam every tool *consumer* shares — an agent loop, an MCP
+    server, any other loop — so the aggregation lives here once instead of
+    being re-implemented against each. Consumers depend on this and on the
+    :class:`ToolSet` protocol, never on a concrete toolset like
+    :class:`~grafito.okf.BundleTools`: that is what lets the same server front an
+    OKF bundle (``BundleTools(kb)``) and a plain graph (a ``ToolSet`` over
+    ``GrafitoDatabase``) without change. A registry is itself a :class:`ToolSet`
+    — it has ``schemas`` and ``call`` — so registries nest.
+
+    Tool names must be unique across the toolsets; a collision raises
+    ``ValueError`` at construction, before any tool can run. A call for a name
+    no toolset owns comes back as ``{"error": ...}`` (JSON), the same shape an
+    individual tool error takes, so the caller handles both the same way.
+    """
+
+    def __init__(self, toolsets: "list[ToolSet]") -> None:
+        self.schemas: list[dict] = []
+        self._dispatch: dict[str, ToolSet] = {}
+        for toolset in toolsets:
+            for schema in toolset.schemas:
+                name = schema["function"]["name"]
+                if name in self._dispatch:
+                    raise ValueError(f"Duplicate tool name {name!r} across toolsets")
+                self._dispatch[name] = toolset
+                self.schemas.append(schema)
+
+    @property
+    def names(self) -> list[str]:
+        """The tool names this registry can dispatch, in schema order."""
+        return [schema["function"]["name"] for schema in self.schemas]
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._dispatch
+
+    def call(self, name: str, args: dict) -> str:
+        """Route one tool call to its owning toolset; unknown names error.
+
+        The routed toolset owns its own error policy (JSON ``{"error": ...}``
+        by default, or raising when built with ``raise_errors=True``); this
+        only adds the unknown-name case.
+        """
+        toolset = self._dispatch.get(name)
+        if toolset is None:
+            return json.dumps({"error": f"Unknown tool {name!r}"})
+        return toolset.call(name, args)
 
 # Cypher clauses that can mutate the graph. CypherTools rejects any query that
 # contains one as a whole word — a deliberately conservative guard: it may
