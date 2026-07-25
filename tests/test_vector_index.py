@@ -81,6 +81,52 @@ def test_vector_embeddings_persisted():
         os.unlink(db_path)
 
 
+def test_bruteforce_save_load_roundtrip():
+    from grafito.vector_index.bruteforce import BruteForceIndex
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".idx") as handle:
+        index_path = handle.name
+    try:
+        idx = BruteForceIndex(dim=2, method="flat", options={"metric": "cosine"})
+        idx.add([1, 2], [[1.0, 0.0], [0.0, 1.0]])
+        idx.save(index_path)
+
+        loaded = BruteForceIndex(dim=2, method="flat", options={"metric": "cosine"})
+        loaded.load(index_path)
+        assert loaded.get_vector(1) == [1.0, 0.0]
+        assert loaded.get_vector(2) == [0.0, 1.0]
+        assert loaded.search([1.0, 0.0], k=1)[0][0] == 1
+    finally:
+        os.unlink(index_path)
+
+
+def test_vector_search_bruteforce_persisted():
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as handle_db:
+        db_path = handle_db.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".bruteforce") as handle_idx:
+        index_path = handle_idx.name
+    try:
+        db = GrafitoDatabase(db_path)
+        db.create_vector_index(
+            "bruteforce_vec",
+            dim=2,
+            backend="bruteforce",
+            options={"index_path": index_path},
+        )
+        node = db.create_node(labels=["Person"], properties={"name": "Alice"})
+        db.upsert_embedding(node.id, [1.0, 0.0], index="bruteforce_vec")
+        db.close()
+
+        db = GrafitoDatabase(db_path)
+        results = db.semantic_search([1.0, 0.0], k=1, index="bruteforce_vec")
+        assert len(results) == 1
+        assert results[0]["node"].id == node.id
+        db.close()
+    finally:
+        os.unlink(db_path)
+        os.unlink(index_path)
+
+
 def test_vector_search_faiss_backend():
     faiss = pytest.importorskip("faiss")
     db = GrafitoDatabase(':memory:')

@@ -61,7 +61,7 @@ class BruteForceIndex(VectorIndex):
             "method": self.method,
             "options": self.options,
             "metric": self.metric,
-            "vectors": self._vectors,
+            "vectors": {str(idx): vector for idx, vector in self._vectors.items()},
         }
         serialized = orjson.dumps(payload)
         with open(path, "wb") as handle:
