@@ -213,7 +213,9 @@ def test_build_graph_tools_exposes_only_graph_tiers(tmp_path):
     tools = build_graph_tools(db_path)
     try:
         names = _tool_names(tools)
-        assert set(names) == {"graph_schema", "text_search", "graph_neighbors", "graph_query"}
+        assert set(names) == {
+            "graph_schema", "text_search", "vector_search", "graph_neighbors", "graph_query"
+        }
         # No OKF tools leaked in.
         assert not {"context", "browse", "search", "remember"} & set(names)
         schema = json.loads(tools.call("graph_schema", {}))

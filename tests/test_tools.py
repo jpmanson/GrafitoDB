@@ -62,6 +62,35 @@ def test_graph_tools_unknown_name_is_a_json_error(db):
     assert "error" in json.loads(GraphTools(db).call("nope", {}))
 
 
+def test_vector_search_returns_ranked_nodes_and_lists_the_index():
+    """Semantic search over a configured vector index; schema advertises it."""
+    import sys
+
+    sys.path.insert(0, "examples/okf")
+    from okf_knowledge_base import HashingEmbeddingFunction
+
+    db = GrafitoDatabase(":memory:")
+    emb = HashingEmbeddingFunction(dim=64)
+    db.create_vector_index("emb", dim=64, embedding_function=emb)
+    for text in ("python engineer", "marketing sales", "data science python"):
+        nid = db.create_node(["Person"], {"bio": text}).id
+        db.upsert_embedding(nid, emb([text])[0], index="emb")
+
+    tools = GraphTools(db)
+    try:
+        schema = json.loads(tools.call("graph_schema", {}))
+        assert {"name": "emb", "dim": 64} in schema["vector_indexes"]
+
+        hits = json.loads(tools.call("vector_search", {"query": "python", "k": 2, "index": "emb"}))
+        assert len(hits) == 2 and all("score" in h and "properties" in h for h in hits)
+    finally:
+        db.close()
+
+
+def test_vector_search_without_a_usable_index_errors_gracefully(db):
+    assert "error" in json.loads(GraphTools(db).call("vector_search", {"query": "x", "index": "nope"}))
+
+
 def test_cypher_query_returns_rows(db):
     result = json.loads(CypherTools(db).call("graph_query", {"query": "MATCH (n) RETURN count(n) AS c"}))
     assert result["rows"] == [{"c": 3}]

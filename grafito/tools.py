@@ -174,6 +174,25 @@ class GraphTools:
         {
             "type": "function",
             "function": {
+                "name": "vector_search",
+                "description": "Find nodes by meaning (semantic/vector search) over one of "
+                "the graph's vector indexes — see graph_schema for their names. Returns "
+                "ranked nodes with id, labels, properties and score. Errors when the "
+                "index has no embedding function configured.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "k": {"type": "integer", "default": 5},
+                        "index": {"type": "string", "default": "default"},
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "graph_neighbors",
                 "description": "Traverse the graph from a node: its neighbours by "
                 "relationship direction ('outgoing'/'incoming'/'both'), optionally "
@@ -194,7 +213,7 @@ class GraphTools:
             },
         },
     ]
-    enabled = frozenset({"graph_schema", "text_search", "graph_neighbors"})
+    enabled = frozenset({"graph_schema", "text_search", "vector_search", "graph_neighbors"})
 
     def __init__(self, db: "GrafitoDatabase", *, raise_errors: bool = False) -> None:
         self.db = db
@@ -221,6 +240,12 @@ class GraphTools:
             "relationship_types": rel_types,
             "node_count": self.db.get_node_count(),
             "indexes": self.db.list_indexes(),
+            # Name + dim only: enough for the model to pick one for vector_search,
+            # without dumping each index's embedder config.
+            "vector_indexes": [
+                {"name": vi["name"], "dim": vi["dim"]}
+                for vi in self.db.list_vector_indexes()
+            ],
         }
 
     def _text_search(self, query: str, k: int = 5) -> list[dict]:
@@ -230,6 +255,15 @@ class GraphTools:
             if hit["entity_type"] != "node":
                 continue
             item = _node_dict(hit["entity"])
+            item["score"] = round(hit["score"], 4)
+            out.append(item)
+        return out
+
+    def _vector_search(self, query: str, k: int = 5, index: str = "default") -> list[dict]:
+        hits = self.db.semantic_search(query, k=k, index=index)
+        out = []
+        for hit in hits:
+            item = _node_dict(hit["node"])
             item["score"] = round(hit["score"], 4)
             out.append(item)
         return out
