@@ -992,31 +992,57 @@ class GrafitoDatabase:
             )
         return rows
 
-    def upsert_embedding(self, node_id: int, vector: list[float], index: str = "default") -> None:
-        """Insert or update an embedding for a node."""
-        if not self.get_node(node_id):
-            raise NodeNotFoundError(node_id)
+    def _commit_if_needed(self) -> None:
+        """Commit only when not inside an explicit transaction."""
+        if not self._in_transaction:
+            self.conn.commit()
+
+    def upsert_embeddings_batch(
+        self,
+        node_ids: list[int],
+        vectors: list[list[float]],
+        index: str = "default",
+    ) -> None:
+        """Insert or update embeddings for many nodes with one ANN update and one persist.
+
+        Unlike calling :meth:`upsert_embedding` in a loop, this mutates the in-memory
+        index once (remove+add), writes ``vector_entries`` in bulk when configured,
+        commits at most once (skipped inside an explicit transaction), and calls
+        :meth:`_persist_vector_index` a single time.
+        """
+        if len(node_ids) != len(vectors):
+            raise DatabaseError("node_ids and vectors length mismatch")
+        if not node_ids:
+            return
+        for node_id in node_ids:
+            if not self.get_node(node_id):
+                raise NodeNotFoundError(node_id)
         vec_index = self._get_vector_index(index)
-        # Remove existing embedding first to avoid duplicates (FAISS add_with_ids doesn't update)
+        # Remove existing first when the backend can (avoid duplicate FAISS ids).
         if vec_index.supports_remove():
             try:
-                vec_index.remove([node_id])
+                vec_index.remove(list(node_ids))
             except Exception:
-                pass  # ID may not exist yet
-        vec_index.add([node_id], [vector])
+                pass
+        vec_index.add(list(node_ids), list(vectors))
         if vec_index.options.get("store_embeddings"):
             try:
-                self.conn.execute(
-                    """
-                    INSERT OR REPLACE INTO vector_entries (index_name, node_id, vector)
-                    VALUES (?, ?, ?)
-                    """,
-                    (index, node_id, orjson.dumps(vector).decode('utf-8')),
-                )
-                self.conn.commit()
+                for node_id, vector in zip(node_ids, vectors):
+                    self.conn.execute(
+                        """
+                        INSERT OR REPLACE INTO vector_entries (index_name, node_id, vector)
+                        VALUES (?, ?, ?)
+                        """,
+                        (index, node_id, orjson.dumps(vector).decode("utf-8")),
+                    )
+                self._commit_if_needed()
             except Exception as exc:
-                raise DatabaseError(f"Failed to persist embedding: {exc}", exc)
+                raise DatabaseError(f"Failed to persist embeddings: {exc}", exc)
         self._persist_vector_index(index, vec_index)
+
+    def upsert_embedding(self, node_id: int, vector: list[float], index: str = "default") -> None:
+        """Insert or update an embedding for a node."""
+        self.upsert_embeddings_batch([node_id], [vector], index=index)
 
     def upsert_embeddings(
         self,
@@ -1024,27 +1050,39 @@ class GrafitoDatabase:
         documents: list[str],
         index: str = "default",
     ) -> None:
-        """Insert or update embeddings from documents."""
+        """Insert or update embeddings from documents (batch embed + batch upsert)."""
         if len(node_ids) != len(documents):
             raise DatabaseError("node_ids and documents length mismatch")
+        if not node_ids:
+            return
         embedder = self._get_embedding_function(index)
         if embedder is None:
             raise DatabaseError(f"Vector index '{index}' has no embedding function")
         vectors = embedder(list(documents))
-        for node_id, vector in zip(node_ids, vectors):
-            self.upsert_embedding(node_id, vector, index=index)
+        self.upsert_embeddings_batch(node_ids, vectors, index=index)
+
+    def remove_embeddings_batch(self, node_ids: list[int], index: str = "default") -> None:
+        """Remove embeddings for many nodes with one ANN update and one persist."""
+        if not node_ids:
+            return
+        vec_index = self._get_vector_index(index)
+        try:
+            vec_index.remove(list(node_ids))
+        except Exception as exc:
+            # Soft-delete backends may still accept the call; hard failures propagate.
+            raise DatabaseError(f"Failed to remove embeddings from index '{index}': {exc}", exc)
+        if vec_index.options.get("store_embeddings"):
+            placeholders = ",".join("?" for _ in node_ids)
+            self.conn.execute(
+                f"DELETE FROM vector_entries WHERE index_name = ? AND node_id IN ({placeholders})",
+                (index, *node_ids),
+            )
+            self._commit_if_needed()
+        self._persist_vector_index(index, vec_index)
 
     def remove_embedding(self, node_id: int, index: str = "default") -> None:
         """Remove an embedding for a node."""
-        vec_index = self._get_vector_index(index)
-        vec_index.remove([node_id])
-        if vec_index.options.get("store_embeddings"):
-            self.conn.execute(
-                "DELETE FROM vector_entries WHERE index_name = ? AND node_id = ?",
-                (index, node_id),
-            )
-            self.conn.commit()
-        self._persist_vector_index(index, vec_index)
+        self.remove_embeddings_batch([node_id], index=index)
 
     def semantic_search(
         self,
@@ -2335,12 +2373,29 @@ class GrafitoDatabase:
     def delete_node(self, node_id: int) -> bool:
         """Delete a node (cascades to relationships).
 
+        Best-effort: also removes the node's embeddings from all registered
+        vector indexes so ANN backends do not retain ghost ids. Backends that
+        only soft-delete may still need :meth:`rebuild_vector_index`.
+
         Args:
             node_id: Node ID
 
         Returns:
             True if node was deleted, False if node didn't exist
         """
+        if self.get_node(node_id) is None:
+            return False
+
+        for idx in self.list_vector_indexes():
+            name = idx.get("name")
+            if not name:
+                continue
+            try:
+                self.remove_embedding(node_id, index=name)
+            except Exception:
+                # Index may not contain the id or backend may lack durable remove.
+                pass
+
         # Delete node (CASCADE will handle relationships and labels)
         cursor = self.conn.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
 

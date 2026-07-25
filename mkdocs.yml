@@ -105,6 +105,7 @@ nav:
       - Overview: search/overview.md
       - Full-Text Search (FTS5): search/fulltext.md
       - Semantic/Vector Search: search/vector.md
+      - Document Chunking: search/document-chunking.md
       - ANN Backends: search/ann-backends.md
       - Hybrid Workflows: search/hybrid.md
       - Examples: search/examples.md
