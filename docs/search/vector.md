@@ -13,8 +13,12 @@ Vector search allows you to:
 For **long documents** (runbooks, notes, OKF bodies), prefer the
 [Document Chunking](document-chunking.md) helper (`DocumentIngestor`): one
 document becomes many passage nodes (still **one vector per node**), with
-section hierarchy, expand/pack, and optional hybrid RRF. See also
-`examples/semantic/document_chunking.py`.
+section hierarchy, expand/pack, and optional hybrid RRF.
+
+Examples:
+
+- `examples/semantic/document_chunking.py` (offline script)
+- `examples/semantic/pdf_chunking_colab.ipynb` ([Open in Colab](https://colab.research.google.com/github/jpmanson/GrafitoDB/blob/main/examples/semantic/pdf_chunking_colab.ipynb) — PDF + step-by-step PyVis)
 
 ## Creating Vector Indexes
 

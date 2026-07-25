@@ -4,14 +4,24 @@ Grafito can index long documents as **many passage nodes** (still **one vector p
 
 Related: [Vector Search](vector.md) · [Hybrid Search](hybrid.md) · [Embeddings](../embeddings/overview.md)
 
-## Runnable example
+## Runnable examples
+
+**Script (offline, no optional ML deps):**
 
 ```bash
 python examples/semantic/document_chunking.py
 ```
 
-Uses a tiny offline embedder so it runs without FAISS or sentence-transformers.
-Swap in a real embedding function for production quality.
+**Notebook for Colab / class (PDF → chunk → search + PyVis graphs):**
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jpmanson/GrafitoDB/blob/main/examples/semantic/pdf_chunking_colab.ipynb)
+
+```text
+examples/semantic/pdf_chunking_colab.ipynb
+```
+
+The notebook walks students through extraction, hierarchy, embeddings, search,
+expand/pack, and hybrid RRF while rendering the graph after each major step.
 
 ## Quick start
 

@@ -39,7 +39,7 @@ Read the full documentation at: https://jpmanson.github.io/GrafitoDB/
 - **Metadata Queries**: Inspect labels, relationship types, and counts
 - **Full-Text Search (FTS5)**: BM25-ranked keyword search over configured text properties
 - **Semantic/Vector Search**: Optional ANN backends with similarity search and reranker hooks
-- **Document Chunking** (`grafito.document`): `DocumentIngestor` turns long markdown into managed passage nodes (hierarchy, hybrid RRF, expand/pack). Docs: [Document Chunking](https://jpmanson.github.io/GrafitoDB/search/document-chunking/); example: `examples/semantic/document_chunking.py`
+- **Document Chunking** (`grafito.document`): `DocumentIngestor` turns long markdown into managed passage nodes (hierarchy, hybrid RRF, expand/pack). Docs: [Document Chunking](https://jpmanson.github.io/GrafitoDB/search/document-chunking/); examples: `examples/semantic/document_chunking.py`, [Colab PDF notebook](https://colab.research.google.com/github/jpmanson/GrafitoDB/blob/main/examples/semantic/pdf_chunking_colab.ipynb)
 - **Open Knowledge Format (OKF)**: Import/export git-diffable markdown bundles as a graph, plus the `OKFBundle` agent-memory façade (grounded retrieval, review queue, layered linting, bundle diff/preview, Obsidian wikilinks)
 - **Transactions**: Full ACID transaction support with context managers
 
