@@ -8,7 +8,8 @@ matter of adding ``ToolSet``\\ s here, not touching the server.
 
 Configuration mirrors the proposal's Option A (the OKF/agent-memory tier):
 
-    grafito-mcp --bundle ./okf_bundle            # read-only exploration
+    grafito-mcp --bundle ./okf_bundle            # read-only, text-mode retrieval
+    grafito-mcp --bundle ./okf_bundle --embed sentence_transformer   # semantic search
     grafito-mcp --bundle ./okf_bundle --enable-writes   # also lets the client remember()
 
 Installed via ``grafito[mcp]``; run without a build step with
@@ -18,6 +19,8 @@ Installed via ``grafito[mcp]``; run without a build step with
 from __future__ import annotations
 
 import argparse
+import json
+from typing import TYPE_CHECKING
 
 from ..okf import (
     BundleTools,
@@ -28,6 +31,30 @@ from ..okf import (
 )
 from .server import serve_mcp
 
+if TYPE_CHECKING:
+    from ..embedding_functions import EmbeddingFunction
+
+
+def resolve_embedder(
+    name: str | None, config: dict | None = None
+) -> "EmbeddingFunction | None":
+    """Build an embedding function from a registry ``name`` and optional config.
+
+    ``None`` (the default) means no embedder — ``search``/``context`` then run in
+    text mode, still useful but keyword-only. A name (e.g. ``sentence_transformer``,
+    ``openai``, ``ollama``) is looked up in Grafito's embedding-function registry
+    and instantiated with ``config`` as keyword arguments, so the class defaults
+    apply — ``resolve_embedder("sentence_transformer")`` is the default MiniLM
+    model with no config. The embedder's own optional dependency (e.g.
+    ``sentence_transformers``) must be installed; a missing one raises a clear
+    error from the class itself.
+    """
+    if name is None:
+        return None
+    from ..embedding_functions import get_embedding_function_class
+
+    return get_embedding_function_class(name)(**(config or {}))
+
 
 def build_tools(
     bundle_path: str,
@@ -35,6 +62,7 @@ def build_tools(
     enable_writes: bool = False,
     tag: str | None = None,
     budget_tokens: int = 2000,
+    embed: "EmbeddingFunction | None" = None,
 ) -> ThreadConfinedTools:
     """A thread-confined toolset over the bundle at ``bundle_path``.
 
@@ -53,11 +81,13 @@ def build_tools(
     server starts read-only. ``autolog`` follows the same flag, since it only
     matters once writes are possible. ``budget_tokens`` caps ``context`` output;
     it is a deployment decision, not a per-call one, so it is fixed here.
+    ``embed`` supplies the embedding function so ``search``/``context`` retrieve
+    by meaning; without it retrieval degrades to text mode.
     """
     exclude = None if enable_writes else ["remember"]
 
     def factory() -> ToolRegistry:
-        kb = OKFBundle.load(bundle_path, autolog=enable_writes)
+        kb = OKFBundle.load(bundle_path, embed=embed, autolog=enable_writes)
         return ToolRegistry(
             [
                 ContextTools(kb, tag=tag, budget_tokens=budget_tokens),
@@ -83,17 +113,35 @@ def main(argv: list[str] | None = None) -> None:
         help="Token budget for the context tool's grounded output (default 2000).",
     )
     parser.add_argument(
+        "--embed",
+        default=None,
+        metavar="NAME",
+        help="Embedding function for semantic search (e.g. sentence_transformer, "
+        "openai, ollama). Omit for text-mode retrieval. Needs the embedder's own "
+        "optional dependency installed.",
+    )
+    parser.add_argument(
+        "--embed-config",
+        default=None,
+        metavar="JSON",
+        help='Config for --embed as a JSON object, e.g. \'{"model_name": "BAAI/bge-small-en"}\'.',
+    )
+    parser.add_argument(
         "--enable-writes",
         action="store_true",
         help="Expose the write tool (remember). Off by default — the server is read-only.",
     )
     args = parser.parse_args(argv)
 
+    embed_config = json.loads(args.embed_config) if args.embed_config else None
+    embedder = resolve_embedder(args.embed, embed_config)
+
     tools = build_tools(
         args.bundle,
         enable_writes=args.enable_writes,
         tag=args.tag,
         budget_tokens=args.budget_tokens,
+        embed=embedder,
     )
     try:
         # tools is a ToolSet; the server always sees a ToolRegistry, so nesting

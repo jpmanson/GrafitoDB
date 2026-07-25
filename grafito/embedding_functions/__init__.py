@@ -40,6 +40,22 @@ def register_embedding_function_class(cls: type[EmbeddingFunction]) -> None:
     _EMBEDDING_FUNCTIONS[cls.name()] = cls
 
 
+def get_embedding_function_class(name: str) -> type[EmbeddingFunction]:
+    """Look up a registered embedding function class by name.
+
+    The counterpart to :func:`create_embedding_function` for callers that want to
+    build via the class ``__init__`` (and its defaults) rather than the stricter
+    ``build_from_config`` — e.g. ``get_embedding_function_class("sentence_transformer")()``
+    yields the default MiniLM model with no config. Raises ``ValueError`` naming
+    the available functions when ``name`` is unknown.
+    """
+    if name not in _EMBEDDING_FUNCTIONS:
+        raise ValueError(
+            f"Unknown embedding function '{name}'. Available: {list_embedding_functions()}"
+        )
+    return _EMBEDDING_FUNCTIONS[name]
+
+
 def create_embedding_function(name: str, config: dict[str, Any]) -> EmbeddingFunction:
     """Create an embedding function from a config dict."""
     if name not in _EMBEDDING_FUNCTIONS:
@@ -69,5 +85,6 @@ __all__ = [
     "TogetherAIEmbeddingFunction",
     "register_embedding_function_class",
     "create_embedding_function",
+    "get_embedding_function_class",
     "list_embedding_functions",
 ]

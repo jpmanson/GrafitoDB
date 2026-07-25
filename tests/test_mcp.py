@@ -17,7 +17,7 @@ import pytest
 pytest.importorskip("mcp")
 pytest.importorskip("yaml")
 
-from grafito.mcp.cli import build_tools  # noqa: E402
+from grafito.mcp.cli import build_tools, resolve_embedder  # noqa: E402
 from grafito.mcp.server import _to_mcp_tools  # noqa: E402
 
 BUNDLE = str(Path("examples") / "okf" / "okf_knowledge_base")
@@ -64,6 +64,71 @@ def test_build_tools_exposes_remember_when_writes_enabled():
     tools = build_tools(BUNDLE, enable_writes=True)
     try:
         assert "remember" in _tool_names(tools)
+    finally:
+        tools.close()
+
+
+def test_resolve_embedder_none_is_none():
+    assert resolve_embedder(None) is None
+
+
+def test_resolve_embedder_unknown_name_lists_available():
+    with pytest.raises(ValueError, match="Unknown embedding function"):
+        resolve_embedder("not-a-real-embedder")
+
+
+def test_resolve_embedder_builds_a_registered_function():
+    """String -> instance via the registry, config passed as kwargs."""
+    from grafito.embedding_functions import (
+        EmbeddingFunction,
+        register_embedding_function_class,
+    )
+
+    class _Fake(EmbeddingFunction):
+        def __init__(self, dim: int = 4) -> None:
+            self.dim = dim
+
+        def __call__(self, input):
+            return [[0.0] * self.dim for _ in input]
+
+        @staticmethod
+        def name() -> str:
+            return "_fake_mcp_test"
+
+        def default_space(self) -> str:
+            return "cosine"
+
+        def supported_spaces(self):
+            return ["cosine"]
+
+        @staticmethod
+        def build_from_config(config):
+            return _Fake(**config)
+
+        def get_config(self):
+            return {"dim": self.dim}
+
+        @staticmethod
+        def validate_config(config):
+            pass
+
+    register_embedding_function_class(_Fake)
+    embedder = resolve_embedder("_fake_mcp_test", {"dim": 8})
+    assert isinstance(embedder, _Fake) and embedder.dim == 8
+
+
+def test_build_tools_wires_the_embedder_into_retrieval():
+    """A passed embedder reaches search — hybrid mode uses the vector index."""
+    sys.path.insert(0, str(Path("examples") / "okf"))
+    from okf_knowledge_base import HashingEmbeddingFunction  # dep-free demo embedder
+
+    tools = build_tools(BUNDLE, embed=HashingEmbeddingFunction())
+    try:
+        payload = json.loads(tools.call("context", {"query": "why sqlite"}))
+        assert payload["concepts"] and payload["text"]
+        hits = json.loads(tools.call("search", {"query": "why sqlite", "k": 3}))
+        # A vector score rides along only when an embedder is present.
+        assert hits and all("score" in h for h in hits)
     finally:
         tools.close()
 
