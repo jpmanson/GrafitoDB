@@ -10,7 +10,11 @@ Configuration mirrors the proposal's Option A (the OKF/agent-memory tier):
 
     grafito-mcp --bundle ./okf_bundle            # read-only, text-mode retrieval
     grafito-mcp --bundle ./okf_bundle --embed sentence_transformer   # semantic search
-    grafito-mcp --bundle ./okf_bundle --enable-writes   # also lets the client remember()
+    grafito-mcp --bundle ./okf_bundle --enable-writes   # remember(), saved to the bundle
+
+With ``--enable-writes`` a remembered note is persisted back to the bundle
+directory (markdown + changelog), so it survives the process and shows up in
+``git diff`` — the bundle is the memory.
 
 Installed via ``grafito[mcp]``; run without a build step with
 ``uvx --from 'grafitodb[mcp]' grafito-mcp --bundle ./okf_bundle``.
@@ -20,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..okf import (
     BundleTools,
@@ -33,6 +37,44 @@ from .server import serve_mcp
 
 if TYPE_CHECKING:
     from ..embedding_functions import EmbeddingFunction
+    from ..okf import ToolSet
+
+# BundleTools' only write tool; a call to it that succeeds is what we persist on.
+_WRITE_TOOLS = frozenset({"remember"})
+
+
+class _PersistAfterWrite:
+    """Wrap a :class:`ToolSet` so a successful write is flushed to disk.
+
+    ``remember`` mutates the in-memory bundle; without this the note is lost when
+    the process exits. This persists after each successful write rather than only
+    at shutdown, so a crash cannot swallow what the client was told was saved. It
+    is a :class:`ToolSet` itself (delegates ``schemas``/``call``), so it drops
+    into the registry in place of the toolset it wraps.
+
+    ``persist`` runs on the same (owning) thread as the call — an
+    :class:`OKFBundle` may only be touched there — because the whole toolset
+    lives inside the :class:`ThreadConfinedTools` factory.
+    """
+
+    def __init__(self, inner: "ToolSet", persist: Callable[[], object]) -> None:
+        self._inner = inner
+        self._persist = persist
+        self.schemas = inner.schemas
+
+    def call(self, name: str, args: dict) -> str:
+        result = self._inner.call(name, args)
+        if name in _WRITE_TOOLS and not _is_error(result):
+            self._persist()
+        return result
+
+
+def _is_error(result: str) -> bool:
+    try:
+        data = json.loads(result)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(data, dict) and "error" in data
 
 
 def resolve_embedder(
@@ -78,9 +120,11 @@ def build_tools(
     so a bare toolset would raise ``sqlite3.ProgrammingError``.
 
     Writes are gated: ``remember`` is excluded unless ``enable_writes`` — the
-    server starts read-only. ``autolog`` follows the same flag, since it only
-    matters once writes are possible. ``budget_tokens`` caps ``context`` output;
-    it is a deployment decision, not a per-call one, so it is fixed here.
+    server starts read-only. When writes are on, the bundle is opened with
+    ``autolog`` and each successful write is **persisted back to the bundle
+    directory** (markdown + changelog), so a remembered note survives the
+    process — see :class:`_PersistAfterWrite`. ``budget_tokens`` caps ``context``
+    output; it is a deployment decision, not a per-call one, so it is fixed here.
     ``embed`` supplies the embedding function so ``search``/``context`` retrieve
     by meaning; without it retrieval degrades to text mode.
     """
@@ -88,10 +132,14 @@ def build_tools(
 
     def factory() -> ToolRegistry:
         kb = OKFBundle.load(bundle_path, embed=embed, autolog=enable_writes)
+        bundle_tools: "ToolSet" = BundleTools(kb, tag=tag, exclude=exclude)
+        if enable_writes:
+            # save() with no path mirrors the graph back to the load directory.
+            bundle_tools = _PersistAfterWrite(bundle_tools, kb.save)
         return ToolRegistry(
             [
                 ContextTools(kb, tag=tag, budget_tokens=budget_tokens),
-                BundleTools(kb, tag=tag, exclude=exclude),
+                bundle_tools,
             ]
         )
 
@@ -129,7 +177,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--enable-writes",
         action="store_true",
-        help="Expose the write tool (remember). Off by default — the server is read-only.",
+        help="Expose the write tool (remember) and persist writes back to the bundle "
+        "directory. Off by default — the server is read-only.",
     )
     args = parser.parse_args(argv)
 

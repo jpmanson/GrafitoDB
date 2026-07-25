@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,8 +18,13 @@ import pytest
 pytest.importorskip("mcp")
 pytest.importorskip("yaml")
 
-from grafito.mcp.cli import build_tools, resolve_embedder  # noqa: E402
+from grafito.mcp.cli import (  # noqa: E402
+    _PersistAfterWrite,
+    build_tools,
+    resolve_embedder,
+)
 from grafito.mcp.server import _to_mcp_tools  # noqa: E402
+from grafito.okf import OKFBundle  # noqa: E402
 
 BUNDLE = str(Path("examples") / "okf" / "okf_knowledge_base")
 
@@ -131,6 +137,65 @@ def test_build_tools_wires_the_embedder_into_retrieval():
         assert hits and all("score" in h for h in hits)
     finally:
         tools.close()
+
+
+class _RecordingToolSet:
+    """A ToolSet whose call returns whatever it is told, recording invocations."""
+
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+        self.calls: list[str] = []
+        self.schemas = [
+            {"type": "function", "function": {"name": "remember", "description": "w"}}
+        ]
+
+    def call(self, name: str, args: dict) -> str:
+        self.calls.append(name)
+        return self.reply
+
+
+def test_persist_after_write_saves_only_on_successful_write():
+    saves = []
+
+    ok = _PersistAfterWrite(_RecordingToolSet('{"saved": "x"}'), lambda: saves.append(1))
+    ok.call("remember", {})
+    assert saves == [1]  # a successful write persisted
+
+    failed = _PersistAfterWrite(_RecordingToolSet('{"error": "nope"}'), lambda: saves.append(2))
+    failed.call("remember", {})
+    assert saves == [1]  # a failed write did not
+
+
+def test_persist_after_write_ignores_reads():
+    saves = []
+    reader = _RecordingToolSet('{"id": "c"}')
+    reader.schemas = [{"type": "function", "function": {"name": "open"}}]
+    _PersistAfterWrite(reader, lambda: saves.append(1)).call("open", {})
+    assert saves == []  # only write tools trigger a save
+
+
+def test_writes_persist_back_to_the_bundle_across_reload(tmp_path):
+    """A remembered note survives the process: written to markdown, reloadable."""
+    dest = tmp_path / "kb"
+    shutil.copytree(BUNDLE, dest)
+
+    tools = build_tools(str(dest), enable_writes=True)
+    try:
+        tools.call(
+            "remember",
+            {"concept_id": "notes/persisted", "title": "Persisted note", "body": "survives"},
+        )
+    finally:
+        tools.close()
+
+    assert (dest / "notes" / "persisted.md").exists()
+    reloaded = OKFBundle.load(str(dest), import_log=True)
+    try:
+        note = reloaded.concept("notes/persisted")
+        assert note is not None and note.title == "Persisted note"
+        assert any("persisted" in entry["text"] for entry in reloaded.log())
+    finally:
+        reloaded.db.close()
 
 
 async def _roundtrip() -> tuple[str, list[str], str, str, str]:
