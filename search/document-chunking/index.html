@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/embeddings/overview/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/search/document-chunking/">
       
       
-        <link rel="prev" href="../../comparisons/rdflib/">
+        <link rel="prev" href="../vector/">
       
       
-        <link rel="next" href="../openai/">
+        <link rel="next" href="../ann-backends/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Overview - GrafitoDB</title>
+        <title>Document Chunking - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#embeddings-overview" class="md-skip">
+        <a href="#document-graph-chunking" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Document Chunking
             
           </span>
         </div>
@@ -311,11 +311,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../search/overview/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
           
   
   
@@ -371,13 +373,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../embeddings/overview/" class="md-tabs__link">
           
   
   
@@ -1331,28 +1331,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1370,7 +1373,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1388,7 +1391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1416,7 +1419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/fulltext/" class="md-nav__link">
+      <a href="../fulltext/" class="md-nav__link">
         
   
   
@@ -1444,7 +1447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/vector/" class="md-nav__link">
+      <a href="../vector/" class="md-nav__link">
         
   
   
@@ -1469,10 +1472,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../search/document-chunking/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Chunking
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1488,6 +1518,187 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behaviour-mvp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behaviour (MVP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Behaviour (MVP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pack-budgets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pack budgets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlap-dedup-and-store_full_text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overlap dedup and store_full_text
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-prerequisites-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core prerequisites used
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core prerequisites used">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hierarchy-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hierarchy notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-3-additions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 additions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 additions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-search-rrf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid search (RRF)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tree-select-agentic-toc-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tree select (agentic ToC path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semantic-breakpoint-chunker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic breakpoint chunker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cypher-query-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cypher query strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1500,7 +1711,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/ann-backends/" class="md-nav__link">
+      <a href="../ann-backends/" class="md-nav__link">
         
   
   
@@ -1528,7 +1739,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/hybrid/" class="md-nav__link">
+      <a href="../hybrid/" class="md-nav__link">
         
   
   
@@ -1556,7 +1767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -1906,31 +2117,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -1948,7 +2156,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1963,37 +2171,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../embeddings/overview/" class="md-nav__link">
         
   
   
@@ -2009,264 +2190,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-are-embeddings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What are Embeddings?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-providers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Providers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Providers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cloud-apis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cloud APIs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#localon-premise" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local/On-Premise
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Start
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Quick Start">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-create-an-embedding-function" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Create an Embedding Function
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-create-a-vector-index" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Create a Vector Index
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-add-data-with-embeddings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Add Data with Embeddings
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-perform-semantic-search" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Perform Semantic Search
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#embedding-function-base-interface" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Embedding Function Base Interface
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-spaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Spaces
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Management
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-provider" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a Provider
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Choosing a Provider">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#for-production-use" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Production Use
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-cost-effective-solutions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Cost-Effective Solutions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-privacyoffline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Privacy/Offline
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-experimentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Experimentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Environment Variables
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Error Handling
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2279,7 +2202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../openai/" class="md-nav__link">
+      <a href="../../embeddings/openai/" class="md-nav__link">
         
   
   
@@ -2307,7 +2230,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../huggingface/" class="md-nav__link">
+      <a href="../../embeddings/huggingface/" class="md-nav__link">
         
   
   
@@ -2335,7 +2258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cloud-providers/" class="md-nav__link">
+      <a href="../../embeddings/cloud-providers/" class="md-nav__link">
         
   
   
@@ -2363,7 +2286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ollama/" class="md-nav__link">
+      <a href="../../embeddings/ollama/" class="md-nav__link">
         
   
   
@@ -2881,72 +2804,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-are-embeddings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What are Embeddings?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-providers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Providers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Providers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cloud-apis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cloud APIs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#localon-premise" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local/On-Premise
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        Quick start
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Quick Start">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behaviour-mvp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behaviour (MVP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Behaviour (MVP)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-create-an-embedding-function" class="md-nav__link">
+  <a href="#pack-budgets" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Create an Embedding Function
+        Pack budgets
       
     </span>
   </a>
@@ -2954,32 +2838,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-create-a-vector-index" class="md-nav__link">
+  <a href="#overlap-dedup-and-store_full_text" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create a Vector Index
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-add-data-with-embeddings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Add Data with Embeddings
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-perform-semantic-search" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Perform Semantic Search
+        Overlap dedup and store_full_text
       
     </span>
   </a>
@@ -2992,88 +2854,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#embedding-function-base-interface" class="md-nav__link">
+  <a href="#core-prerequisites-used" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Embedding Function Base Interface
+        Core prerequisites used
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distance-spaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distance Spaces
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Management
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choosing-a-provider" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing a Provider
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Choosing a Provider">
+    <nav class="md-nav" aria-label="Core prerequisites used">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#for-production-use" class="md-nav__link">
+  <a href="#hierarchy-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        For Production Use
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-cost-effective-solutions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Cost-Effective Solutions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-privacyoffline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Privacy/Offline
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#for-experimentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        For Experimentation
+        Hierarchy notes
       
     </span>
   </a>
@@ -3086,32 +2882,82 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#environment-variables" class="md-nav__link">
+  <a href="#phase-3-additions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment Variables
+        Phase 3 additions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 additions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-search-rrf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid search (RRF)
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#error-handling" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#tree-select-agentic-toc-path" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Error Handling
+        Tree select (agentic ToC path)
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#semantic-breakpoint-chunker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Semantic breakpoint chunker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cypher-query-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cypher query strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred
       
     </span>
   </a>
@@ -3138,269 +2984,154 @@
   
 
 
-<h1 id="embeddings-overview">Embeddings Overview</h1>
-<p>GrafitoDB provides seamless integration with multiple embedding providers, allowing you to convert text into vector representations for semantic search, clustering, and similarity analysis.</p>
-<h2 id="what-are-embeddings">What are Embeddings?</h2>
-<p>Embeddings are dense vector representations of text (or other data) that capture semantic meaning. Similar texts have vectors that are close together in the embedding space, enabling:</p>
-<ul>
-<li><strong>Semantic search</strong>: Find content with similar meaning</li>
-<li><strong>Clustering</strong>: Group similar items automatically</li>
-<li><strong>Recommendation</strong>: Suggest similar items</li>
-<li><strong>Classification</strong>: Categorize content based on similarity</li>
-</ul>
-<h2 id="supported-providers">Supported Providers</h2>
-<p>GrafitoDB includes built-in support for 12+ embedding providers:</p>
-<h3 id="cloud-apis">Cloud APIs</h3>
-<table>
-<thead>
-<tr>
-<th>Provider</th>
-<th>Description</th>
-<th>Best For</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="../openai/">OpenAI</a></td>
-<td>text-embedding-3-small, text-embedding-3-large</td>
-<td>High-quality embeddings</td>
-</tr>
-<tr>
-<td><a href="../huggingface/">Hugging Face</a></td>
-<td>Inference API with thousands of models</td>
-<td>Flexibility, open-source models</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#google-genai">Google GenAI</a></td>
-<td>text-embedding-004</td>
-<td>Google Cloud integration</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#aws-bedrock">AWS Bedrock</a></td>
-<td>Titan embeddings</td>
-<td>AWS ecosystem</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#cohere">Cohere</a></td>
-<td>Embed models</td>
-<td>Enterprise use</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#jina-ai">Jina</a></td>
-<td>Jina embeddings</td>
-<td>Specialized models</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#mistral">Mistral</a></td>
-<td>Mistral embeddings</td>
-<td>European AI</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#voyage-ai">VoyageAI</a></td>
-<td>Voyage embeddings</td>
-<td>Domain-specific</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#together-ai">Together AI</a></td>
-<td>Together embeddings</td>
-<td>Open-source models</td>
-</tr>
-</tbody>
-</table>
-<h3 id="localon-premise">Local/On-Premise</h3>
-<table>
-<thead>
-<tr>
-<th>Provider</th>
-<th>Description</th>
-<th>Best For</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="../ollama/">Ollama</a></td>
-<td>Local LLM inference</td>
-<td>Privacy, offline use</td>
-</tr>
-<tr>
-<td><a href="../huggingface/#sentence-transformers-local">Sentence Transformers</a></td>
-<td>Local embedding models</td>
-<td>Cost-effective</td>
-</tr>
-<tr>
-<td><a href="../cloud-providers/#tensorflow-hub">TensorFlow Hub</a></td>
-<td>Google ML models</td>
-<td>TensorFlow ecosystem</td>
-</tr>
-</tbody>
-</table>
-<h2 id="quick-start">Quick Start</h2>
-<h3 id="1-create-an-embedding-function">1. Create an Embedding Function</h3>
+<h1 id="document-graph-chunking">Document → Graph Chunking</h1>
+<p>Grafito can index long documents as <strong>many passage nodes</strong> (still <strong>one vector per node</strong>), with graph links for navigation after semantic search.</p>
+<p>Full design: <code>todo/DOCUMENT_CHUNKING_HELPER.md</code>.</p>
+<h2 id="quick-start">Quick start</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIEmbeddingFunction</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Initialize embedding function</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">OpenAIEmbeddingFunction</span><span class="p">(</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;text-embedding-3-small&quot;</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">api_key_env_var</span><span class="o">=</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentIngestor</span><span class="p">,</span> <span class="n">MarkdownChunker</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentenceTransformerEmbeddingFunction</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">embedder</span> <span class="o">=</span> <span class="n">SentenceTransformerEmbeddingFunction</span><span class="p">(</span><span class="s2">&quot;all-MiniLM-L6-v2&quot;</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span> <span class="n">embedding_function</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">db</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">chunker</span><span class="o">=</span><span class="n">MarkdownChunker</span><span class="p">(</span><span class="n">max_chars</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span> <span class="n">overlap</span><span class="o">=</span><span class="mi">150</span><span class="p">),</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="p">)</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">result</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;runbook.md&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">document_key</span><span class="o">=</span><span class="s2">&quot;runbooks/slow-queries&quot;</span><span class="p">,</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Slow queries&quot;</span><span class="p">,</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">embed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="p">)</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;connection pool timeouts&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">include_ancestors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">packed</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">max_chars</span><span class="o">=</span><span class="mi">4000</span><span class="p">)</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="nb">print</span><span class="p">(</span><span class="n">packed</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="c1"># Section tree (titles / keys — no full bodies)</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">ing</span><span class="o">.</span><span class="n">toc</span><span class="p">(</span><span class="s2">&quot;runbooks/slow-queries&quot;</span><span class="p">):</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">sec</span><span class="o">.</span><span class="n">title</span><span class="p">,</span> <span class="n">sec</span><span class="o">.</span><span class="n">node_key</span><span class="p">,</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">title</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">sec</span><span class="o">.</span><span class="n">children</span><span class="p">])</span>
 </span></code></pre></div>
-<h3 id="2-create-a-vector-index">2. Create a Vector Index</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Create vector index with embedding function</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;articles_vec&quot;</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">1536</span><span class="p">,</span>  <span class="c1"># Match your embedding model</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">embedding_function</span><span class="o">=</span><span class="n">embed_fn</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="3-add-data-with-embeddings">3. Add Data with Embeddings</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Create nodes</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">article</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Article&quot;</span><span class="p">],</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Introduction to Graph Databases&quot;</span><span class="p">}</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">)</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Generate embeddings automatically or manually</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">db</span><span class="o">.</span><span class="n">upsert_embedding</span><span class="p">(</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">node_id</span><span class="o">=</span><span class="n">article</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">text</span><span class="o">=</span><span class="s2">&quot;Introduction to Graph Databases&quot;</span><span class="p">,</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">index</span><span class="o">=</span><span class="s2">&quot;articles_vec&quot;</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="4-perform-semantic-search">4. Perform Semantic Search</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Search for similar content</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">vector_search</span><span class="p">(</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">index</span><span class="o">=</span><span class="s2">&quot;articles_vec&quot;</span><span class="p">,</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">query</span><span class="o">=</span><span class="s2">&quot;graph database basics&quot;</span><span class="p">,</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">k</span><span class="o">=</span><span class="mi">5</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">)</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">score</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span></code></pre></div>
-<h2 id="embedding-function-base-interface">Embedding Function Base Interface</h2>
-<p>All embedding functions implement a common interface:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">EmbeddingFunction</span><span class="p">:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract embedding function interface.&quot;&quot;&quot;</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate embeddings for the given input texts.&quot;&quot;&quot;</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="o">...</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the registry name for this embedding function.&quot;&quot;&quot;</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="o">...</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">default_space</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return default distance space (cosine, l2, ip).&quot;&quot;&quot;</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="o">...</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">supported_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return supported distance spaces.&quot;&quot;&quot;</span>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        <span class="o">...</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
-</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return embedding dimension if known.&quot;&quot;&quot;</span>
-</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        <span class="o">...</span>
-</span></code></pre></div>
-<h2 id="distance-spaces">Distance Spaces</h2>
-<p>Different embedding models work best with different distance metrics:</p>
+<h2 id="behaviour-mvp">Behaviour (MVP)</h2>
 <table>
 <thead>
 <tr>
-<th>Space</th>
-<th>Description</th>
-<th>Best For</th>
+<th>Topic</th>
+<th>Behaviour</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>cosine</code></td>
-<td>Cosine similarity</td>
-<td>Most text embeddings</td>
+<td>Chunkers</td>
+<td><code>FixedChunker</code> (chars/tokens), <code>MarkdownChunker</code> (headings + overflow; <strong>preambles</strong> are passages)</td>
 </tr>
 <tr>
-<td><code>l2</code></td>
-<td>Euclidean distance</td>
-<td>Image embeddings</td>
+<td>Hierarchy</td>
+<td><code>hierarchy="auto"</code> (default): with <code>MarkdownChunker</code>, writes <code>:Section</code> tree (<code>HAS_SECTION</code>) + passages under sections</td>
 </tr>
 <tr>
-<td><code>ip</code></td>
-<td>Inner product</td>
-<td>OpenAI embeddings</td>
+<td>Ownership</td>
+<td>Managed nodes: <code>managed_by=grafito.document</code>, <code>generation</code>, <code>owner_document_id</code></td>
+</tr>
+<tr>
+<td>Replace</td>
+<td>Generational: new <code>BUILDING</code> → <code>ACTIVE</code>; previous generation GC’d</td>
+</tr>
+<tr>
+<td>External parent</td>
+<td><code>parent_id=</code> attach without owning/deleting the parent (e.g. OKF Concept)</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>Filters managed + active generation + <code>embed_role=passage</code>; <code>diversify_by_document=</code></td>
+</tr>
+<tr>
+<td>Expand</td>
+<td><code>global_seq</code> window; optional <code>include_ancestors=True</code> (section path)</td>
+</tr>
+<tr>
+<td>ToC</td>
+<td><code>toc(document_key)</code> / <code>load_sections(document_key, node_keys=[…])</code></td>
+</tr>
+<tr>
+<td>Pack</td>
+<td>Budget (<code>max_chars</code>, or <code>max_tokens</code> with optional <code>token_counter</code>), overlap merge via <code>char_start</code>/<code>char_end</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="configuration-management">Configuration Management</h2>
-<p>Embedding functions can be serialized for persistence:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Get configuration</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">config</span> <span class="o">=</span> <span class="n">embed_fn</span><span class="o">.</span><span class="n">get_config</span><span class="p">()</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># {&#39;model&#39;: &#39;text-embedding-3-small&#39;}</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1"># Recreate from configuration</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_embedding_function</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">embed_fn</span> <span class="o">=</span> <span class="n">create_embedding_function</span><span class="p">(</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<h3 id="pack-budgets">Pack budgets</h3>
+<ul>
+<li><code>max_chars=…</code> — hard character budget.</li>
+<li><code>max_tokens=…, token_counter=fn</code> — exact token budget via your counter.</li>
+<li><code>max_tokens=…</code> <strong>without</strong> counter — <strong>rough estimate</strong> <code>tokens ≈ ceil(len/4)</code> (same idea as design §7.2). Prefer a real counter for production LLM windows.</li>
+</ul>
+<h3 id="overlap-dedup-and-store_full_text">Overlap dedup and <code>store_full_text</code></h3>
+<p>Pack merges overlapping passages using offsets. <strong>Best quality</strong> when the parent keeps the full document body (<code>store_full_text=True</code>, default): merge slices <code>parent.text[char_start:char_end]</code>.</p>
+<p>With <code>store_full_text=False</code>, merge still runs by <strong>stitching passage texts</strong> from offsets. That works if <code>char_start</code>/<code>char_end</code> stay consistent with each passage’s <code>text</code>; it is weaker if offsets drift. If you use chunk <strong>overlap &gt; 0</strong>, keep <code>store_full_text=True</code> unless you accept stitch-based reconstruction.</p>
+<h2 id="core-prerequisites-used">Core prerequisites used</h2>
+<ul>
+<li><code>GrafitoDatabase.upsert_embeddings_batch</code> / <code>remove_embeddings_batch</code> (single ANN mutate + single persist)</li>
+<li><code>delete_node</code> best-effort removes embeddings from registered indexes</li>
+</ul>
+<h3 id="hierarchy-notes">Hierarchy notes</h3>
+<ul>
+<li><strong>Section</strong> = structure (<code>title</code>, <code>level</code>, <code>node_key</code>, optional <code>summary</code>); not the full body.</li>
+<li><strong>Passages</strong> remain the only default embed targets; set <code>embed_section_summaries=True</code> to also embed sections that have a <code>summary</code> property.</li>
+<li><code>hierarchy=False</code> forces flat passages only (even with <code>MarkdownChunker</code>).</li>
+<li><code>hierarchy=True</code> forces the markdown tree builder (best with markdown-shaped text).</li>
+<li>Headings inside fenced code (<code>```</code> / <code>~~~</code>) are <strong>not</strong> treated as sections (shell <code>#</code> comments stay in the passage body).</li>
+</ul>
+<h2 id="phase-3-additions">Phase 3 additions</h2>
+<h3 id="hybrid-search-rrf">Hybrid search (RRF)</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span> <span class="n">configure_fts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">hybrid_search</span><span class="p">(</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s2">&quot;connection pool timeout&quot;</span><span class="p">,</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">vector_k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">fts_k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">rrf_k</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">vector_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">fts_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="choosing-a-provider">Choosing a Provider</h2>
-<h3 id="for-production-use">For Production Use</h3>
-<ul>
-<li><strong>OpenAI</strong>: Best quality embeddings, reliable API</li>
-<li><strong>Cohere</strong>: Enterprise features, good multilingual support</li>
-<li><strong>AWS Bedrock</strong>: If already using AWS infrastructure</li>
-</ul>
-<h3 id="for-cost-effective-solutions">For Cost-Effective Solutions</h3>
-<ul>
-<li><strong>Hugging Face Inference API</strong>: Pay-per-use, many free models</li>
-<li><strong>Sentence Transformers</strong>: Run locally, no API costs</li>
-</ul>
-<h3 id="for-privacyoffline">For Privacy/Offline</h3>
-<ul>
-<li><strong>Ollama</strong>: Run models locally on your hardware</li>
-<li><strong>Sentence Transformers</strong>: Local inference</li>
-</ul>
-<h3 id="for-experimentation">For Experimentation</h3>
-<ul>
-<li><strong>Ollama</strong>: Easy to try different models</li>
-<li><strong>Hugging Face</strong>: Largest selection of models</li>
-</ul>
-<h2 id="environment-variables">Environment Variables</h2>
-<p>Most providers support environment variables for API keys:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># OpenAI</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;sk-...&quot;</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Hugging Face</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">HF_TOKEN</span><span class="o">=</span><span class="s2">&quot;hf_...&quot;</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Google GenAI</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># AWS Bedrock (uses boto3 credential chain)</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+<p>FTS must index passage <code>text</code> (<code>configure_fts=True</code> or manual <code>create_text_index</code>). Scores from vector and BM25 are <strong>not</strong> summed raw — fused with Reciprocal Rank Fusion.</p>
+<h3 id="tree-select-agentic-toc-path">Tree select (agentic ToC path)</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_llm</span><span class="p">(</span><span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># return JSON list of node_key strings</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="k">return</span> <span class="s1">&#39;[&quot;0001&quot;, &quot;0003&quot;]&#39;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">keys</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">tree_select</span><span class="p">(</span><span class="s2">&quot;runbooks/x&quot;</span><span class="p">,</span> <span class="s2">&quot;how do we rotate secrets?&quot;</span><span class="p">,</span> <span class="n">my_llm</span><span class="p">)</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">sections</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">load_sections</span><span class="p">(</span><span class="s2">&quot;runbooks/x&quot;</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="error-handling">Error Handling</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.embedding_functions</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAIEmbeddingFunction</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">try</span><span class="p">:</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">embed_fn</span> <span class="o">=</span> <span class="n">OpenAIEmbeddingFunction</span><span class="p">()</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">try</span><span class="p">:</span>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">embeddings</span> <span class="o">=</span> <span class="n">embed_fn</span><span class="p">([</span><span class="s2">&quot;text to embed&quot;</span><span class="p">])</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;API error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<h3 id="semantic-breakpoint-chunker">Semantic breakpoint chunker</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">SemanticBreakpointChunker</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">db</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">chunker</span><span class="o">=</span><span class="n">SemanticBreakpointChunker</span><span class="p">(</span><span class="n">embedder</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">min_chars</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">max_chars</span><span class="o">=</span><span class="mi">1200</span><span class="p">),</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">hierarchy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># flat passages</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">)</span>
 </span></code></pre></div>
-<h2 id="next-steps">Next Steps</h2>
-<ul>
-<li><a href="../openai/">OpenAI Integration</a> - OpenAI's embedding models</li>
-<li><a href="../huggingface/">Hugging Face</a> - Open-source models</li>
-<li><a href="../cloud-providers/">Cloud Providers</a> - Google, AWS, Cohere, etc.</li>
-<li><a href="../ollama/">Ollama</a> - Local embedding models</li>
-</ul>
+<h3 id="cypher-query-strings">Cypher query strings</h3>
+<p>With an embedding function on the index:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">vector</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;docs_chunks&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;connection pool&#39;</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">YIELD</span><span class="w"> </span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="n">score</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">text</span><span class="p">,</span><span class="w"> </span><span class="n">score</span>
+</span></code></pre></div>
+<h3 id="enrichment">Enrichment</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">TitleContextEnricher</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">enricher</span><span class="o">=</span><span class="n">TitleContextEnricher</span><span class="p">())</span>
+</span></code></pre></div>
+<p>Sets <code>context</code> on passages so embeddings use title/section situating text.</p>
+<h2 id="deferred">Deferred</h2>
+<p>Dual multi-view indexing (§10.7), Chonkie adapter, OKF long-body opt-in — design Phase 3 remainder.</p>
 
 
 
