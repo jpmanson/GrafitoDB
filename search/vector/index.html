@@ -3949,8 +3949,12 @@
 <p>For <strong>long documents</strong> (runbooks, notes, OKF bodies), prefer the
 <a href="../document-chunking/">Document Chunking</a> helper (<code>DocumentIngestor</code>): one
 document becomes many passage nodes (still <strong>one vector per node</strong>), with
-section hierarchy, expand/pack, and optional hybrid RRF. See also
-<code>examples/semantic/document_chunking.py</code>.</p>
+section hierarchy, expand/pack, and optional hybrid RRF.</p>
+<p>Examples:</p>
+<ul>
+<li><code>examples/semantic/document_chunking.py</code> (offline script)</li>
+<li><code>examples/semantic/pdf_chunking_colab.ipynb</code> (<a href="https://colab.research.google.com/github/jpmanson/GrafitoDB/blob/main/examples/semantic/pdf_chunking_colab.ipynb">Open in Colab</a> — PDF + step-by-step PyVis)</li>
+</ul>
 <h2 id="creating-vector-indexes">Creating Vector Indexes</h2>
 <h3 id="basic-faiss-index">Basic FAISS Index</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Create a flat (exact) index</span>
