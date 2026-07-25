@@ -3,6 +3,7 @@
 from .chunkers.chonkie_adapter import ChonkieChunker
 from .chunkers.fixed import FixedChunker
 from .chunkers.markdown import MarkdownChunker
+from .chunkers.recursive import DEFAULT_SEPARATORS, RecursiveChunker
 from .chunkers.semantic import SemanticBreakpointChunker
 from .enrich import TitleContextEnricher
 from .hybrid import rrf_fuse
@@ -19,6 +20,7 @@ from .types import (
 )
 
 __all__ = [
+    "DEFAULT_SEPARATORS",
     "ChonkieChunker",
     "ChunkSpec",
     "DocumentIngestor",
@@ -28,6 +30,7 @@ __all__ = [
     "MarkdownChunker",
     "PackedContext",
     "PackedSegment",
+    "RecursiveChunker",
     "SearchHit",
     "SectionSpec",
     "SemanticBreakpointChunker",

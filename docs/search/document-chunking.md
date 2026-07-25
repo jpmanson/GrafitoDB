@@ -61,7 +61,7 @@ for sec in ing.toc("runbooks/slow-queries"):
 
 | Topic | Behaviour |
 |-------|-----------|
-| Chunkers | `FixedChunker` (chars/tokens), `MarkdownChunker` (headings + overflow; **preambles** are passages) |
+| Chunkers | `FixedChunker` (chars/tokens + word boundary), `RecursiveChunker` (hierarchical separators, LC-style), `MarkdownChunker` (headings + overflow; **preambles** are passages), `SemanticBreakpointChunker`, `ChonkieChunker` |
 | Hierarchy | `hierarchy="auto"` (default): with `MarkdownChunker`, writes `:Section` tree (`HAS_SECTION`) + passages under sections |
 | Ownership | Managed nodes: `managed_by=grafito.document`, `generation`, `owner_document_id` |
 | Replace | Generational: new `BUILDING` → `ACTIVE`; previous generation GC’d |
@@ -124,6 +124,31 @@ def my_llm(prompt: str) -> str:
 
 keys = ing.tree_select("runbooks/x", "how do we rotate secrets?", my_llm)
 sections = ing.load_sections("runbooks/x", keys)
+```
+
+### Choosing a chunker
+
+| Chunker | Best for | Notes |
+|---------|----------|--------|
+| **`RecursiveChunker`** | Plain prose / mixed text without reliable headings | Default-of-choice for unstructured bodies (LangChain `RecursiveCharacterTextSplitter` style: `\n\n` → `\n` → ` ` → hard cut). Exact `char_start`/`char_end`. |
+| **`MarkdownChunker`** | Markdown / docs with ATX headings | Structure-aware + section tree; large sections overflow via `FixedChunker`. |
+| **`FixedChunker`** | Uniform windows, token budgets | Sliding window; `boundary="word"` avoids mid-word cuts. Use `unit="tokens"` + `counter=` when needed. |
+| **`SemanticBreakpointChunker`** | Topic shifts in long prose | Needs an embedder; more expensive. |
+| **`ChonkieChunker`** | External recipes (token-aware, late chunking, …) | Thin adapter around a Chonkie chunker instance or `from_recipe`. |
+
+```python
+from grafito.document import RecursiveChunker
+
+# Plain text / OKF body without markdown structure
+ing = DocumentIngestor(
+    db,
+    chunker=RecursiveChunker(max_size=1200, overlap=150),
+    hierarchy=False,
+    embed_index="docs_chunks",
+)
+
+# Language-aware separators (python, markdown, html, javascript, …)
+code_chunker = RecursiveChunker.from_language("python", max_size=800, overlap=50)
 ```
 
 ### Semantic breakpoint chunker

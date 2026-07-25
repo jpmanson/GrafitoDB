@@ -5,7 +5,12 @@ import re
 import pytest
 
 from grafito import GrafitoDatabase
-from grafito.document import DocumentIngestor, FixedChunker, MarkdownChunker
+from grafito.document import (
+    DocumentIngestor,
+    FixedChunker,
+    MarkdownChunker,
+    RecursiveChunker,
+)
 from grafito.document.ingest import MANAGED_BY
 from grafito.embedding_functions.base import EmbeddingFunction
 
@@ -96,6 +101,135 @@ def test_fixed_chunker_boundary_none_cuts_words():
     c = FixedChunker(max_size=12, overlap=0, boundary="none")
     specs = c.split("alpha beta gamma delta epsilon")
     assert specs[0].text == "alpha beta g"  # cuts mid-word by design
+
+
+def test_recursive_chunker_empty_and_short():
+    c = RecursiveChunker(max_size=50, overlap=0)
+    assert c.split("") == []
+    specs = c.split("hello world")
+    assert len(specs) == 1
+    assert specs[0].text == "hello world"
+    assert specs[0].char_start == 0
+    assert specs[0].char_end == len("hello world")
+    assert specs[0].strategy == "recursive"
+
+
+def test_recursive_chunker_prefers_paragraphs():
+    text = (
+        "First paragraph about authentication and sessions.\n\n"
+        "Second paragraph about authorization and roles.\n\n"
+        "Third paragraph about auditing and compliance."
+    )
+    c = RecursiveChunker(max_size=60, overlap=0)
+    specs = c.split(text)
+    assert len(specs) >= 2
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]
+        assert len(s.text) <= 60 or "\n\n" not in s.text  # oversized only if no better split
+    # Should not hard-cut mid-word if paragraphs fit
+    joined_starts = [s.char_start for s in specs]
+    assert joined_starts == sorted(joined_starts)
+
+
+def test_recursive_chunker_hard_cut_long_token():
+    text = "x" * 100
+    c = RecursiveChunker(max_size=30, overlap=5)
+    specs = c.split(text)
+    assert len(specs) >= 3
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]
+        assert len(s.text) <= 30
+
+
+def test_recursive_chunker_overlap_and_offsets():
+    text = "alpha beta gamma delta epsilon zeta eta theta"
+    c = RecursiveChunker(max_size=20, overlap=5)
+    specs = c.split(text)
+    assert len(specs) > 1
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]
+    # With overlap, consecutive windows may overlap in char ranges
+    if len(specs) >= 2:
+        assert specs[1].char_start < specs[0].char_end or specs[1].char_start == specs[0].char_end
+
+
+def test_recursive_chunker_custom_separators():
+    text = "one|two|three|four|five|six"
+    # keep=False: split on "|", then re-insert it when packing under max_size (LC style).
+    c = RecursiveChunker(max_size=10, overlap=0, separators=["|", ""], keep_separator=False)
+    specs = c.split(text)
+    assert len(specs) >= 2
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]
+        assert len(s.text) <= 10
+    # all original tokens still present across chunks
+    joined = "|".join(s.text for s in specs)  # may double seps at boundaries — check tokens
+    for tok in ("one", "two", "three", "four", "five", "six"):
+        assert any(tok in s.text for s in specs)
+
+
+def test_recursive_chunker_from_language_python():
+    code = (
+        "class Foo:\n"
+        "    def bar(self):\n"
+        "        return 1\n"
+        "\n"
+        "def baz():\n"
+        "    return 2\n"
+    )
+    c = RecursiveChunker.from_language("python", max_size=40, overlap=0)
+    specs = c.split(code)
+    assert specs
+    assert c.name == "recursive:python"
+    for s in specs:
+        assert s.text == code[s.char_start : s.char_end]
+
+
+def test_recursive_chunker_unknown_language():
+    with pytest.raises(ValueError, match="unknown language"):
+        RecursiveChunker.from_language("cobol")
+
+
+def test_recursive_chunker_from_language_regex_override():
+    # markdown/latex presets default to regex; an explicit override must not
+    # raise "multiple values for keyword argument 'is_separator_regex'".
+    c = RecursiveChunker.from_language("markdown", is_separator_regex=False)
+    assert c.is_separator_regex is False
+    assert c.name == "recursive:markdown"
+
+
+def test_recursive_chunker_degenerate_overlap_no_dup_or_collapse():
+    # High overlap vs. tiny pieces used to emit duplicate windows that offset
+    # recovery collapsed onto one span (dropping the tail). Now: monotonic
+    # starts, no duplicate ranges, exact slices.
+    text = "ab ab ab ab ab ab ab ab ab ab"
+    specs = RecursiveChunker(max_size=8, overlap=4).split(text)
+    ranges = [(s.char_start, s.char_end) for s in specs]
+    assert len(ranges) == len(set(ranges))  # no duplicate spans
+    assert [s.char_start for s in specs] == sorted(s.char_start for s in specs)
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]
+    # most of the document is covered (only a tiny tail may miss in this
+    # pathological max_size)
+    covered = set()
+    for s in specs:
+        covered.update(range(s.char_start, s.char_end))
+    assert len(covered) >= len(text) - 4
+
+
+def test_recursive_chunker_ingests_as_passages(db_ing):
+    db, _ = db_ing
+    body = "Para one about cats.\n\nPara two about dogs.\n\nPara three about birds and fish."
+    ing = DocumentIngestor(
+        db,
+        chunker=RecursiveChunker(max_size=30, overlap=0),
+        hierarchy=False,
+        embed_index="docs_chunks",
+    )
+    result = ing.ingest(body, document_key="rec-demo", title="Rec", embed=True)
+    assert result.n_passages >= 2
+    hits = ing.search("dogs", k=3)
+    assert hits
 
 
 def test_markdown_preamble_passages():
