@@ -10,6 +10,7 @@ Configuration mirrors the proposal's Option A (the OKF/agent-memory tier):
 
     grafito-mcp --bundle ./okf_bundle            # read-only, text-mode retrieval
     grafito-mcp --bundle ./okf_bundle --embed sentence_transformer   # semantic search
+    grafito-mcp --bundle ./okf_bundle --rerank lexical   # rerank context grounding
     grafito-mcp --bundle ./okf_bundle --enable-writes   # remember(), saved to the bundle
 
 With ``--enable-writes`` a remembered note is persisted back to the bundle
@@ -38,6 +39,7 @@ from .server import serve_mcp
 
 if TYPE_CHECKING:
     from ..embedding_functions import EmbeddingFunction
+    from ..okf import Reranker
     from ..tools import ToolSet
 
 # BundleTools' only write tool; a call to it that succeeds is what we persist on.
@@ -99,6 +101,37 @@ def resolve_embedder(
     return get_embedding_function_class(name)(**(config or {}))
 
 
+def resolve_reranker(name: str | None, config: dict | None = None) -> "Reranker | None":
+    """Build a reranker from a name and optional config, or ``None``.
+
+    Reranking is a server-side decision (whether to pay for a second scoring
+    pass), not a per-call one, so it is fixed here and improves the ``context``
+    tool's grounding. ``lexical`` is dependency-free; the others
+    (``cross_encoder``, ``cohere``, ``voyage``, ``jina``) need their own optional
+    dependency or API credentials. Unknown names raise ``ValueError``.
+    """
+    if name is None:
+        return None
+    from ..okf import (
+        CohereReranker,
+        CrossEncoderReranker,
+        JinaReranker,
+        LexicalReranker,
+        VoyageReranker,
+    )
+
+    rerankers = {
+        "lexical": LexicalReranker,
+        "cross_encoder": CrossEncoderReranker,
+        "cohere": CohereReranker,
+        "voyage": VoyageReranker,
+        "jina": JinaReranker,
+    }
+    if name not in rerankers:
+        raise ValueError(f"Unknown reranker '{name}'. Available: {sorted(rerankers)}")
+    return rerankers[name](**(config or {}))
+
+
 def build_tools(
     bundle_path: str,
     *,
@@ -107,6 +140,7 @@ def build_tools(
     tag: str | None = None,
     budget_tokens: int = 2000,
     embed: "EmbeddingFunction | None" = None,
+    rerank: "Reranker | None" = None,
 ) -> ThreadConfinedTools:
     """A thread-confined toolset over the bundle at ``bundle_path``.
 
@@ -128,7 +162,8 @@ def build_tools(
     process — see :class:`_PersistAfterWrite`. ``budget_tokens`` caps ``context``
     output; it is a deployment decision, not a per-call one, so it is fixed here.
     ``embed`` supplies the embedding function so ``search``/``context`` retrieve
-    by meaning; without it retrieval degrades to text mode.
+    by meaning; without it retrieval degrades to text mode. ``rerank`` adds a
+    reranker to the ``context`` tool's retrieval, a server-side quality knob.
 
     ``enable_graph`` adds the escalón 2-3 tiers — :class:`~grafito.GraphTools`
     (structured read-only: schema/neighbours/text-search) and
@@ -146,7 +181,7 @@ def build_tools(
             # save() with no path mirrors the graph back to the load directory.
             bundle_tools = _PersistAfterWrite(bundle_tools, kb.save)
         toolsets: list["ToolSet"] = [
-            ContextTools(kb, tag=tag, budget_tokens=budget_tokens),
+            ContextTools(kb, tag=tag, budget_tokens=budget_tokens, rerank=rerank),
             bundle_tools,
         ]
         if enable_graph:
@@ -217,6 +252,20 @@ def main(argv: list[str] | None = None) -> None:
         help='Config for --embed as a JSON object, e.g. \'{"model_name": "BAAI/bge-small-en"}\'.',
     )
     parser.add_argument(
+        "--rerank",
+        default=None,
+        metavar="NAME",
+        help="Reranker for the context tool's grounding (lexical, cross_encoder, "
+        "cohere, voyage, jina). 'lexical' is dependency-free; others need their own "
+        "dependency or API credentials.",
+    )
+    parser.add_argument(
+        "--rerank-config",
+        default=None,
+        metavar="JSON",
+        help='Config for --rerank as a JSON object, e.g. \'{"model": "rerank-english-v3.0"}\'.',
+    )
+    parser.add_argument(
         "--enable-graph",
         action="store_true",
         help="Also expose read-only graph tools (schema, neighbours, text search, and "
@@ -240,6 +289,8 @@ def main(argv: list[str] | None = None) -> None:
                 ("--budget-tokens", args.budget_tokens != 2000),
                 ("--embed", args.embed is not None),
                 ("--embed-config", args.embed_config is not None),
+                ("--rerank", args.rerank is not None),
+                ("--rerank-config", args.rerank_config is not None),
                 ("--enable-graph", args.enable_graph),
                 ("--enable-writes", args.enable_writes),
             )
@@ -250,6 +301,7 @@ def main(argv: list[str] | None = None) -> None:
         tools = build_graph_tools(args.db)
     else:
         embed_config = json.loads(args.embed_config) if args.embed_config else None
+        rerank_config = json.loads(args.rerank_config) if args.rerank_config else None
         tools = build_tools(
             args.bundle,
             enable_writes=args.enable_writes,
@@ -257,6 +309,7 @@ def main(argv: list[str] | None = None) -> None:
             tag=args.tag,
             budget_tokens=args.budget_tokens,
             embed=resolve_embedder(args.embed, embed_config),
+            rerank=resolve_reranker(args.rerank, rerank_config),
         )
 
     try:

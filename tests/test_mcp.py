@@ -25,6 +25,7 @@ from grafito.mcp.cli import (  # noqa: E402
     build_tools,
     main,
     resolve_embedder,
+    resolve_reranker,
 )
 from grafito.mcp.server import _to_mcp_tools  # noqa: E402
 from grafito.okf import OKFBundle  # noqa: E402
@@ -84,6 +85,34 @@ def test_resolve_embedder_none_is_none():
 def test_resolve_embedder_unknown_name_lists_available():
     with pytest.raises(ValueError, match="Unknown embedding function"):
         resolve_embedder("not-a-real-embedder")
+
+
+def test_resolve_reranker_none_is_none():
+    assert resolve_reranker(None) is None
+
+
+def test_resolve_reranker_builds_lexical():
+    from grafito.okf import LexicalReranker
+
+    assert isinstance(resolve_reranker("lexical"), LexicalReranker)
+
+
+def test_resolve_reranker_unknown_name_lists_available():
+    with pytest.raises(ValueError, match="Unknown reranker"):
+        resolve_reranker("not-a-reranker")
+
+
+def test_build_tools_accepts_a_reranker():
+    """A reranker reaches the context tool without changing its surface."""
+    from grafito.okf import LexicalReranker
+
+    tools = build_tools(BUNDLE, rerank=LexicalReranker())
+    try:
+        assert "context" in _tool_names(tools)
+        payload = json.loads(tools.call("context", {"query": "why sqlite"}))
+        assert payload["text"] and payload["concepts"]
+    finally:
+        tools.close()
 
 
 def test_resolve_embedder_builds_a_registered_function():
