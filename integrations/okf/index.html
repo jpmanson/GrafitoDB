@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.3.2
+          v0.3.3
         </li>
       </ul>
     
@@ -491,7 +491,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.3.2
+          v0.3.3
         </li>
       </ul>
     
@@ -2134,6 +2134,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#model-context-protocol-server-grafito-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Context Protocol server: grafito-mcp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Context Protocol server: grafito-mcp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-tools-by-altitude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tools, by altitude
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writes-persist-to-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writes persist to the bundle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graph-mode-is-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph mode is read-only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-stays-generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it stays generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3356,6 +3428,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#model-context-protocol-server-grafito-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Context Protocol server: grafito-mcp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model Context Protocol server: grafito-mcp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-tools-by-altitude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tools, by altitude
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writes-persist-to-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writes persist to the bundle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graph-mode-is-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph mode is read-only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-stays-generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it stays generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4517,6 +4661,167 @@ answer with concept citations → remember a note → save bundle + <code>log.md
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-39-1"><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span>http://localhost:11434/v1<span class="w">   </span><span class="c1"># e.g. Ollama</span>
 </span><span id="__span-39-2"><a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_MODEL</span><span class="o">=</span>llama3.1
 </span><span id="__span-39-3"><a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>python<span class="w"> </span>examples/okf/okf_agent.py
+</span></code></pre></div>
+<h2 id="model-context-protocol-server-grafito-mcp">Model Context Protocol server: <code>grafito-mcp</code></h2>
+<p><code>run_agent</code> drives a model <em>you</em> inject. The <strong>MCP server</strong> turns the same
+tools the other way round: it exposes them over the <a href="https://modelcontextprotocol.io">Model Context
+Protocol</a> so a client that already has a model
+— Claude Desktop, Claude Code, any MCP host — can use a bundle (or a plain
+graph) with <strong>no integration code on your side</strong>. One install, no build:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-40-1"><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>uvx<span class="w"> </span>--from<span class="w"> </span><span class="s1">&#39;grafitodb[mcp]&#39;</span><span class="w"> </span>grafito-mcp<span class="w"> </span>--bundle<span class="w"> </span>./okf_bundle<span class="w">       </span><span class="c1"># a bundle</span>
+</span><span id="__span-40-2"><a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>uvx<span class="w"> </span>--from<span class="w"> </span><span class="s1">&#39;grafitodb[mcp]&#39;</span><span class="w"> </span>grafito-mcp<span class="w"> </span>--db<span class="w"> </span>./graph.db<span class="w">             </span><span class="c1"># a plain graph</span>
+</span></code></pre></div>
+<p>The server speaks stdio JSON-RPC; point a client's config at it, e.g. Claude
+Desktop's <code>claude_desktop_config.json</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-41-1"><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>{
+</span><span id="__span-41-2"><a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>  &quot;mcpServers&quot;: {
+</span><span id="__span-41-3"><a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>    &quot;grafito&quot;: {
+</span><span id="__span-41-4"><a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>      &quot;command&quot;: &quot;uvx&quot;,
+</span><span id="__span-41-5"><a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>      &quot;args&quot;: [&quot;--from&quot;, &quot;grafitodb[mcp]&quot;, &quot;grafito-mcp&quot;,
+</span><span id="__span-41-6"><a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>               &quot;--bundle&quot;, &quot;/abs/path/to/okf_bundle&quot;,
+</span><span id="__span-41-7"><a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>               &quot;--embed&quot;, &quot;sentence_transformer&quot;]
+</span><span id="__span-41-8"><a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>    }
+</span><span id="__span-41-9"><a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a>  }
+</span><span id="__span-41-10"><a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a>}
+</span></code></pre></div>
+<p><strong>Read-only by default</strong> — a client can explore and ground answers, but not
+write, until you opt in with <code>--enable-writes</code>.</p>
+<h3 id="the-tools-by-altitude">The tools, by altitude</h3>
+<p>The server offers tools at rising altitude; a client picks the highest one that
+answers its question. Which appear depends on the flags:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Tools</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Grounded</strong> (escalón 1)</td>
+<td><code>context</code> — a question in, prompt-ready cited context out, in one call</td>
+<td><code>--bundle</code></td>
+</tr>
+<tr>
+<td><strong>Explore</strong> (escalón 1)</td>
+<td><code>browse</code>, <code>search</code>, <code>open</code>, <code>follow</code>, <code>history</code></td>
+<td><code>--bundle</code></td>
+</tr>
+<tr>
+<td><strong>Write</strong> (escalón 1)</td>
+<td><code>remember</code> — save a note, persisted back to the bundle</td>
+<td><code>--bundle --enable-writes</code></td>
+</tr>
+<tr>
+<td><strong>Structured</strong> (escalón 2)</td>
+<td><code>graph_schema</code>, <code>text_search</code>, <code>vector_search</code>, <code>graph_neighbors</code></td>
+<td><code>--db</code>, or <code>--bundle --enable-graph</code></td>
+</tr>
+<tr>
+<td><strong>Cypher</strong> (escalón 3)</td>
+<td><code>graph_query</code> — read-only Cypher, row-capped</td>
+<td><code>--db</code>, or <code>--bundle --enable-graph</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>context</code> is the star: it is the one-shot <a href="#grounded-context-for-agents-context"><code>context()</code></a>
+path, cheaper than a client running its own exploration loop, and the tool that
+sets this apart from a raw graph server. The graph tiers hang on the underlying
+<code>GrafitoDatabase</code>, not on the bundle — which is why <code>--db</code> can serve a graph
+that is not an OKF bundle at all, exposing only those tiers with no OKF in play.</p>
+<h3 id="writes-persist-to-the-bundle">Writes persist to the bundle</h3>
+<p>With <code>--enable-writes</code>, <code>remember</code> is exposed <strong>and</strong> each saved note is written
+back to the bundle directory (markdown + regenerated <code>log.md</code>) as it happens —
+so the note survives the process and shows up in <code>git diff</code>. The bundle is the
+memory; a crash cannot swallow what the client was told was saved.</p>
+<h3 id="graph-mode-is-read-only">Graph mode is read-only</h3>
+<p><code>graph_query</code> runs arbitrary Cypher, but a query containing a mutating clause
+(<code>CREATE</code>/<code>MERGE</code>/<code>DELETE</code>/<code>DETACH</code>/<code>SET</code>/<code>REMOVE</code>/<code>DROP</code>) is refused, and at
+most <code>--max-rows</code> rows come back. Escalón 4 (writes over the graph) is not
+implemented: these tiers cannot mutate the graph even when asked.</p>
+<h3 id="flags">Flags</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Applies to</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--bundle PATH</code> / <code>--db PATH</code></td>
+<td>—</td>
+<td>required (one)</td>
+<td>Serve an OKF bundle, or a plain <code>.db</code> graph</td>
+</tr>
+<tr>
+<td><code>--name NAME</code></td>
+<td>both</td>
+<td><code>grafito</code></td>
+<td>Server name reported to the client</td>
+</tr>
+<tr>
+<td><code>--embed NAME</code> / <code>--embed-config JSON</code></td>
+<td><code>--bundle</code></td>
+<td>none</td>
+<td>Embedder for semantic <code>search</code>/<code>context</code> (else text mode)</td>
+</tr>
+<tr>
+<td><code>--rerank NAME</code> / <code>--rerank-config JSON</code></td>
+<td><code>--bundle</code></td>
+<td>none</td>
+<td>Reranker for <code>context</code> grounding (<code>lexical</code> is dep-free)</td>
+</tr>
+<tr>
+<td><code>--tag TAG</code></td>
+<td><code>--bundle</code></td>
+<td>none</td>
+<td>Scope every tool to concepts with this tag</td>
+</tr>
+<tr>
+<td><code>--budget-tokens N</code></td>
+<td><code>--bundle</code></td>
+<td><code>2000</code></td>
+<td>Token budget for <code>context</code> output</td>
+</tr>
+<tr>
+<td><code>--enable-graph</code></td>
+<td><code>--bundle</code></td>
+<td>off</td>
+<td>Add the escalón 2-3 graph tiers over the bundle's graph</td>
+</tr>
+<tr>
+<td><code>--enable-writes</code></td>
+<td><code>--bundle</code></td>
+<td>off</td>
+<td>Expose <code>remember</code> and persist writes to the bundle</td>
+</tr>
+<tr>
+<td><code>--max-rows N</code></td>
+<td><code>--db</code>, <code>--enable-graph</code></td>
+<td><code>100</code></td>
+<td>Cap on <code>graph_query</code> rows</td>
+</tr>
+</tbody>
+</table>
+<p>The retrieval-quality and write flags apply to a bundle; passing them with
+<code>--db</code> is an error, not a silent no-op.</p>
+<h3 id="how-it-stays-generic">How it stays generic</h3>
+<p>The server itself knows nothing about OKF. It hangs on a <code>ToolRegistry</code>
+(<code>grafito.ToolRegistry</code>) — a bag of <code>ToolSet</code>s — and serves whatever tools it
+holds. <code>--bundle</code> loads the OKF toolsets
+(<code>ContextTools</code> + <code>BundleTools</code>), <code>--db</code> loads the graph toolsets
+(<code>GraphTools</code> + <code>CypherTools</code>), optionally both. Adding a tier is adding a
+<code>ToolSet</code> to the registry, never touching the server — the same seam
+<code>run_agent</code> uses. Building your own server over a custom mix of toolsets is
+therefore a few lines:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-42-1"><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolRegistry</span>
+</span><span id="__span-42-2"><a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.mcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve_mcp</span>
+</span><span id="__span-42-3"><a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>
+</span><span id="__span-42-4"><a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a><span class="n">serve_mcp</span><span class="p">(</span><span class="n">ToolRegistry</span><span class="p">([</span><span class="o">...</span><span class="n">your</span> <span class="n">ToolSets</span><span class="o">...</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-graph&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 
