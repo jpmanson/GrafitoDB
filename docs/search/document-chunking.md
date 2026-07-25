@@ -44,7 +44,19 @@ print(packed.text)
 | External parent | `parent_id=` attach without owning/deleting the parent (e.g. OKF Concept) |
 | Search | Filters managed + active generation + `embed_role=passage` |
 | Expand | `global_seq` window (not hop-by-hop NEXT) |
-| Pack | Budget (`max_chars` / `max_tokens`+counter), overlap merge via `char_start`/`char_end` |
+| Pack | Budget (`max_chars`, or `max_tokens` with optional `token_counter`), overlap merge via `char_start`/`char_end` |
+
+### Pack budgets
+
+- `max_chars=…` — hard character budget.
+- `max_tokens=…, token_counter=fn` — exact token budget via your counter.
+- `max_tokens=…` **without** counter — **rough estimate** `tokens ≈ ceil(len/4)` (same idea as design §7.2). Prefer a real counter for production LLM windows.
+
+### Overlap dedup and `store_full_text`
+
+Pack merges overlapping passages using offsets. **Best quality** when the parent keeps the full document body (`store_full_text=True`, default): merge slices `parent.text[char_start:char_end]`.
+
+With `store_full_text=False`, merge still runs by **stitching passage texts** from offsets. That works if `char_start`/`char_end` stay consistent with each passage’s `text`; it is weaker if offsets drift. If you use chunk **overlap > 0**, keep `store_full_text=True` unless you accept stitch-based reconstruction.
 
 ## Core prerequisites used
 

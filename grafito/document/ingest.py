@@ -230,17 +230,16 @@ class DocumentIngestor:
         if not self.embed_index:
             raise DatabaseError("DocumentIngestor.embed_index is not set")
         roles = embed_roles or ["passage"]
-        filter_props: dict[str, Any] = {
-            "managed_by": MANAGED_BY,
-            "embed_role": roles[0] if len(roles) == 1 else roles[0],
-        }
-        # semantic_search exact match for one role; multi-role → filter after
+        # semantic_search matches properties exactly; multi-role → prefilter managed only, then filter
+        filter_props: dict[str, Any] = {"managed_by": MANAGED_BY}
+        if len(roles) == 1:
+            filter_props["embed_role"] = roles[0]
         hits_raw = self.db.semantic_search(
             query,
             k=k * (4 if diversify_by_document or len(roles) > 1 else 1),
             index=self.embed_index,
             filter_labels=[self.passage_label],
-            filter_props=filter_props if len(roles) == 1 else {"managed_by": MANAGED_BY},
+            filter_props=filter_props,
         )
         # Restrict to active generation per document
         results: list[SearchHit] = []
@@ -324,7 +323,13 @@ class DocumentIngestor:
         scores: dict[int, float] | None = None,
         token_counter: Any | None = None,
     ) -> PackedContext:
-        """Pack passages into a budgeted context with optional overlap merge."""
+        """Pack passages into a budgeted context with optional overlap merge.
+
+        Budget priority: ``token_counter`` + ``max_tokens`` (exact); else
+        ``max_tokens`` alone uses a rough ``ceil(len/4)`` estimate; else
+        ``max_chars``. Overlap merge prefers parent full text
+        (``store_full_text=True``); without it, stitches from passage offsets.
+        """
         if isinstance(nodes, ExpandResult):
             node_list = list(nodes.passages)
         else:
@@ -363,60 +368,21 @@ class DocumentIngestor:
                 )
 
         truncated = False
+        # Budget: prefer exact token_counter; else max_tokens≈chars via 4 chars/token
+        # (design §7.2 rough estimate); else max_chars.
         budget_chars = max_chars
-        if max_tokens is not None and token_counter is not None:
-            # Greedy add until token budget
-            kept: list[PackedSegment] = []
-            used = 0
-            for seg in segments:
-                tc = int(token_counter(seg.text))
-                if kept and used + tc > max_tokens:
-                    truncated = True
-                    break
-                if not kept and tc > max_tokens:
-                    # Keep truncated first segment
-                    # Approximate by chars
-                    ratio = max_tokens / max(tc, 1)
-                    cut = max(1, int(len(seg.text) * ratio))
-                    kept.append(
-                        PackedSegment(
-                            text=seg.text[:cut],
-                            node_id=seg.node_id,
-                            document_id=seg.document_id,
-                            char_start=seg.char_start,
-                            char_end=(seg.char_start + cut) if seg.char_start is not None else None,
-                            section_path=seg.section_path,
-                            global_seq=seg.global_seq,
-                        )
-                    )
-                    truncated = True
-                    break
-                kept.append(seg)
-                used += tc
+        count_tokens = token_counter
+        if max_tokens is not None and count_tokens is None:
+            # Rough estimate when no counter is supplied (document which: chars≈4*tokens).
+            count_tokens = lambda s: max(1, (len(s) + 3) // 4)  # noqa: E731
+            if budget_chars is None:
+                budget_chars = max_tokens * 4
+
+        if max_tokens is not None and count_tokens is not None:
+            kept, truncated = self._apply_token_budget(segments, max_tokens, count_tokens)
             segments = kept
         elif budget_chars is not None:
-            kept = []
-            used = 0
-            for seg in segments:
-                if kept and used + len(seg.text) > budget_chars:
-                    truncated = True
-                    break
-                if not kept and len(seg.text) > budget_chars:
-                    kept.append(
-                        PackedSegment(
-                            text=seg.text[:budget_chars],
-                            node_id=seg.node_id,
-                            document_id=seg.document_id,
-                            char_start=seg.char_start,
-                            char_end=(seg.char_start + budget_chars) if seg.char_start is not None else None,
-                            section_path=seg.section_path,
-                            global_seq=seg.global_seq,
-                        )
-                    )
-                    truncated = True
-                    break
-                kept.append(seg)
-                used += len(seg.text)
+            kept, truncated = self._apply_char_budget(segments, budget_chars)
             segments = kept
 
         if include_citations:
@@ -697,12 +663,83 @@ class DocumentIngestor:
         raw = json.dumps(payload, sort_keys=True, default=str)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    def _apply_token_budget(
+        self,
+        segments: list[PackedSegment],
+        max_tokens: int,
+        token_counter: Any,
+    ) -> tuple[list[PackedSegment], bool]:
+        kept: list[PackedSegment] = []
+        used = 0
+        truncated = False
+        for seg in segments:
+            tc = int(token_counter(seg.text))
+            if kept and used + tc > max_tokens:
+                truncated = True
+                break
+            if not kept and tc > max_tokens:
+                ratio = max_tokens / max(tc, 1)
+                cut = max(1, int(len(seg.text) * ratio))
+                kept.append(
+                    PackedSegment(
+                        text=seg.text[:cut],
+                        node_id=seg.node_id,
+                        document_id=seg.document_id,
+                        char_start=seg.char_start,
+                        char_end=(seg.char_start + cut) if seg.char_start is not None else None,
+                        section_path=seg.section_path,
+                        global_seq=seg.global_seq,
+                    )
+                )
+                truncated = True
+                break
+            kept.append(seg)
+            used += tc
+        return kept, truncated
+
+    def _apply_char_budget(
+        self,
+        segments: list[PackedSegment],
+        budget_chars: int,
+    ) -> tuple[list[PackedSegment], bool]:
+        kept: list[PackedSegment] = []
+        used = 0
+        truncated = False
+        for seg in segments:
+            if kept and used + len(seg.text) > budget_chars:
+                truncated = True
+                break
+            if not kept and len(seg.text) > budget_chars:
+                kept.append(
+                    PackedSegment(
+                        text=seg.text[:budget_chars],
+                        node_id=seg.node_id,
+                        document_id=seg.document_id,
+                        char_start=seg.char_start,
+                        char_end=(seg.char_start + budget_chars) if seg.char_start is not None else None,
+                        section_path=seg.section_path,
+                        global_seq=seg.global_seq,
+                    )
+                )
+                truncated = True
+                break
+            kept.append(seg)
+            used += len(seg.text)
+        return kept, truncated
+
     def _merge_overlap_segments(
         self,
         nodes: list[Node],
         *,
         include_citations: bool,
     ) -> list[PackedSegment]:
+        """Merge overlapping passage ranges for pack.
+
+        Exact slice merge needs the parent document body (``store_full_text=True``,
+        the default). With ``store_full_text=False``, text is reconstructed by
+        stitching passage texts via ``char_start``/``char_end`` (works when offsets
+        are consistent; still weaker than parent slicing if offsets drift).
+        """
         # Group by owner_document_id; merge overlapping [char_start, char_end)
         by_doc: dict[int | None, list[Node]] = {}
         for n in nodes:
@@ -761,16 +798,7 @@ class DocumentIngestor:
                 if full_text is not None and 0 <= a <= b <= len(full_text):
                     piece = full_text[a:b]
                 else:
-                    # Reconstruct from overlapping node texts poorly — join unique
-                    piece = ""
-                    for n in group:
-                        p = n.properties
-                        if int(p["char_start"]) >= a and int(p["char_end"]) <= b:
-                            if not piece:
-                                piece = str(p.get("text") or "")
-                            # if multiple, prefer longer covering
-                            elif len(str(p.get("text") or "")) > len(piece):
-                                piece = str(p.get("text") or "")
+                    piece = self._stitch_range_from_passages(group, a, b)
                 segments.append(
                     PackedSegment(
                         text=piece,
@@ -784,3 +812,31 @@ class DocumentIngestor:
                 )
         segments.sort(key=lambda s: (s.global_seq is None, s.global_seq or 0, s.node_id))
         return segments
+
+    @staticmethod
+    def _stitch_range_from_passages(group: list[Node], a: int, b: int) -> str:
+        """Rebuild [a, b) by walking passage texts and offsets (no parent body)."""
+        parts: list[str] = []
+        cursor = a
+        ordered = sorted(group, key=lambda n: int(n.properties.get("char_start") or 0))
+        for n in ordered:
+            p = n.properties or {}
+            cs, ce = int(p["char_start"]), int(p["char_end"])
+            if ce <= cursor or cs >= b:
+                continue
+            text = str(p.get("text") or "")
+            take_start = max(cs, cursor)
+            take_end = min(ce, b)
+            if take_start >= take_end:
+                continue
+            local0 = take_start - cs
+            local1 = take_end - cs
+            if local0 < 0 or local1 > len(text):
+                # Offsets inconsistent with stored text length — best effort
+                local0 = max(0, min(local0, len(text)))
+                local1 = max(local0, min(local1, len(text)))
+            parts.append(text[local0:local1])
+            cursor = take_end
+            if cursor >= b:
+                break
+        return "".join(parts)

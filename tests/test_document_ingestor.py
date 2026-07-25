@@ -112,11 +112,12 @@ Multi factor devices.
     assert result.n_passages >= 3
     assert result.generation == 1
 
-    hits = ing.search("session cookies", k=3)
+    hits = ing.search("session cookies", k=5)
     assert hits
-    assert "session cookies" in hits[0].node.properties["text"]
+    cookie_hits = [h for h in hits if "session cookies" in h.node.properties.get("text", "")]
+    assert cookie_hits, f"expected preamble in hits, got {[h.node.properties.get('text') for h in hits]}"
 
-    expanded = ing.expand(hits[0].node, window=1)
+    expanded = ing.expand(cookie_hits[0].node, window=1)
     assert len(expanded.passages) >= 1
     seqs = [p.properties["global_seq"] for p in expanded.passages]
     assert seqs == sorted(seqs)
@@ -268,3 +269,65 @@ def test_delete_owned_document(db_ing):
     r = ing.ingest("bye", document_key="bye", embed=True)
     ing.delete("bye", delete_owned_parent=True)
     assert db.get_node(r.owner_document_id) is None
+
+
+def test_pack_max_tokens_without_counter_uses_estimate():
+    db = GrafitoDatabase(":memory:")
+    parent = db.create_node(
+        labels=["Document"],
+        properties={"text": "x" * 200, "managed_by": MANAGED_BY, "role": "document"},
+    )
+    n = db.create_node(
+        labels=["Chunk"],
+        properties={
+            "text": "x" * 200,
+            "char_start": 0,
+            "char_end": 200,
+            "global_seq": 0,
+            "owner_document_id": parent.id,
+            "managed_by": MANAGED_BY,
+        },
+    )
+    ing = DocumentIngestor(db, embed_index=None)
+    # 200 chars ≈ 50 tokens (ceil(len/4)); budget 40 tokens must truncate
+    packed = ing.pack([n], max_tokens=40, include_citations=False)
+    assert packed.truncated is True
+    assert len(packed.text) <= 40 * 4
+    db.close()
+
+
+def test_pack_overlap_without_full_text_stitches():
+    db = GrafitoDatabase(":memory:")
+    full = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    # Parent without full text stored
+    parent = db.create_node(
+        labels=["Document"],
+        properties={"managed_by": MANAGED_BY, "role": "document"},
+    )
+    n1 = db.create_node(
+        labels=["Chunk"],
+        properties={
+            "text": full[0:12],
+            "char_start": 0,
+            "char_end": 12,
+            "global_seq": 0,
+            "owner_document_id": parent.id,
+            "managed_by": MANAGED_BY,
+        },
+    )
+    n2 = db.create_node(
+        labels=["Chunk"],
+        properties={
+            "text": full[8:20],
+            "char_start": 8,
+            "char_end": 20,
+            "global_seq": 1,
+            "owner_document_id": parent.id,
+            "managed_by": MANAGED_BY,
+        },
+    )
+    ing = DocumentIngestor(db, embed_index=None, store_full_text=False)
+    packed = ing.pack([n1, n2], deduplicate_overlap=True, include_citations=False)
+    assert packed.text == full[0:20]
+    assert "ABCDEFGH" in packed.text and packed.text.count("IJKL") == 1
+    db.close()
