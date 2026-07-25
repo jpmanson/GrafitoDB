@@ -24,12 +24,15 @@ class MarkdownChunker:
         max_chars: int = 1200,
         overlap: int = 0,
         *,
+        overflow_chunker: Any | None = None,
         name: str = "markdown",
     ) -> None:
         self.max_chars = max_chars
         self.overlap = overlap
         self.name = name
-        self._overflow = FixedChunker(
+        # Chunker used to split a section body larger than ``max_chars``; any
+        # object with ``max_size`` + ``split`` works (e.g. RecursiveChunker).
+        self._overflow = overflow_chunker or FixedChunker(
             max_size=max_chars,
             overlap=overlap,
             unit="chars",

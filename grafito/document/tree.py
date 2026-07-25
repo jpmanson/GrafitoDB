@@ -23,6 +23,7 @@ def build_markdown_tree(
     max_chars: int = 1200,
     overlap: int = 0,
     strategy: str = "markdown-tree",
+    overflow: Any | None = None,
 ) -> list[SectionSpec]:
     """Build a forest of SectionSpecs from ATX markdown.
 
@@ -32,6 +33,10 @@ def build_markdown_tree(
 
     Section nodes themselves do not carry full subtree body text.
     Headings inside fenced code blocks (`` ``` `` / ``~~~``) are ignored.
+
+    ``overflow`` is the chunker used to split a section body that exceeds its
+    ``max_size`` (any object with ``max_size`` and ``split`` — e.g.
+    :class:`RecursiveChunker`). Defaults to a word-boundary :class:`FixedChunker`.
     """
     if not text:
         return []
@@ -40,12 +45,13 @@ def build_markdown_tree(
     offsets = _line_offsets(lines)
     headings = iter_atx_headings(lines)
 
-    overflow = FixedChunker(
-        max_size=max_chars,
-        overlap=overlap,
-        unit="chars",
-        name=f"{strategy}+fixed",
-    )
+    if overflow is None:
+        overflow = FixedChunker(
+            max_size=max_chars,
+            overlap=overlap,
+            unit="chars",
+            name=f"{strategy}+fixed",
+        )
 
     if not headings:
         # Synthetic root holding whole document as chunks

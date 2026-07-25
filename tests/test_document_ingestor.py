@@ -232,6 +232,24 @@ def test_recursive_chunker_ingests_as_passages(db_ing):
     assert hits
 
 
+def test_markdown_pluggable_overflow_chunker():
+    # A large section split by a pluggable overflow chunker (RecursiveChunker),
+    # while the heading hierarchy is preserved and offsets stay exact.
+    big = " ".join(f"word{i}" for i in range(300))
+    md = f"# Guide\n\nIntro.\n\n## Big\n\n{big}\n"
+    mc = MarkdownChunker(
+        max_chars=400,
+        overlap=40,
+        overflow_chunker=RecursiveChunker(max_size=400, overlap=40),
+    )
+    specs = mc.split(md)
+    assert len(specs) > 2  # the big section overflowed into several passages
+    assert any(s.strategy == "recursive" for s in specs)  # overflow chunker used
+    for s in specs:
+        if s.char_start is not None:
+            assert s.text == md[s.char_start : s.char_end]  # exact offsets
+
+
 def test_markdown_preamble_passages():
     md = """# Security
 

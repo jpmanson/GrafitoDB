@@ -882,13 +882,15 @@ class DocumentIngestor:
         """Segment ``text`` for one view → ``(specs, section_forest_or_None)``."""
         max_chars, overlap = self._tree_params()
         if is_default:
-            # Single implicit view: honour the configured chunker exactly.
+            # Single implicit view: honour the configured chunker exactly,
+            # including its overflow chunker for oversized sections.
             if self._use_hierarchy():
                 forest = build_markdown_tree(
                     text,
                     max_chars=max_chars,
                     overlap=overlap,
                     strategy=getattr(self.chunker, "name", "markdown-tree"),
+                    overflow=getattr(self.chunker, "_overflow", None),
                 )
                 return flatten_chunks(forest), forest
             return self.chunker.split(text), None
