@@ -96,6 +96,91 @@ def test_import_rdf_from_graph_object():
     assert db.match_relationships()[0].type == "link"
 
 
+@pytest.mark.parametrize("ext", ["g.ttl", "g.jsonld", "g.nt", "g.rdf", "g.n3"])
+def test_multiformat_file_roundtrip(tmp_path, ext):
+    pytest.importorskip("rdflib")
+    from grafito.integrations import export_to_file, import_from_file
+
+    db = _make_sample_db()
+    path = str(tmp_path / ext)
+    export_to_file(db, path, base_uri="http://ex.org/")
+
+    restored = GrafitoDatabase(":memory:")
+    summary = import_from_file(restored, path, base_uri="http://ex.org/")
+    assert summary == {"nodes": 2, "relationships": 1}
+    assert restored.match_relationships(rel_type="KNOWS")[0].properties["since"] == 2021
+
+
+def test_export_string_formats():
+    pytest.importorskip("rdflib")
+    from grafito.integrations import export_string
+
+    db = _make_sample_db()
+    assert '"@id"' in export_string(db, base_uri="http://ex.org/", format="json-ld")
+    assert "<http://ex.org/" in export_string(db, base_uri="http://ex.org/", format="nt")
+
+
+def test_export_to_file_unknown_extension(tmp_path):
+    pytest.importorskip("rdflib")
+    from grafito.integrations import export_to_file
+
+    db = _make_sample_db()
+    with pytest.raises(ValueError):
+        export_to_file(db, str(tmp_path / "g.unknown"))
+
+
+def test_query_sparql_select_and_ask():
+    pytest.importorskip("rdflib")
+    from grafito.integrations import query_sparql
+
+    db = GrafitoDatabase(":memory:")
+    db.create_node(labels=["Person"], properties={"name": "Alice", "age": 30})
+    db.create_node(labels=["Person"], properties={"name": "Bob", "age": 25})
+
+    rows = query_sparql(
+        db,
+        """
+        PREFIX ex: <http://ex.org/>
+        SELECT ?name ?age WHERE { ?p a ex:Person ; ex:name ?name ; ex:age ?age }
+        ORDER BY ?age
+        """,
+        base_uri="http://ex.org/",
+    )
+    assert rows == [
+        {"name": "Bob", "age": 25},
+        {"name": "Alice", "age": 30},
+    ]
+
+    ask = query_sparql(
+        db,
+        'PREFIX ex: <http://ex.org/> ASK { ?x ex:name "Alice" }',
+        base_uri="http://ex.org/",
+    )
+    assert ask == [{"boolean": True}]
+
+
+def test_graph_diff_isomorphism():
+    pytest.importorskip("rdflib")
+    from grafito.integrations import graph_diff
+
+    def make():
+        db = GrafitoDatabase(":memory:")
+        a = db.create_node(labels=["Person"], properties={"name": "Alice"})
+        b = db.create_node(labels=["Person"], properties={"name": "Bob"})
+        db.create_relationship(a.id, b.id, "KNOWS", properties={"since": 2021})
+        return db
+
+    same = graph_diff(make(), make(), base_uri="http://ex.org/")
+    assert same["isomorphic"] is True
+    assert same["only_in_first"] == 0 and same["only_in_second"] == 0
+
+    other = make()
+    other.create_node(labels=["Person"], properties={"name": "Carol"})
+    diff = graph_diff(make(), other, base_uri="http://ex.org/")
+    assert diff["isomorphic"] is False
+    assert diff["only_in_second"] > 0
+
+
 def test_to_pyvis_requires_pyvis():
     pytest.importorskip("pyvis")
     from grafito.integrations import to_pyvis

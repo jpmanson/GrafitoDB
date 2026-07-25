@@ -14,17 +14,19 @@ This installs `rdflib` for RDF handling.
 
 ## Public API
 
-The integration lives in `grafito.integrations` and exposes exactly four helpers:
+The integration lives in `grafito.integrations`:
 
 | Function | Purpose |
 | --- | --- |
 | `export_rdf(db, ...)` | Export the graph to an `rdflib.Graph` |
 | `export_turtle(db, ...)` | Export the graph to a Turtle string |
+| `export_string(db, format=..., ...)` | Export to any rdflib format as a string |
+| `export_to_file(db, path, ...)` | Export to a file, format inferred from extension |
 | `import_rdf(db, graph, ...)` | Import an `rdflib.Graph` into the database |
 | `import_turtle(db, source, ...)` | Parse Turtle (string or file) and import it |
-
-`rdflib` can serialize/parse many other formats (RDF/XML, JSON-LD, N-Triples,
-TriG, N3…); use `export_rdf` / `import_rdf` with an `rdflib.Graph` to reach them.
+| `import_from_file(db, path, ...)` | Import a file, format inferred from extension |
+| `query_sparql(db, query, ...)` | Run SPARQL over the graph (delegated to rdflib) |
+| `graph_diff(a, b, ...)` | Compare two graphs by RDF isomorphism |
 
 ---
 
@@ -205,6 +207,77 @@ turtle = export_turtle(db, base_uri='http://example.org/')
 restored = GrafitoDatabase(':memory:')
 import_turtle(restored, turtle, base_uri='http://example.org/')
 # restored has the same nodes, labels, properties, relationships and edge properties
+```
+
+---
+
+## Other RDF formats (JSON-LD, N-Triples, RDF/XML…)
+
+`export_string` and `export_to_file` reach any format `rdflib` supports. On files the
+format is inferred from the extension (override with `format=`):
+
+| Extension | Format | | Extension | Format |
+| --- | --- | --- | --- | --- |
+| `.ttl` | turtle | | `.rdf` / `.xml` | xml |
+| `.jsonld` / `.json` | json-ld | | `.n3` | n3 |
+| `.nt` | nt (N-Triples) | | `.trig` | trig |
+| `.nq` | nquads | | | |
+
+```python
+from grafito.integrations import export_string, export_to_file, import_from_file
+
+# As a string, in any format
+jsonld = export_string(db, base_uri='http://example.org/', format='json-ld')
+
+# To a file (format inferred from the extension)
+export_to_file(db, 'graph.jsonld', base_uri='http://example.org/')
+
+# Import back, format inferred
+restored = GrafitoDatabase(':memory:')
+import_from_file(restored, 'graph.jsonld', base_uri='http://example.org/')
+```
+
+## SPARQL queries
+
+Grafito has no native SPARQL engine, but `query_sparql` materialises the graph as an
+`rdflib.Graph` and runs the query there, giving full **SPARQL 1.1**
+(SELECT / ASK / CONSTRUCT / DESCRIBE) over Grafito data:
+
+```python
+from grafito.integrations import query_sparql
+
+rows = query_sparql(db, """
+    PREFIX ex: <http://example.org/>
+    SELECT ?name ?age
+    WHERE { ?p a ex:Person ; ex:name ?name ; ex:age ?age }
+    ORDER BY DESC(?age)
+""", base_uri='http://example.org/')
+# -> [{'name': 'Alice', 'age': 30}, {'name': 'Bob', 'age': 25}]
+
+query_sparql(db, 'PREFIX ex: <http://example.org/> ASK { ?x ex:name "Alice" }',
+             base_uri='http://example.org/')
+# -> [{'boolean': True}]
+```
+
+Return shapes: `SELECT` → list of `{variable: value}` dicts; `ASK` → `[{'boolean': ...}]`;
+`CONSTRUCT`/`DESCRIBE` → list of `{'s', 'p', 'o'}` triples.
+
+!!! note
+    The whole graph is loaded into memory for each call, so this is meant for interop
+    and small/medium graphs. For large graphs and traversals, use Cypher
+    (`db.execute(...)`) or the programmatic API, which query SQLite directly and use
+    indexes.
+
+## Comparing two graphs
+
+`graph_diff` compares two databases by **RDF isomorphism** (via `rdflib.compare`),
+correctly ignoring node-id ordering and blank-node labelling:
+
+```python
+from grafito.integrations import graph_diff
+
+graph_diff(db_a, db_b, base_uri='http://example.org/')
+# -> {'isomorphic': True, 'in_both': 11, 'only_in_first': 0, 'only_in_second': 0}
 ```
 
 ---

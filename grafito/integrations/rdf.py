@@ -156,6 +156,187 @@ def export_turtle(
     return graph.serialize(format="turtle")
 
 
+# rdflib format name keyed by common file extension.
+_EXT_FORMATS = {
+    ".ttl": "turtle",
+    ".turtle": "turtle",
+    ".jsonld": "json-ld",
+    ".json": "json-ld",
+    ".nt": "nt",
+    ".ntriples": "nt",
+    ".nq": "nquads",
+    ".rdf": "xml",
+    ".xml": "xml",
+    ".owl": "xml",
+    ".n3": "n3",
+    ".trig": "trig",
+}
+
+
+def _format_from_path(path: str, override: str | None) -> str:
+    """Pick an rdflib format from an explicit override or the file extension."""
+    if override:
+        return override
+    import os
+
+    ext = os.path.splitext(path)[1].lower()
+    fmt = _EXT_FORMATS.get(ext)
+    if fmt is None:
+        raise ValueError(
+            f"Cannot infer RDF format from extension {ext!r}. "
+            f"Pass format= explicitly (one of: turtle, json-ld, nt, nquads, xml, n3, trig)."
+        )
+    return fmt
+
+
+def export_string(
+    db: GrafitoDatabase,
+    base_uri: str = "grafito:",
+    format: str = "turtle",
+    prefixes: dict[str, str] | None = None,
+) -> str:
+    """Export the Grafito graph to an RDF string in any rdflib format.
+
+    Args:
+        db: Source database.
+        base_uri: Namespace for nodes/labels/property predicates.
+        format: rdflib serialization format (``turtle``, ``json-ld``, ``nt``,
+            ``nquads``, ``xml``, ``n3``, ``trig`` ...).
+        prefixes: Extra ``{prefix: namespace}`` bindings.
+    """
+    graph = export_rdf(db, base_uri=base_uri, prefixes=prefixes)
+    return graph.serialize(format=format)
+
+
+def export_to_file(
+    db: GrafitoDatabase,
+    path: str,
+    base_uri: str = "grafito:",
+    format: str | None = None,
+    prefixes: dict[str, str] | None = None,
+) -> str:
+    """Export the graph to a file, inferring the format from the extension.
+
+    ``.ttl`` -> turtle, ``.jsonld``/``.json`` -> JSON-LD, ``.nt`` -> N-Triples,
+    ``.nq`` -> N-Quads, ``.rdf``/``.xml`` -> RDF/XML, ``.n3`` -> N3, ``.trig`` -> TriG.
+    Pass ``format`` to override.
+
+    Returns:
+        The format that was used.
+    """
+    fmt = _format_from_path(path, format)
+    graph = export_rdf(db, base_uri=base_uri, prefixes=prefixes)
+    graph.serialize(destination=path, format=fmt, encoding="utf-8")
+    return fmt
+
+
+def import_from_file(
+    db: GrafitoDatabase,
+    path: str,
+    base_uri: str = "grafito:",
+    format: str | None = None,
+    store_uri: bool = True,
+) -> dict[str, int]:
+    """Import an RDF file, inferring the format from the extension.
+
+    Thin wrapper over :func:`import_turtle` that resolves the rdflib format from
+    the file extension (see :func:`export_to_file` for the mapping).
+    """
+    fmt = _format_from_path(path, format)
+    return import_turtle(db, path, base_uri=base_uri, store_uri=store_uri, format=fmt)
+
+
+def _term_to_py(term: Any) -> Any:
+    """Convert an rdflib query term (Literal/URIRef/BNode) to a Python value."""
+    try:
+        from rdflib import Literal
+    except ImportError:  # pragma: no cover
+        return term
+    if term is None:
+        return None
+    if isinstance(term, Literal):
+        return _py_value(term)
+    return str(term)
+
+
+def query_sparql(
+    db: GrafitoDatabase,
+    query: str,
+    base_uri: str = "grafito:",
+    prefixes: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Run a SPARQL query against the graph, delegating to rdflib.
+
+    Grafito has no native SPARQL engine; this materialises the graph as an
+    ``rdflib.Graph`` (via :func:`export_rdf`) and runs the query there, giving
+    full SPARQL 1.1 (SELECT/ASK/CONSTRUCT/DESCRIBE) over Grafito data.
+
+    Args:
+        db: Source database.
+        query: A SPARQL query string.
+        base_uri: Namespace used when exporting (predicates live under it).
+        prefixes: Extra ``{prefix: namespace}`` bindings available to the query.
+
+    Returns:
+        - SELECT: a list of dicts ``{variable: python_value}``.
+        - ASK: ``[{"boolean": True/False}]``.
+        - CONSTRUCT/DESCRIBE: a list of dicts ``{"s","p","o"}`` for each triple.
+
+    Note:
+        The whole graph is loaded into memory for each call, so this is intended
+        for interop and small/medium graphs, not high-throughput production use.
+    """
+    graph = export_rdf(db, base_uri=base_uri, prefixes=prefixes)
+    result = graph.query(query)
+
+    if result.type == "ASK":
+        return [{"boolean": bool(result.askAnswer)}]
+    if result.type in ("CONSTRUCT", "DESCRIBE"):
+        return [
+            {"s": _term_to_py(s), "p": _term_to_py(p), "o": _term_to_py(o)}
+            for s, p, o in result
+        ]
+    # SELECT
+    variables = [str(v) for v in (result.vars or [])]
+    rows: list[dict[str, Any]] = []
+    for row in result:
+        rows.append({var: _term_to_py(getattr(row, var)) for var in variables})
+    return rows
+
+
+def graph_diff(
+    first: GrafitoDatabase,
+    second: GrafitoDatabase,
+    base_uri: str = "grafito:",
+) -> dict[str, Any]:
+    """Compare two graphs by RDF isomorphism (delegates to ``rdflib.compare``).
+
+    Both databases are exported to canonical (isomorphic) RDF graphs and diffed,
+    which correctly ignores node-id ordering and blank-node labelling.
+
+    Returns:
+        A dict with ``isomorphic`` (bool) plus triple counts
+        ``in_both`` / ``only_in_first`` / ``only_in_second``.
+    """
+    try:
+        from rdflib.compare import graph_diff as _rdf_graph_diff, to_isomorphic
+    except ImportError as exc:  # pragma: no cover - guarded like export_rdf
+        raise ImportError(
+            "rdflib is not installed. Install with `pip install grafito[rdf]` "
+            "or `uv pip install grafito[rdf]`."
+        ) from exc
+
+    iso_first = to_isomorphic(export_rdf(first, base_uri=base_uri))
+    iso_second = to_isomorphic(export_rdf(second, base_uri=base_uri))
+    in_both, only_first, only_second = _rdf_graph_diff(iso_first, iso_second)
+    return {
+        "isomorphic": iso_first == iso_second,
+        "in_both": len(in_both),
+        "only_in_first": len(only_first),
+        "only_in_second": len(only_second),
+    }
+
+
 def _local_name(term: Any, base_uri: str) -> str:
     """Shorten an RDF term to a compact label/property name.
 

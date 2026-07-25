@@ -3,8 +3,13 @@
 __all__ = [
     "export_rdf",
     "export_turtle",
+    "export_string",
+    "export_to_file",
     "import_rdf",
     "import_turtle",
+    "import_from_file",
+    "query_sparql",
+    "graph_diff",
     "export_okf_bundle",
     "to_pyvis",
     "save_pyvis_html",
@@ -19,14 +24,39 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in ("export_rdf", "export_turtle", "import_rdf", "import_turtle"):
-        from .rdf import export_rdf, export_turtle, import_rdf, import_turtle
+    if name in (
+        "export_rdf",
+        "export_turtle",
+        "export_string",
+        "export_to_file",
+        "import_rdf",
+        "import_turtle",
+        "import_from_file",
+        "query_sparql",
+        "graph_diff",
+    ):
+        from .rdf import (
+            export_rdf,
+            export_turtle,
+            export_string,
+            export_to_file,
+            import_rdf,
+            import_turtle,
+            import_from_file,
+            query_sparql,
+            graph_diff,
+        )
 
         return {
             "export_rdf": export_rdf,
             "export_turtle": export_turtle,
+            "export_string": export_string,
+            "export_to_file": export_to_file,
             "import_rdf": import_rdf,
             "import_turtle": import_turtle,
+            "import_from_file": import_from_file,
+            "query_sparql": query_sparql,
+            "graph_diff": graph_diff,
         }[name]
     if name == "export_okf_bundle":
         from .okf import export_bundle

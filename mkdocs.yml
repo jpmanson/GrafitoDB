@@ -117,6 +117,9 @@ nav:
       - Agentic Search over OKF: integrations/okf-agentic-search.md
       - Visualization: integrations/visualization.md
 
+  - Comparisons:
+      - GrafitoDB vs. rdflib: comparisons/rdflib.md
+
   - Embeddings & LLMs:
       - Overview: embeddings/overview.md
       - OpenAI: embeddings/openai.md
