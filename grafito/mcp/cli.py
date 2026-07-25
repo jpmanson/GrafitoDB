@@ -16,6 +16,12 @@ With ``--enable-writes`` a remembered note is persisted back to the bundle
 directory (markdown + changelog), so it survives the process and shows up in
 ``git diff`` — the bundle is the memory.
 
+Or point it at a plain graph instead of a bundle — no OKF involved, just the
+read-only graph tiers (schema/neighbours/text-search + a read-only Cypher
+escape hatch)::
+
+    grafito-mcp --db ./graph.db
+
 Installed via ``grafito[mcp]``; run without a build step with
 ``uvx --from 'grafitodb[mcp]' grafito-mcp --bundle ./okf_bundle``.
 """
@@ -152,12 +158,42 @@ def build_tools(
     return ThreadConfinedTools(factory, name="grafito-mcp-bundle")
 
 
+def build_graph_tools(db_path: str, *, max_rows: int = 100) -> ThreadConfinedTools:
+    """A thread-confined graph toolset over the Grafito database at ``db_path``.
+
+    The db-mode counterpart to :func:`build_tools`: no OKF, no bundle — just the
+    escalón 2-3 graph tiers (:class:`~grafito.GraphTools` +
+    :class:`~grafito.CypherTools`) over a plain :class:`~grafito.GrafitoDatabase`.
+    This is what the OKF-independence of those toolsets buys: the same server
+    fronts an arbitrary graph by loading these instead of the bundle tiers, with
+    no OKF anywhere in the process.
+
+    The database is opened **inside** the confinement thread, for the same
+    thread-affinity reason as the bundle path — the MCP server runs tool calls
+    off the event loop. All read-only: nothing here can mutate the graph.
+    """
+
+    def factory() -> ToolRegistry:
+        from .. import CypherTools, GrafitoDatabase, GraphTools
+
+        db = GrafitoDatabase(db_path)
+        return ToolRegistry([GraphTools(db), CypherTools(db, max_rows=max_rows)])
+
+    return ThreadConfinedTools(factory, name="grafito-mcp-graph")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="grafito-mcp",
-        description="Serve an OKF bundle to MCP clients over stdio.",
+        description="Serve an OKF bundle or a Grafito graph to MCP clients over stdio.",
     )
-    parser.add_argument("--bundle", required=True, help="Path to the OKF bundle directory.")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--bundle", help="Path to an OKF bundle directory.")
+    source.add_argument(
+        "--db",
+        help="Path to a Grafito .db graph file. Serves read-only graph tools only "
+        "(no OKF); the --bundle-only flags below do not apply.",
+    )
     parser.add_argument("--name", default="grafito", help="Server name reported to the client.")
     parser.add_argument("--tag", default=None, help="Scope every tool to concepts with this tag.")
     parser.add_argument(
@@ -194,25 +230,43 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    embed_config = json.loads(args.embed_config) if args.embed_config else None
-    embedder = resolve_embedder(args.embed, embed_config)
+    if args.db is not None:
+        # The bundle-only flags have no meaning over a raw graph; reject them
+        # rather than silently ignore, so the client is not misled.
+        misused = [
+            flag
+            for flag, used in (
+                ("--tag", args.tag is not None),
+                ("--budget-tokens", args.budget_tokens != 2000),
+                ("--embed", args.embed is not None),
+                ("--embed-config", args.embed_config is not None),
+                ("--enable-graph", args.enable_graph),
+                ("--enable-writes", args.enable_writes),
+            )
+            if used
+        ]
+        if misused:
+            parser.error(f"{', '.join(misused)} apply to --bundle, not --db")
+        tools = build_graph_tools(args.db)
+    else:
+        embed_config = json.loads(args.embed_config) if args.embed_config else None
+        tools = build_tools(
+            args.bundle,
+            enable_writes=args.enable_writes,
+            enable_graph=args.enable_graph,
+            tag=args.tag,
+            budget_tokens=args.budget_tokens,
+            embed=resolve_embedder(args.embed, embed_config),
+        )
 
-    tools = build_tools(
-        args.bundle,
-        enable_writes=args.enable_writes,
-        enable_graph=args.enable_graph,
-        tag=args.tag,
-        budget_tokens=args.budget_tokens,
-        embed=embedder,
-    )
     try:
         # tools is a ToolSet; the server always sees a ToolRegistry, so nesting
         # more tiers later is just a longer list here.
         serve_mcp(ToolRegistry([tools]), name=args.name)
     finally:
-        # Stop the confinement thread. The in-memory bundle is discarded with the
-        # process moments later; there is no save-back in this MVP, so an
-        # explicit db close would buy nothing.
+        # Stop the confinement thread. A file db is read-only here and the
+        # process exits immediately after, so closing the connection explicitly
+        # would buy nothing; an in-memory bundle is discarded with the process.
         tools.close()
 
 

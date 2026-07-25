@@ -18,9 +18,12 @@ import pytest
 pytest.importorskip("mcp")
 pytest.importorskip("yaml")
 
+from grafito import GrafitoDatabase  # noqa: E402
 from grafito.mcp.cli import (  # noqa: E402
     _PersistAfterWrite,
+    build_graph_tools,
     build_tools,
+    main,
     resolve_embedder,
 )
 from grafito.mcp.server import _to_mcp_tools  # noqa: E402
@@ -196,6 +199,42 @@ def test_writes_persist_back_to_the_bundle_across_reload(tmp_path):
         assert any("persisted" in entry["text"] for entry in reloaded.log())
     finally:
         reloaded.db.close()
+
+
+def test_build_graph_tools_exposes_only_graph_tiers(tmp_path):
+    """--db mode: graph tools over a raw database, no OKF tools."""
+    db_path = str(tmp_path / "graph.db")
+    db = GrafitoDatabase(db_path)
+    a = db.create_node(["Person"], {"name": "Alice"}).id
+    b = db.create_node(["Company"], {"name": "Acme"}).id
+    db.create_relationship(a, b, "WORKS_AT", {})
+    db.close()
+
+    tools = build_graph_tools(db_path)
+    try:
+        names = _tool_names(tools)
+        assert set(names) == {"graph_schema", "text_search", "graph_neighbors", "graph_query"}
+        # No OKF tools leaked in.
+        assert not {"context", "browse", "search", "remember"} & set(names)
+        schema = json.loads(tools.call("graph_schema", {}))
+        assert schema["node_count"] == 2
+    finally:
+        tools.close()
+
+
+def test_db_mode_rejects_bundle_only_flags():
+    with pytest.raises(SystemExit):
+        main(["--db", "x.db", "--enable-writes"])
+
+
+def test_requires_a_source():
+    with pytest.raises(SystemExit):
+        main(["--name", "x"])
+
+
+def test_bundle_and_db_are_mutually_exclusive():
+    with pytest.raises(SystemExit):
+        main(["--bundle", "a", "--db", "b"])
 
 
 async def _roundtrip() -> tuple[str, list[str], str, str, str]:
