@@ -1138,3 +1138,103 @@ export OPENAI_BASE_URL=http://localhost:11434/v1   # e.g. Ollama
 export OPENAI_MODEL=llama3.1
 python examples/okf/okf_agent.py
 ```
+
+## Model Context Protocol server: `grafito-mcp`
+
+`run_agent` drives a model *you* inject. The **MCP server** turns the same
+tools the other way round: it exposes them over the [Model Context
+Protocol](https://modelcontextprotocol.io) so a client that already has a model
+— Claude Desktop, Claude Code, any MCP host — can use a bundle (or a plain
+graph) with **no integration code on your side**. One install, no build:
+
+```bash
+uvx --from 'grafitodb[mcp]' grafito-mcp --bundle ./okf_bundle       # a bundle
+uvx --from 'grafitodb[mcp]' grafito-mcp --db ./graph.db             # a plain graph
+```
+
+The server speaks stdio JSON-RPC; point a client's config at it, e.g. Claude
+Desktop's `claude_desktop_config.json`:
+
+```jsonc
+{
+  "mcpServers": {
+    "grafito": {
+      "command": "uvx",
+      "args": ["--from", "grafitodb[mcp]", "grafito-mcp",
+               "--bundle", "/abs/path/to/okf_bundle",
+               "--embed", "sentence_transformer"]
+    }
+  }
+}
+```
+
+**Read-only by default** — a client can explore and ground answers, but not
+write, until you opt in with `--enable-writes`.
+
+### The tools, by altitude
+
+The server offers tools at rising altitude; a client picks the highest one that
+answers its question. Which appear depends on the flags:
+
+| Tier | Tools | When |
+|---|---|---|
+| **Grounded** (escalón 1) | `context` — a question in, prompt-ready cited context out, in one call | `--bundle` |
+| **Explore** (escalón 1) | `browse`, `search`, `open`, `follow`, `history` | `--bundle` |
+| **Write** (escalón 1) | `remember` — save a note, persisted back to the bundle | `--bundle --enable-writes` |
+| **Structured** (escalón 2) | `graph_schema`, `text_search`, `vector_search`, `graph_neighbors` | `--db`, or `--bundle --enable-graph` |
+| **Cypher** (escalón 3) | `graph_query` — read-only Cypher, row-capped | `--db`, or `--bundle --enable-graph` |
+
+`context` is the star: it is the one-shot [`context()`](#grounded-context-for-agents-context)
+path, cheaper than a client running its own exploration loop, and the tool that
+sets this apart from a raw graph server. The graph tiers hang on the underlying
+`GrafitoDatabase`, not on the bundle — which is why `--db` can serve a graph
+that is not an OKF bundle at all, exposing only those tiers with no OKF in play.
+
+### Writes persist to the bundle
+
+With `--enable-writes`, `remember` is exposed **and** each saved note is written
+back to the bundle directory (markdown + regenerated `log.md`) as it happens —
+so the note survives the process and shows up in `git diff`. The bundle is the
+memory; a crash cannot swallow what the client was told was saved.
+
+### Graph mode is read-only
+
+`graph_query` runs arbitrary Cypher, but a query containing a mutating clause
+(`CREATE`/`MERGE`/`DELETE`/`DETACH`/`SET`/`REMOVE`/`DROP`) is refused, and at
+most `--max-rows` rows come back. Escalón 4 (writes over the graph) is not
+implemented: these tiers cannot mutate the graph even when asked.
+
+### Flags
+
+| Flag | Applies to | Default | Effect |
+|---|---|---|---|
+| `--bundle PATH` / `--db PATH` | — | required (one) | Serve an OKF bundle, or a plain `.db` graph |
+| `--name NAME` | both | `grafito` | Server name reported to the client |
+| `--embed NAME` / `--embed-config JSON` | `--bundle` | none | Embedder for semantic `search`/`context` (else text mode) |
+| `--rerank NAME` / `--rerank-config JSON` | `--bundle` | none | Reranker for `context` grounding (`lexical` is dep-free) |
+| `--tag TAG` | `--bundle` | none | Scope every tool to concepts with this tag |
+| `--budget-tokens N` | `--bundle` | `2000` | Token budget for `context` output |
+| `--enable-graph` | `--bundle` | off | Add the escalón 2-3 graph tiers over the bundle's graph |
+| `--enable-writes` | `--bundle` | off | Expose `remember` and persist writes to the bundle |
+| `--max-rows N` | `--db`, `--enable-graph` | `100` | Cap on `graph_query` rows |
+
+The retrieval-quality and write flags apply to a bundle; passing them with
+`--db` is an error, not a silent no-op.
+
+### How it stays generic
+
+The server itself knows nothing about OKF. It hangs on a `ToolRegistry`
+(`grafito.ToolRegistry`) — a bag of `ToolSet`s — and serves whatever tools it
+holds. `--bundle` loads the OKF toolsets
+(`ContextTools` + `BundleTools`), `--db` loads the graph toolsets
+(`GraphTools` + `CypherTools`), optionally both. Adding a tier is adding a
+`ToolSet` to the registry, never touching the server — the same seam
+`run_agent` uses. Building your own server over a custom mix of toolsets is
+therefore a few lines:
+
+```python
+from grafito import ToolRegistry
+from grafito.mcp import serve_mcp
+
+serve_mcp(ToolRegistry([...your ToolSets...]), name="my-graph")
+```
