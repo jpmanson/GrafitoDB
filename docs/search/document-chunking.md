@@ -47,7 +47,7 @@ for sec in ing.toc("runbooks/slow-queries"):
     print(sec.title, sec.node_key, [c.title for c in sec.children])
 ```
 
-## Behaviour (MVP)
+## Behaviour
 
 | Topic | Behaviour |
 |-------|-----------|
@@ -65,7 +65,7 @@ for sec in ing.toc("runbooks/slow-queries"):
 
 - `max_chars=…` — hard character budget.
 - `max_tokens=…, token_counter=fn` — exact token budget via your counter.
-- `max_tokens=…` **without** counter — **rough estimate** `tokens ≈ ceil(len/4)` (same idea as design §7.2). Prefer a real counter for production LLM windows.
+- `max_tokens=…` **without** counter — **rough estimate** `tokens ≈ ceil(len/4)`. Prefer a real counter for production LLM windows.
 
 ### Overlap dedup and `store_full_text`
 
@@ -86,7 +86,7 @@ With `store_full_text=False`, merge still runs by **stitching passage texts** fr
 - `hierarchy=True` forces the markdown tree builder (best with markdown-shaped text).
 - Headings inside fenced code (`` ``` `` / ``~~~``) are **not** treated as sections (shell `#` comments stay in the passage body).
 
-## Phase 3 additions
+## Advanced retrieval
 
 ### Hybrid search (RRF)
 
@@ -148,6 +148,10 @@ ing = DocumentIngestor(..., enricher=TitleContextEnricher())
 
 Sets `context` on passages so embeddings use title/section situating text.
 
-## Deferred
+## Not yet available
 
-Dual multi-view indexing (§10.7), Chonkie adapter, OKF long-body opt-in — design Phase 3 remainder.
+The following are planned but not implemented:
+
+- **Dual multi-view indexing** — indexing one document under two segmentations (e.g. fixed *and* hierarchical) with span-aware fusion.
+- **Chonkie adapter** — optional `ChonkieChunker` behind an extra for token-aware production chunking.
+- **OKF long-body opt-in** — auto-chunking long OKF concept bodies while keeping short concepts as single nodes.
