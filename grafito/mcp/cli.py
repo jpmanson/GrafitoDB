@@ -141,6 +141,7 @@ def build_tools(
     budget_tokens: int = 2000,
     embed: "EmbeddingFunction | None" = None,
     rerank: "Reranker | None" = None,
+    max_rows: int = 100,
 ) -> ThreadConfinedTools:
     """A thread-confined toolset over the bundle at ``bundle_path``.
 
@@ -170,7 +171,8 @@ def build_tools(
     :class:`~grafito.CypherTools` (a read-only Cypher escape hatch) — over the
     bundle's underlying graph. These hang on ``kb.db``, not on the bundle, so the
     same tools serve a non-OKF graph unchanged; here they simply widen what a
-    client can do with the same registry. All read-only.
+    client can do with the same registry. All read-only. ``max_rows`` caps
+    ``graph_query`` output when the graph tier is on.
     """
     exclude = None if enable_writes else ["remember"]
 
@@ -187,7 +189,7 @@ def build_tools(
         if enable_graph:
             from ..tools import CypherTools, GraphTools
 
-            toolsets += [GraphTools(kb.db), CypherTools(kb.db)]
+            toolsets += [GraphTools(kb.db), CypherTools(kb.db, max_rows=max_rows)]
         return ToolRegistry(toolsets)
 
     return ThreadConfinedTools(factory, name="grafito-mcp-bundle")
@@ -272,6 +274,13 @@ def main(argv: list[str] | None = None) -> None:
         "a read-only Cypher escape hatch) over the underlying graph.",
     )
     parser.add_argument(
+        "--max-rows",
+        type=int,
+        default=100,
+        help="Cap on rows returned by the read-only Cypher tool (default 100). Applies "
+        "with --db or --enable-graph.",
+    )
+    parser.add_argument(
         "--enable-writes",
         action="store_true",
         help="Expose the write tool (remember) and persist writes back to the bundle "
@@ -298,7 +307,7 @@ def main(argv: list[str] | None = None) -> None:
         ]
         if misused:
             parser.error(f"{', '.join(misused)} apply to --bundle, not --db")
-        tools = build_graph_tools(args.db)
+        tools = build_graph_tools(args.db, max_rows=args.max_rows)
     else:
         embed_config = json.loads(args.embed_config) if args.embed_config else None
         rerank_config = json.loads(args.rerank_config) if args.rerank_config else None
@@ -310,6 +319,7 @@ def main(argv: list[str] | None = None) -> None:
             budget_tokens=args.budget_tokens,
             embed=resolve_embedder(args.embed, embed_config),
             rerank=resolve_reranker(args.rerank, rerank_config),
+            max_rows=args.max_rows,
         )
 
     try:

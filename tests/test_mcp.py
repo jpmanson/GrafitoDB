@@ -253,6 +253,21 @@ def test_build_graph_tools_exposes_only_graph_tiers(tmp_path):
         tools.close()
 
 
+def test_max_rows_threads_into_the_cypher_cap(tmp_path):
+    db_path = str(tmp_path / "graph.db")
+    db = GrafitoDatabase(db_path)
+    for i in range(5):
+        db.create_node(["N"], {"i": i})
+    db.close()
+
+    tools = build_graph_tools(db_path, max_rows=2)
+    try:
+        result = json.loads(tools.call("graph_query", {"query": "MATCH (n) RETURN n.i AS i"}))
+        assert len(result["rows"]) == 2 and result["count"] == 5 and result["truncated"] is True
+    finally:
+        tools.close()
+
+
 def test_db_mode_rejects_bundle_only_flags():
     with pytest.raises(SystemExit):
         main(["--db", "x.db", "--enable-writes"])
