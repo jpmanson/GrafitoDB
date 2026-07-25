@@ -2,7 +2,7 @@
 
 Grafito can index long documents as **many passage nodes** (still **one vector per node**), with graph links for navigation after semantic search.
 
-Full design: `todo/DOCUMENT_CHUNKING_HELPER.md`.
+Related: [Vector Search](vector.md) · [Hybrid Search](hybrid.md) · [Embeddings](../embeddings/overview.md)
 
 ## Runnable example
 
