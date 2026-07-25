@@ -1557,15 +1557,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#behaviour-mvp" class="md-nav__link">
+  <a href="#behaviour" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Behaviour (MVP)
+        Behaviour
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Behaviour (MVP)">
+    <nav class="md-nav" aria-label="Behaviour">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1624,15 +1624,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-additions" class="md-nav__link">
+  <a href="#advanced-retrieval" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3 additions
+        Advanced retrieval
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 3 additions">
+    <nav class="md-nav" aria-label="Advanced retrieval">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1696,10 +1696,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deferred" class="md-nav__link">
+  <a href="#not-yet-available" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deferred
+        Not yet available
       
     </span>
   </a>
@@ -2837,15 +2837,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#behaviour-mvp" class="md-nav__link">
+  <a href="#behaviour" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Behaviour (MVP)
+        Behaviour
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Behaviour (MVP)">
+    <nav class="md-nav" aria-label="Behaviour">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2904,15 +2904,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-3-additions" class="md-nav__link">
+  <a href="#advanced-retrieval" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 3 additions
+        Advanced retrieval
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Phase 3 additions">
+    <nav class="md-nav" aria-label="Advanced retrieval">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2976,10 +2976,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deferred" class="md-nav__link">
+  <a href="#not-yet-available" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deferred
+        Not yet available
       
     </span>
   </a>
@@ -3008,7 +3008,7 @@
 
 <h1 id="document-graph-chunking">Document → Graph Chunking</h1>
 <p>Grafito can index long documents as <strong>many passage nodes</strong> (still <strong>one vector per node</strong>), with graph links for navigation after semantic search.</p>
-<p>Full design: <code>todo/DOCUMENT_CHUNKING_HELPER.md</code>.</p>
+<p>Related: <a href="../vector/">Vector Search</a> · <a href="../hybrid/">Hybrid Search</a> · <a href="../../embeddings/overview/">Embeddings</a></p>
 <h2 id="runnable-example">Runnable example</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/semantic/document_chunking.py
 </span></code></pre></div>
@@ -3045,7 +3045,7 @@ Swap in a real embedding function for production quality.</p>
 </span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">ing</span><span class="o">.</span><span class="n">toc</span><span class="p">(</span><span class="s2">&quot;runbooks/slow-queries&quot;</span><span class="p">):</span>
 </span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">sec</span><span class="o">.</span><span class="n">title</span><span class="p">,</span> <span class="n">sec</span><span class="o">.</span><span class="n">node_key</span><span class="p">,</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">title</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">sec</span><span class="o">.</span><span class="n">children</span><span class="p">])</span>
 </span></code></pre></div>
-<h2 id="behaviour-mvp">Behaviour (MVP)</h2>
+<h2 id="behaviour">Behaviour</h2>
 <table>
 <thead>
 <tr>
@@ -3096,7 +3096,7 @@ Swap in a real embedding function for production quality.</p>
 <ul>
 <li><code>max_chars=…</code> — hard character budget.</li>
 <li><code>max_tokens=…, token_counter=fn</code> — exact token budget via your counter.</li>
-<li><code>max_tokens=…</code> <strong>without</strong> counter — <strong>rough estimate</strong> <code>tokens ≈ ceil(len/4)</code> (same idea as design §7.2). Prefer a real counter for production LLM windows.</li>
+<li><code>max_tokens=…</code> <strong>without</strong> counter — <strong>rough estimate</strong> <code>tokens ≈ ceil(len/4)</code>. Prefer a real counter for production LLM windows.</li>
 </ul>
 <h3 id="overlap-dedup-and-store_full_text">Overlap dedup and <code>store_full_text</code></h3>
 <p>Pack merges overlapping passages using offsets. <strong>Best quality</strong> when the parent keeps the full document body (<code>store_full_text=True</code>, default): merge slices <code>parent.text[char_start:char_end]</code>.</p>
@@ -3114,7 +3114,7 @@ Swap in a real embedding function for production quality.</p>
 <li><code>hierarchy=True</code> forces the markdown tree builder (best with markdown-shaped text).</li>
 <li>Headings inside fenced code (<code>```</code> / <code>~~~</code>) are <strong>not</strong> treated as sections (shell <code>#</code> comments stay in the passage body).</li>
 </ul>
-<h2 id="phase-3-additions">Phase 3 additions</h2>
+<h2 id="advanced-retrieval">Advanced retrieval</h2>
 <h3 id="hybrid-search-rrf">Hybrid search (RRF)</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span> <span class="n">configure_fts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">hybrid_search</span><span class="p">(</span>
@@ -3157,8 +3157,13 @@ Swap in a real embedding function for production quality.</p>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">enricher</span><span class="o">=</span><span class="n">TitleContextEnricher</span><span class="p">())</span>
 </span></code></pre></div>
 <p>Sets <code>context</code> on passages so embeddings use title/section situating text.</p>
-<h2 id="deferred">Deferred</h2>
-<p>Dual multi-view indexing (§10.7), Chonkie adapter, OKF long-body opt-in — design Phase 3 remainder.</p>
+<h2 id="not-yet-available">Not yet available</h2>
+<p>The following are planned but not implemented:</p>
+<ul>
+<li><strong>Dual multi-view indexing</strong> — indexing one document under two segmentations (e.g. fixed <em>and</em> hierarchical) with span-aware fusion.</li>
+<li><strong>Chonkie adapter</strong> — optional <code>ChonkieChunker</code> behind an extra for token-aware production chunking.</li>
+<li><strong>OKF long-body opt-in</strong> — auto-chunking long OKF concept bodies while keeping short concepts as single nodes.</li>
+</ul>
 
 
 
