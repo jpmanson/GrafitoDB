@@ -102,6 +102,7 @@ def build_tools(
     bundle_path: str,
     *,
     enable_writes: bool = False,
+    enable_graph: bool = False,
     tag: str | None = None,
     budget_tokens: int = 2000,
     embed: "EmbeddingFunction | None" = None,
@@ -127,6 +128,13 @@ def build_tools(
     output; it is a deployment decision, not a per-call one, so it is fixed here.
     ``embed`` supplies the embedding function so ``search``/``context`` retrieve
     by meaning; without it retrieval degrades to text mode.
+
+    ``enable_graph`` adds the escalón 2-3 tiers — :class:`~grafito.GraphTools`
+    (structured read-only: schema/neighbours/text-search) and
+    :class:`~grafito.CypherTools` (a read-only Cypher escape hatch) — over the
+    bundle's underlying graph. These hang on ``kb.db``, not on the bundle, so the
+    same tools serve a non-OKF graph unchanged; here they simply widen what a
+    client can do with the same registry. All read-only.
     """
     exclude = None if enable_writes else ["remember"]
 
@@ -136,12 +144,15 @@ def build_tools(
         if enable_writes:
             # save() with no path mirrors the graph back to the load directory.
             bundle_tools = _PersistAfterWrite(bundle_tools, kb.save)
-        return ToolRegistry(
-            [
-                ContextTools(kb, tag=tag, budget_tokens=budget_tokens),
-                bundle_tools,
-            ]
-        )
+        toolsets: list["ToolSet"] = [
+            ContextTools(kb, tag=tag, budget_tokens=budget_tokens),
+            bundle_tools,
+        ]
+        if enable_graph:
+            from ..tools import CypherTools, GraphTools
+
+            toolsets += [GraphTools(kb.db), CypherTools(kb.db)]
+        return ToolRegistry(toolsets)
 
     return ThreadConfinedTools(factory, name="grafito-mcp-bundle")
 
@@ -175,6 +186,12 @@ def main(argv: list[str] | None = None) -> None:
         help='Config for --embed as a JSON object, e.g. \'{"model_name": "BAAI/bge-small-en"}\'.',
     )
     parser.add_argument(
+        "--enable-graph",
+        action="store_true",
+        help="Also expose read-only graph tools (schema, neighbours, text search, and "
+        "a read-only Cypher escape hatch) over the underlying graph.",
+    )
+    parser.add_argument(
         "--enable-writes",
         action="store_true",
         help="Expose the write tool (remember) and persist writes back to the bundle "
@@ -188,6 +205,7 @@ def main(argv: list[str] | None = None) -> None:
     tools = build_tools(
         args.bundle,
         enable_writes=args.enable_writes,
+        enable_graph=args.enable_graph,
         tag=args.tag,
         budget_tokens=args.budget_tokens,
         embed=embedder,

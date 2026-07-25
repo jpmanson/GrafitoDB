@@ -232,9 +232,29 @@ def test_server_round_trip_over_stdio():
     assert name == "grafito"
     assert "context" in names and "search" in names and "open" in names
     assert "remember" not in names  # read-only by default
+    assert "graph_query" not in names  # graph tier off by default
     # The star tool returns packed grounded text plus its citations.
     payload = json.loads(grounded)
     assert payload["text"] and "citations" in payload
     assert any("sqlite" in cid.lower() for cid in payload["concepts"])
     assert "use-sqlite" in opened  # grounded content came back
     assert "error" in bad  # a bad id is the tool's payload, not a crash
+
+
+def test_build_tools_adds_graph_tier_when_enabled():
+    tools = build_tools(BUNDLE, enable_graph=True)
+    try:
+        names = _tool_names(tools)
+        # escalón 2-3 tools compose alongside escalón 1, no name collision.
+        for expected in ("context", "graph_schema", "graph_neighbors", "graph_query"):
+            assert expected in names
+    finally:
+        tools.close()
+
+
+def test_graph_tier_is_off_by_default():
+    tools = build_tools(BUNDLE)
+    try:
+        assert "graph_query" not in _tool_names(tools)
+    finally:
+        tools.close()
