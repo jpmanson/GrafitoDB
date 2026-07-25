@@ -3946,6 +3946,11 @@
 - Implement recommendation systems
 - Build RAG (Retrieval-Augmented Generation) pipelines
 - Combine semantic and keyword search</p>
+<p>For <strong>long documents</strong> (runbooks, notes, OKF bodies), prefer the
+<a href="../document-chunking/">Document Chunking</a> helper (<code>DocumentIngestor</code>): one
+document becomes many passage nodes (still <strong>one vector per node</strong>), with
+section hierarchy, expand/pack, and optional hybrid RRF. See also
+<code>examples/semantic/document_chunking.py</code>.</p>
 <h2 id="creating-vector-indexes">Creating Vector Indexes</h2>
 <h3 id="basic-faiss-index">Basic FAISS Index</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Create a flat (exact) index</span>

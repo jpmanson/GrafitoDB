@@ -3042,6 +3042,12 @@
 
 <h1 id="hybrid-search-workflows">Hybrid Search Workflows</h1>
 <p>Combining full-text search (BM25) with vector search for better results.</p>
+<div class="admonition tip">
+<p class="admonition-title">Built-in helper</p>
+<p>For passage graphs created with <a href="../document-chunking/">Document Chunking</a>,
+use <code>DocumentIngestor.hybrid_search()</code> (RRF fusion, ownership/generation
+filters). Manual recipes below still apply to ad-hoc indexes.</p>
+</div>
 <h2 id="why-hybrid-search">Why Hybrid Search?</h2>
 <table>
 <thead>
