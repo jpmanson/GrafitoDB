@@ -1690,16 +1690,38 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dual-multi-view-indexing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual multi-view indexing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chonkie-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chonkie adapter
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-yet-available" class="md-nav__link">
+  <a href="#okf-long-body-chunking-opt-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not yet available
+        OKF long-body chunking (opt-in)
       
     </span>
   </a>
@@ -2970,16 +2992,38 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dual-multi-view-indexing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual multi-view indexing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chonkie-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chonkie adapter
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-yet-available" class="md-nav__link">
+  <a href="#okf-long-body-chunking-opt-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not yet available
+        OKF long-body chunking (opt-in)
       
     </span>
   </a>
@@ -3162,13 +3206,56 @@ expand/pack, and hybrid RRF while rendering the graph after each major step.</p>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">enricher</span><span class="o">=</span><span class="n">TitleContextEnricher</span><span class="p">())</span>
 </span></code></pre></div>
 <p>Sets <code>context</code> on passages so embeddings use title/section situating text.</p>
-<h2 id="not-yet-available">Not yet available</h2>
-<p>The following are planned but not implemented:</p>
-<ul>
-<li><strong>Dual multi-view indexing</strong> — indexing one document under two segmentations (e.g. fixed <em>and</em> hierarchical) with span-aware fusion.</li>
-<li><strong>Chonkie adapter</strong> — optional <code>ChonkieChunker</code> behind an extra for token-aware production chunking.</li>
-<li><strong>OKF long-body opt-in</strong> — auto-chunking long OKF concept bodies while keeping short concepts as single nodes.</li>
-</ul>
+<h3 id="dual-multi-view-indexing">Dual multi-view indexing</h3>
+<p>Index one document under more than one segmentation and fuse them at query time.
+Each view's passages carry a <code>view</code> property and their own <code>global_seq</code> reading
+order; <code>diversify_by_span=True</code> keeps only the best-scored hit among overlapping
+character spans, so a passage indexed under two views does not appear twice.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">chunker</span><span class="o">=</span><span class="n">MarkdownChunker</span><span class="p">(),</span> <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Opt-in: index the same document as a hierarchy AND fixed windows.</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">ing</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">document_key</span><span class="o">=</span><span class="s2">&quot;doc&quot;</span><span class="p">,</span> <span class="n">views</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;hierarchy&quot;</span><span class="p">,</span> <span class="s2">&quot;fixed&quot;</span><span class="p">])</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;connection pool&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">diversify_by_span</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># fused, no dup spans</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">only_fixed</span> <span class="o">=</span> <span class="n">ing</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;connection pool&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">views</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fixed&quot;</span><span class="p">])</span>   <span class="c1"># restrict to one view</span>
+</span></code></pre></div>
+<p>Default is a single view derived from the chunker — dual views double embedding
+cost, so reach for them only when one granularity is not enough. <code>replace()</code>
+rebuilds every view (generational GC), and the fingerprint includes the view set.</p>
+<h3 id="chonkie-adapter">Chonkie adapter</h3>
+<p>Reuse <a href="https://github.com/chonkie-ai/chonkie">Chonkie</a>'s token-aware chunkers
+(extra: <code>pip install 'grafito[document-chonkie]'</code>).</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.document</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChonkieChunker</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># Build from a short recipe name (imports chonkie lazily)...</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">chunker</span> <span class="o">=</span> <span class="n">ChonkieChunker</span><span class="o">.</span><span class="n">from_recipe</span><span class="p">(</span><span class="s2">&quot;recursive&quot;</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># ...or wrap an existing Chonkie chunker instance.</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">chonkie</span><span class="w"> </span><span class="kn">import</span> <span class="n">TokenChunker</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="n">chunker</span> <span class="o">=</span> <span class="n">ChonkieChunker</span><span class="p">(</span><span class="n">TokenChunker</span><span class="p">(</span><span class="n">chunk_size</span><span class="o">=</span><span class="mi">512</span><span class="p">))</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">ing</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">chunker</span><span class="o">=</span><span class="n">chunker</span><span class="p">,</span> <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;docs_chunks&quot;</span><span class="p">,</span> <span class="n">hierarchy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Chonkie offsets and <code>token_count</code> map onto <code>ChunkSpec</code>.</p>
+<h2 id="okf-long-body-chunking-opt-in">OKF long-body chunking (opt-in)</h2>
+<p>For OKF bundles, <code>enable_body_chunking()</code> indexes any concept whose <code>body</code>
+reaches a threshold as passage nodes on a <strong>separate</strong> vector index, while short
+concepts keep their single title+description+body vector. The concept node is
+never mutated with helper bookkeeping — each chunked concept gets a dedicated
+managed <code>Document</code> (flagged <code>okf_auto</code>, so it never round-trips as a concept)
+linked via <code>HAS_PASSAGES</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.okf</span><span class="w"> </span><span class="kn">import</span> <span class="n">OKFBundle</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">kb</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;kb/&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">my_embedder</span><span class="p">)</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">kb</span><span class="o">.</span><span class="n">enable_body_chunking</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>  <span class="c1"># chars; separate index &quot;okf_chunks&quot;</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;runbooks/slow&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Runbook&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="n">long_markdown</span><span class="p">)</span>  <span class="c1"># auto-chunked</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">kb</span><span class="o">.</span><span class="n">add_concept</span><span class="p">(</span><span class="s2">&quot;glossary/term&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Term&quot;</span><span class="p">,</span> <span class="n">body</span><span class="o">=</span><span class="s2">&quot;Short definition.&quot;</span><span class="p">)</span>  <span class="c1"># single node</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">search_passages</span><span class="p">(</span><span class="s2">&quot;connection pool timeouts&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">search_passages</span><span class="p">(</span><span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">concept_id</span><span class="o">=</span><span class="s2">&quot;runbooks/slow&quot;</span><span class="p">)</span>  <span class="c1"># scope to one concept</span>
+</span></code></pre></div>
+<p>A chunked long concept is embedded twice (concept vector on the main index,
+passages on the chunk index) — the intended cost of passage-level retrieval.</p>
 
 
 
