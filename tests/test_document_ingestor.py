@@ -65,6 +65,7 @@ def db_ing():
 
 
 def test_fixed_chunker_chars_and_overlap():
+    # no whitespace -> word boundary can't help, falls back to hard char windows
     c = FixedChunker(max_size=10, overlap=4)
     specs = c.split("abcdefghijklmnopqrstuvwxyz")
     assert len(specs) >= 3
@@ -72,6 +73,29 @@ def test_fixed_chunker_chars_and_overlap():
     assert specs[0].text == "abcdefghij"
     # second window starts at step=6
     assert specs[1].char_start == 6
+
+
+def test_fixed_chunker_word_boundary():
+    text = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu"
+    c = FixedChunker(max_size=20, overlap=5, boundary="word")
+    specs = c.split(text)
+    assert len(specs) > 1
+    for s in specs:
+        assert s.text == text[s.char_start : s.char_end]  # offsets stay exact
+        # no chunk starts or ends in the middle of a word
+        if s.char_start > 0:
+            assert text[s.char_start - 1].isspace() or text[s.char_start].isspace()
+        if s.char_end < len(text):
+            assert text[s.char_end - 1].isspace() or text[s.char_end].isspace()
+    # a single token longer than max_size still terminates (hard cut fallback)
+    hard = FixedChunker(max_size=6, overlap=0, boundary="word").split("supercalifragilistic end")
+    assert hard and "".join(x.text for x in hard) == "supercalifragilistic end"
+
+
+def test_fixed_chunker_boundary_none_cuts_words():
+    c = FixedChunker(max_size=12, overlap=0, boundary="none")
+    specs = c.split("alpha beta gamma delta epsilon")
+    assert specs[0].text == "alpha beta g"  # cuts mid-word by design
 
 
 def test_markdown_preamble_passages():
