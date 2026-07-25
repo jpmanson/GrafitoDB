@@ -75,6 +75,7 @@ With `store_full_text=False`, merge still runs by **stitching passage texts** fr
 - **Passages** remain the only default embed targets; set `embed_section_summaries=True` to also embed sections that have a `summary` property.
 - `hierarchy=False` forces flat passages only (even with `MarkdownChunker`).
 - `hierarchy=True` forces the markdown tree builder (best with markdown-shaped text).
+- Headings inside fenced code (`` ``` `` / ``~~~``) are **not** treated as sections (shell `#` comments stay in the passage body).
 
 ## Non-goals (yet)
 

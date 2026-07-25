@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from .chunkers.fixed import FixedChunker
+from .markdown_util import iter_atx_headings
 from .types import ChunkSpec, SectionSpec
-
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 def _line_offsets(lines: list[str]) -> list[int]:
@@ -33,17 +31,14 @@ def build_markdown_tree(
     - ``children``: nested sections
 
     Section nodes themselves do not carry full subtree body text.
+    Headings inside fenced code blocks (`` ``` `` / ``~~~``) are ignored.
     """
     if not text:
         return []
 
     lines = text.splitlines(keepends=True)
     offsets = _line_offsets(lines)
-    headings: list[tuple[int, str, int]] = []
-    for i, line in enumerate(lines):
-        m = _HEADING_RE.match(line.rstrip("\n"))
-        if m:
-            headings.append((len(m.group(1)), m.group(2).strip(), i))
+    headings = iter_atx_headings(lines)
 
     overflow = FixedChunker(
         max_size=max_chars,

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
+from ..markdown_util import iter_atx_headings
 from ..types import ChunkSpec
 from .fixed import FixedChunker
-
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
 class MarkdownChunker:
@@ -16,6 +14,9 @@ class MarkdownChunker:
 
     Section **preambles** (text under a heading before the next child heading)
     become their own passages so they remain searchable.
+
+    Headings inside fenced code blocks (`` ``` `` / ``~~~``) are ignored so
+    shell comments like ``# apt update`` do not become sections.
     """
 
     def __init__(
@@ -39,11 +40,7 @@ class MarkdownChunker:
         if not text:
             return []
         lines = text.splitlines(keepends=True)
-        headings: list[tuple[int, str, int]] = []
-        for i, line in enumerate(lines):
-            m = _HEADING_RE.match(line.rstrip("\n"))
-            if m:
-                headings.append((len(m.group(1)), m.group(2).strip(), i))
+        headings = iter_atx_headings(lines)
 
         if not headings:
             return self._overflow.split(text)

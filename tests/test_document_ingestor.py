@@ -362,6 +362,51 @@ def test_build_markdown_tree_unit():
     assert any("body b" in c.text for c in chunks)
 
 
+def test_headings_inside_fenced_code_blocks_ignored():
+    """Runbooks/OKF often have shell snippets with # comments — not sections."""
+    from grafito.document.tree import build_markdown_tree, flatten_chunks
+
+    md = """# Runbook
+
+Setup steps:
+
+```bash
+# apt update
+## not a heading either
+echo hello
+```
+
+## Real section
+
+Body of real section.
+
+~~~
+# still not a section
+~~~
+"""
+    forest = build_markdown_tree(md, max_chars=2000)
+    titles = []
+
+    def walk(secs):
+        for s in secs:
+            titles.append(s.title)
+            walk(s.children)
+
+    walk(forest)
+    assert "Runbook" in titles
+    assert "Real section" in titles
+    assert "apt update" not in titles
+    assert "not a heading either" not in titles
+    assert "still not a section" not in titles
+
+    # Flat markdown chunker must agree
+    specs = MarkdownChunker(max_chars=2000).split(md)
+    headings = {s.heading for s in specs if s.heading}
+    assert "apt update" not in headings
+    assert any("echo hello" in s.text for s in specs)
+    assert any("Body of real section" in s.text for s in flatten_chunks(forest))
+
+
 def test_pack_overlap_without_full_text_stitches():
     db = GrafitoDatabase(":memory:")
     full = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
