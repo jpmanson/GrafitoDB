@@ -180,6 +180,42 @@ class FakeToolSet:
         return self.reply
 
 
+# --- ContextTools: the one-shot context() tool -----------------------------------
+
+
+def test_context_tool_returns_grounded_text_and_citations(kb):
+    from grafito.okf import ContextTools
+
+    tools = ContextTools(kb)
+    assert [s["function"]["name"] for s in tools.schemas] == ["context"]
+
+    payload = json.loads(tools.call("context", {"query": "why sqlite?"}))
+    assert payload["text"]  # prompt-ready grounded text
+    assert "citations" in payload and "concepts" in payload
+    assert payload["truncated"] is False
+
+
+def test_context_tool_rejects_unknown_name_and_wraps_errors(kb):
+    from grafito.okf import ContextTools
+
+    assert "error" in json.loads(ContextTools(kb).call("nope", {"query": "x"}))
+    # raise_errors propagates instead, for frameworks that drive their own retry.
+    with pytest.raises(ValueError):
+        ContextTools(kb, raise_errors=True).call("nope", {"query": "x"})
+
+
+def test_context_tool_composes_with_bundle_tools_in_a_registry(kb):
+    """The MCP wiring: both escalón-1 toolsets under one registry."""
+    from grafito.okf import BundleTools, ContextTools, ToolRegistry
+
+    registry = ToolRegistry([ContextTools(kb), BundleTools(kb, exclude=["remember"])])
+    names = set(registry.names)
+    assert "context" in names and "search" in names
+    assert "remember" not in names
+    # Each name routes to the toolset that owns it.
+    assert "text" in json.loads(registry.call("context", {"query": "sqlite"}))
+
+
 # --- ToolRegistry: the aggregation seam shared by every tool consumer -----------
 
 

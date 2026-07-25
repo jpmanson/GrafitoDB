@@ -57,6 +57,7 @@ from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from ..filters import PropertyFilterGroup
     from .bundle import OKFBundle
+    from .rerank import Reranker
 
 DEFAULT_SYSTEM_PROMPT = """\
 You are a knowledge-base assistant working over an OKF bundle (a graph of
@@ -476,6 +477,96 @@ class BundleTools:
         for link in links or []:
             self.kb.link(concept_id, link["target"], type=link.get("type") or "LINKS_TO")
         return {"saved": concept_id, "linked_to": [link["target"] for link in links or []]}
+
+
+class ContextTools:
+    """One-shot grounded retrieval exposed as a single ``context`` tool.
+
+    Where :class:`BundleTools` lets a caller *drive* exploration step by step,
+    this exposes :meth:`OKFBundle.context` — retrieve, graph-expand, pack — as a
+    single high-altitude tool: a question in, prompt-ready grounded text plus its
+    citations out, within a fixed token budget. It is the cheap counterpart to a
+    tool-calling loop (a ``context`` call costs one model turn's worth of tokens,
+    not several), and the natural star tool for an MCP client that wants grounded
+    context without running its own retrieval.
+
+    A separate :class:`ToolSet` on purpose, not a tool added to
+    :class:`BundleTools`: the two answer different needs and belong to different
+    consumers, and folding ``context`` into ``BundleTools`` would hand it to
+    every :func:`run_agent` agent as a mid-loop move. Compose them when both are
+    wanted — ``ToolRegistry([BundleTools(kb), ContextTools(kb)])``.
+
+    ``budget_tokens`` and ``rerank`` are **fixed by the application**, not
+    exposed in the schema: how much context to inject and whether to pay for a
+    reranker are deployment decisions, not per-call choices for the model.
+    ``tag``/``where`` scope retrieval to a subset of the bundle exactly as on
+    :class:`BundleTools`, so a filtered deployment stays filtered on this path
+    too. ``raise_errors`` matches :class:`BundleTools`: wrapped ``{"error": ...}``
+    by default, propagated when a framework drives its own retry.
+    """
+
+    schemas = [
+        {
+            "type": "function",
+            "function": {
+                "name": "context",
+                "description": "Answer-oriented grounded retrieval: a question in, "
+                "prompt-ready context assembled from the most relevant concepts (with "
+                "graph-expanded neighbours) plus citations, within a token budget. Use "
+                "this to ground an answer in one call instead of browsing concept by "
+                "concept.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                },
+            },
+        },
+    ]
+
+    def __init__(
+        self,
+        kb: "OKFBundle",
+        *,
+        tag: str | None = None,
+        where: "dict | PropertyFilterGroup | None" = None,
+        budget_tokens: int = 2000,
+        rerank: "Reranker | None" = None,
+        raise_errors: bool = False,
+    ) -> None:
+        self.kb = kb
+        self.tag = tag
+        self.where = where
+        self.budget_tokens = budget_tokens
+        self.rerank = rerank
+        self.raise_errors = raise_errors
+
+    def call(self, name: str, args: dict) -> str:
+        """Execute the ``context`` tool and return its JSON result."""
+        try:
+            if name != "context":
+                raise ValueError(f"Unknown tool {name!r}")
+            result = self._context(**args)
+        except Exception as exc:
+            if self.raise_errors:
+                raise
+            result = {"error": str(exc)}
+        return json.dumps(result, ensure_ascii=False)
+
+    def _context(self, query: str) -> dict:
+        pack = self.kb.context(
+            query,
+            budget_tokens=self.budget_tokens,
+            tag=self.tag,
+            where=self.where,
+            rerank=self.rerank,
+        )
+        return {
+            "text": pack.text,
+            "citations": pack.citations,
+            "concepts": [concept.id for concept in pack.concepts],
+            "truncated": pack.truncated,
+        }
 
 
 class ThreadConfinedTools:
