@@ -1,0 +1,25 @@
+{#-
+  Overrides Material's repo source partial to show a build-time version badge.
+
+  The upstream partial relies on `data-md-component="source"`, which makes
+  Material's JS fetch the latest release from the GitHub API and inject the
+  version client-side (rate-limited + aggressively cached, so it drifts). We
+  drop that attribute and render the version statically from the package
+  metadata (see docs/hooks/mkdocs_hooks.py), so it always matches the release.
+-#}
+<a href="{{ config.repo_url }}" title="{{ lang.t('source') }}" class="md-source">
+  <div class="md-source__icon md-icon">
+    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+  </div>
+  <div class="md-source__repository md-source__repository--active">
+    {{ config.repo_name }}
+    {% if config.extra.grafito_version %}
+      <ul class="md-source__facts">
+        <li class="md-source__fact md-source__fact--version">
+          v{{ config.extra.grafito_version }}
+        </li>
+      </ul>
+    {% endif %}
+  </div>
+</a>
