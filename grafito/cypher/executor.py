@@ -371,8 +371,11 @@ class CypherExecutor:
             options = args[3] if len(args) > 3 else None
             if not isinstance(index, str):
                 raise CypherExecutionError("db.vector.search index must be a string")
-            if not isinstance(vector, list):
-                raise CypherExecutionError("db.vector.search vector must be a list")
+            # Parity with Python semantic_search: list[float] or query string (embedder on index).
+            if not isinstance(vector, (list, str)):
+                raise CypherExecutionError(
+                    "db.vector.search vector must be a list of floats or a query string"
+                )
             if options is not None and not isinstance(options, dict):
                 raise CypherExecutionError("db.vector.search options must be a map")
             options = options or {}

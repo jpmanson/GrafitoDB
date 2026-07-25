@@ -2,6 +2,9 @@
 
 from .chunkers.fixed import FixedChunker
 from .chunkers.markdown import MarkdownChunker
+from .chunkers.semantic import SemanticBreakpointChunker
+from .enrich import TitleContextEnricher
+from .hybrid import rrf_fuse
 from .ingest import DocumentIngestor
 from .tree import build_markdown_tree, flatten_chunks
 from .types import (
@@ -25,6 +28,9 @@ __all__ = [
     "PackedSegment",
     "SearchHit",
     "SectionSpec",
+    "SemanticBreakpointChunker",
+    "TitleContextEnricher",
     "build_markdown_tree",
     "flatten_chunks",
+    "rrf_fuse",
 ]

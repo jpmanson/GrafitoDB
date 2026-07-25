@@ -77,6 +77,68 @@ With `store_full_text=False`, merge still runs by **stitching passage texts** fr
 - `hierarchy=True` forces the markdown tree builder (best with markdown-shaped text).
 - Headings inside fenced code (`` ``` `` / ``~~~``) are **not** treated as sections (shell `#` comments stay in the passage body).
 
-## Non-goals (yet)
+## Phase 3 additions
 
-Dual multi-view indexing, hybrid RRF helper, Chonkie adapter, tree/agent retrieve — see design Phase 3.
+### Hybrid search (RRF)
+
+```python
+ing = DocumentIngestor(..., embed_index="docs_chunks", configure_fts=True)
+hits = ing.hybrid_search(
+    "connection pool timeout",
+    k=5,
+    vector_k=20,
+    fts_k=20,
+    rrf_k=60,
+    vector_weight=1.0,
+    fts_weight=1.0,
+)
+```
+
+FTS must index passage `text` (`configure_fts=True` or manual `create_text_index`). Scores from vector and BM25 are **not** summed raw — fused with Reciprocal Rank Fusion.
+
+### Tree select (agentic ToC path)
+
+```python
+def my_llm(prompt: str) -> str:
+    # return JSON list of node_key strings
+    return '["0001", "0003"]'
+
+keys = ing.tree_select("runbooks/x", "how do we rotate secrets?", my_llm)
+sections = ing.load_sections("runbooks/x", keys)
+```
+
+### Semantic breakpoint chunker
+
+```python
+from grafito.document import SemanticBreakpointChunker
+
+ing = DocumentIngestor(
+    db,
+    chunker=SemanticBreakpointChunker(embedder, threshold=0.3, min_chars=200, max_chars=1200),
+    hierarchy=False,  # flat passages
+    embed_index="docs_chunks",
+)
+```
+
+### Cypher query strings
+
+With an embedding function on the index:
+
+```cypher
+CALL db.vector.search('docs_chunks', 'connection pool', 5)
+YIELD node, score
+RETURN node.text, score
+```
+
+### Enrichment
+
+```python
+from grafito.document import TitleContextEnricher
+ing = DocumentIngestor(..., enricher=TitleContextEnricher())
+```
+
+Sets `context` on passages so embeddings use title/section situating text.
+
+## Deferred
+
+Dual multi-view indexing (§10.7), Chonkie adapter, OKF long-body opt-in — design Phase 3 remainder.

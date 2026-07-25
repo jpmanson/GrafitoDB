@@ -13,6 +13,8 @@ from ..models import Node
 from .chunkers.base import Chunker
 from .chunkers.fixed import FixedChunker
 from .chunkers.markdown import MarkdownChunker
+from .enrich import ChunkEnricher
+from .hybrid import rrf_fuse
 from .tree import build_markdown_tree, flatten_chunks, sections_to_toc_dict
 from .types import (
     ChunkSpec,
@@ -65,6 +67,8 @@ class DocumentIngestor:
         store_full_text: bool = True,
         hierarchy: bool | Literal["auto"] = "auto",
         embed_section_summaries: bool = False,
+        enricher: ChunkEnricher | None = None,
+        configure_fts: bool = False,
     ) -> None:
         self.db = db
         self.chunker: Chunker = chunker or FixedChunker()
@@ -82,6 +86,13 @@ class DocumentIngestor:
         self.store_full_text = store_full_text
         self.hierarchy = hierarchy
         self.embed_section_summaries = embed_section_summaries
+        self.enricher = enricher
+        self.configure_fts = configure_fts
+        if configure_fts and getattr(db, "has_fts5", lambda: False)():
+            try:
+                db.create_text_index("node", passage_label, ["text"])
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Ingest / replace / delete
@@ -160,6 +171,9 @@ class DocumentIngestor:
             specs = flatten_chunks(section_forest)
         else:
             specs = self.chunker.split(text)
+
+        if self.enricher is not None:
+            specs = self.enricher.enrich(specs, document_title=title or parent.properties.get("title"))
 
         generation = active_gen + 1
         ingestion_id = uuid.uuid4().hex
@@ -302,7 +316,156 @@ class DocumentIngestor:
             filter_labels=[self.passage_label],
             filter_props=filter_props,
         )
-        # Restrict to active generation per document
+        return self._filter_hits(
+            hits_raw,
+            k=k,
+            roles=roles,
+            owner_document_id=owner_document_id,
+            diversify_by_document=diversify_by_document,
+            score_key="score",
+        )
+
+    def hybrid_search(
+        self,
+        query: str,
+        *,
+        k: int = 5,
+        vector_k: int | None = None,
+        fts_k: int | None = None,
+        rrf_k: int = 60,
+        vector_weight: float = 1.0,
+        fts_weight: float = 1.0,
+        owner_document_id: int | None = None,
+        diversify_by_document: bool = False,
+    ) -> list[SearchHit]:
+        """Fuse vector + FTS rankings with Reciprocal Rank Fusion.
+
+        Requires FTS configured for the passage label (see ``configure_fts=True``
+        or ``db.create_text_index("node", passage_label, ["text"])``).
+        When FTS is empty or unavailable, falls back to pure vector search.
+        """
+        if not isinstance(query, str) or not query.strip():
+            raise DatabaseError("hybrid_search requires a non-empty query string")
+        vk = vector_k if vector_k is not None else max(k * 4, k)
+        fk = fts_k if fts_k is not None else max(k * 4, k)
+
+        vector_hits = self.search(
+            query,
+            k=vk,
+            owner_document_id=owner_document_id,
+            diversify_by_document=False,
+        )
+        fts_hits: list[SearchHit] = []
+        try:
+            raw = self.db.text_search(query, k=fk, labels=[self.passage_label])
+        except Exception:
+            raw = []
+        for row in raw:
+            entity = row.get("entity") or row.get("node")
+            if entity is None:
+                continue
+            node = entity if isinstance(entity, Node) else None
+            if node is None:
+                continue
+            # Reuse filter path with synthetic score order
+            fts_hits.append(
+                SearchHit(
+                    node=node,
+                    score=float(row.get("score") or 0.0),
+                    owner_document_id=node.properties.get("owner_document_id"),
+                    generation=node.properties.get("generation"),
+                    global_seq=node.properties.get("global_seq"),
+                )
+            )
+        # Apply ownership filters to FTS hits
+        fts_hits = self._filter_hits(
+            [{"node": h.node, "score": h.score} for h in fts_hits],
+            k=fk,
+            roles=["passage"],
+            owner_document_id=owner_document_id,
+            diversify_by_document=False,
+        )
+
+        if not fts_hits:
+            return vector_hits[:k]
+        if not vector_hits:
+            # Invert FTS order for ranking display only; BM25 is ascending distance-like
+            return fts_hits[:k]
+
+        fused = rrf_fuse(
+            [vector_hits, fts_hits],
+            k=rrf_k,
+            weights=[vector_weight, fts_weight],
+            limit=k * (3 if diversify_by_document else 1),
+            key=lambda h: h.node.id,
+        )
+        results: list[SearchHit] = []
+        seen_docs: set[int] = set()
+        for hit, score in fused:
+            oid = hit.owner_document_id
+            if diversify_by_document and oid is not None:
+                if int(oid) in seen_docs:
+                    continue
+                seen_docs.add(int(oid))
+            results.append(
+                SearchHit(
+                    node=hit.node,
+                    score=float(score),
+                    owner_document_id=hit.owner_document_id,
+                    generation=hit.generation,
+                    global_seq=hit.global_seq,
+                )
+            )
+            if len(results) >= k:
+                break
+        return results
+
+    def tree_select(
+        self,
+        document_ref: int | str,
+        query: str,
+        llm: Any,
+        *,
+        max_sections: int = 5,
+    ) -> list[str]:
+        """PageIndex-style: ask an LLM which section node_keys to load.
+
+        ``llm`` may be:
+        - callable ``(prompt: str) -> str`` returning JSON list of node_keys, or
+        - object with ``complete(prompt: str) -> str``.
+
+        Returns selected ``node_key`` strings (filtered to keys that exist in ToC).
+        """
+        toc = self.toc(document_ref, as_dict=True)
+        if not toc:
+            return []
+        valid_keys = set(self._collect_node_keys(toc))
+        prompt = (
+            "You are selecting sections from a document table of contents for retrieval.\n"
+            f"User query:\n{query}\n\n"
+            f"Table of contents (JSON):\n{json.dumps(toc, ensure_ascii=False)}\n\n"
+            f"Return a JSON array of up to {max_sections} node_key strings for the most "
+            "relevant sections. No commentary."
+        )
+        if callable(llm) and not hasattr(llm, "complete"):
+            raw = llm(prompt)
+        elif hasattr(llm, "complete"):
+            raw = llm.complete(prompt)
+        else:
+            raise DatabaseError("llm must be callable(prompt)->str or have .complete(prompt)")
+        keys = self._parse_node_key_list(raw)
+        return [k for k in keys if k in valid_keys][:max_sections]
+
+    def _filter_hits(
+        self,
+        hits_raw: list[dict[str, Any]],
+        *,
+        k: int,
+        roles: list[str],
+        owner_document_id: int | None,
+        diversify_by_document: bool,
+        score_key: str = "score",
+    ) -> list[SearchHit]:
         results: list[SearchHit] = []
         seen_docs: set[int] = set()
         for row in hits_raw:
@@ -328,7 +491,7 @@ class DocumentIngestor:
             results.append(
                 SearchHit(
                     node=node,
-                    score=float(row["score"]),
+                    score=float(row[score_key]),
                     owner_document_id=int(oid) if oid is not None else None,
                     generation=int(gen) if gen is not None else None,
                     global_seq=int(props["global_seq"]) if props.get("global_seq") is not None else None,
@@ -337,6 +500,44 @@ class DocumentIngestor:
             if len(results) >= k:
                 break
         return results
+
+    @staticmethod
+    def _collect_node_keys(toc: list[dict[str, Any]]) -> list[str]:
+        keys: list[str] = []
+
+        def walk(nodes: list[dict[str, Any]]) -> None:
+            for n in nodes:
+                if n.get("node_key"):
+                    keys.append(str(n["node_key"]))
+                kids = n.get("children") or []
+                if kids:
+                    walk(kids)
+
+        walk(toc)
+        return keys
+
+    @staticmethod
+    def _parse_node_key_list(raw: Any) -> list[str]:
+        if isinstance(raw, list):
+            return [str(x) for x in raw]
+        text = str(raw).strip()
+        # Strip markdown fences if present
+        if text.startswith("```"):
+            text = text.strip("`")
+            if text.startswith("json"):
+                text = text[4:].strip()
+        try:
+            data = json.loads(text)
+            if isinstance(data, list):
+                return [str(x) for x in data]
+            if isinstance(data, dict) and "node_keys" in data:
+                return [str(x) for x in data["node_keys"]]
+        except json.JSONDecodeError:
+            pass
+        # Fallback: quoted strings
+        import re
+
+        return re.findall(r'["\']([0-9A-Za-z_-]+)["\']', text)
 
     def expand(
         self,
@@ -963,6 +1164,7 @@ class DocumentIngestor:
             "chunker_params": chunker_params,
             "hierarchy": self._use_hierarchy(),
             "embed_section_summaries": self.embed_section_summaries,
+            "enricher": type(self.enricher).__name__ if self.enricher else None,
             "embed": embed_meta,
             "corpus": self.corpus,
         }
