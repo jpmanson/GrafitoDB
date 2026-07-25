@@ -29,9 +29,13 @@ result = ing.ingest(
 )
 
 hits = ing.search("connection pool timeouts", k=5)
-ctx = ing.expand(hits[0].node, window=1)
+ctx = ing.expand(hits[0].node, window=1, include_ancestors=True)
 packed = ing.pack(ctx, max_chars=4000)
 print(packed.text)
+
+# Section tree (titles / keys — no full bodies)
+for sec in ing.toc("runbooks/slow-queries"):
+    print(sec.title, sec.node_key, [c.title for c in sec.children])
 ```
 
 ## Behaviour (MVP)
@@ -39,11 +43,13 @@ print(packed.text)
 | Topic | Behaviour |
 |-------|-----------|
 | Chunkers | `FixedChunker` (chars/tokens), `MarkdownChunker` (headings + overflow; **preambles** are passages) |
+| Hierarchy | `hierarchy="auto"` (default): with `MarkdownChunker`, writes `:Section` tree (`HAS_SECTION`) + passages under sections |
 | Ownership | Managed nodes: `managed_by=grafito.document`, `generation`, `owner_document_id` |
 | Replace | Generational: new `BUILDING` → `ACTIVE`; previous generation GC’d |
 | External parent | `parent_id=` attach without owning/deleting the parent (e.g. OKF Concept) |
-| Search | Filters managed + active generation + `embed_role=passage` |
-| Expand | `global_seq` window (not hop-by-hop NEXT) |
+| Search | Filters managed + active generation + `embed_role=passage`; `diversify_by_document=` |
+| Expand | `global_seq` window; optional `include_ancestors=True` (section path) |
+| ToC | `toc(document_key)` / `load_sections(document_key, node_keys=[…])` |
 | Pack | Budget (`max_chars`, or `max_tokens` with optional `token_counter`), overlap merge via `char_start`/`char_end` |
 
 ### Pack budgets
@@ -63,6 +69,13 @@ With `store_full_text=False`, merge still runs by **stitching passage texts** fr
 - `GrafitoDatabase.upsert_embeddings_batch` / `remove_embeddings_batch` (single ANN mutate + single persist)
 - `delete_node` best-effort removes embeddings from registered indexes
 
+### Hierarchy notes
+
+- **Section** = structure (`title`, `level`, `node_key`, optional `summary`); not the full body.
+- **Passages** remain the only default embed targets; set `embed_section_summaries=True` to also embed sections that have a `summary` property.
+- `hierarchy=False` forces flat passages only (even with `MarkdownChunker`).
+- `hierarchy=True` forces the markdown tree builder (best with markdown-shaped text).
+
 ## Non-goals (yet)
 
-Section tree ToC, dual multi-view indexing, hybrid RRF helper, Chonkie adapter — see design Phase 2–3.
+Dual multi-view indexing, hybrid RRF helper, Chonkie adapter, tree/agent retrieve — see design Phase 3.

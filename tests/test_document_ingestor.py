@@ -296,6 +296,72 @@ def test_pack_max_tokens_without_counter_uses_estimate():
     db.close()
 
 
+def test_hierarchy_toc_and_ancestors(db_ing):
+    db, ing = db_ing
+    md = """# Security
+
+Intro about authentication.
+
+## OAuth
+
+OAuth details tokens.
+
+## MFA
+
+MFA body text.
+"""
+    r = ing.ingest(md, document_key="hier", title="Security")
+    assert r.hierarchy is True
+    assert r.n_sections >= 3
+    assert r.n_passages >= 3
+
+    toc = ing.toc("hier")
+    assert len(toc) == 1
+    assert toc[0].title == "Security"
+    child_titles = {c.title for c in toc[0].children}
+    assert "OAuth" in child_titles and "MFA" in child_titles
+
+    toc_d = ing.toc("hier", as_dict=True)
+    assert toc_d[0]["node_key"]
+    assert toc_d[0]["n_chunks"] >= 1
+
+    hits = ing.search("OAuth details tokens", k=5)
+    oauth_hit = next(
+        h for h in hits if "OAuth" in h.node.properties.get("text", "") or "tokens" in h.node.properties.get("text", "")
+    )
+    expanded = ing.expand(oauth_hit.node, window=1, include_ancestors=True)
+    assert expanded.section is not None
+    assert expanded.section.properties.get("title") == "OAuth"
+    assert any(a.properties.get("title") == "Security" for a in expanded.ancestors)
+
+    loaded = ing.load_sections("hier", [toc[0].node_key])
+    assert len(loaded) == 1
+    assert loaded[0].properties.get("title") == "Security"
+
+
+def test_hierarchy_false_skips_sections(db_ing):
+    db, ing = db_ing
+    ing.hierarchy = False
+    ing.chunker = FixedChunker(max_size=80)
+    r = ing.ingest("# Title\n\nJust flat body text for this test.", document_key="nohier")
+    assert r.hierarchy is False
+    assert r.n_sections == 0
+    assert r.n_passages >= 1
+    assert ing.toc("nohier") == []
+
+
+def test_build_markdown_tree_unit():
+    from grafito.document.tree import build_markdown_tree, flatten_chunks
+
+    md = "# A\n\nintro\n\n## B\n\nbody b\n"
+    forest = build_markdown_tree(md, max_chars=500)
+    assert forest[0].title == "A"
+    assert any(c.title == "B" for c in forest[0].children)
+    chunks = flatten_chunks(forest)
+    assert any("intro" in c.text for c in chunks)
+    assert any("body b" in c.text for c in chunks)
+
+
 def test_pack_overlap_without_full_text_stitches():
     db = GrafitoDatabase(":memory:")
     full = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

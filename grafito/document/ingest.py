@@ -12,6 +12,8 @@ from ..exceptions import DatabaseError, NodeNotFoundError
 from ..models import Node
 from .chunkers.base import Chunker
 from .chunkers.fixed import FixedChunker
+from .chunkers.markdown import MarkdownChunker
+from .tree import build_markdown_tree, flatten_chunks, sections_to_toc_dict
 from .types import (
     ChunkSpec,
     ExpandResult,
@@ -19,16 +21,19 @@ from .types import (
     PackedContext,
     PackedSegment,
     SearchHit,
+    SectionSpec,
 )
 
 MANAGED_BY = "grafito.document"
-HELPER_SCHEMA_VERSION = 1
+HELPER_SCHEMA_VERSION = 2
 
 DEFAULT_DOCUMENT_LABEL = "Document"
 DEFAULT_VERSION_LABEL = "DocumentVersion"
 DEFAULT_PASSAGE_LABEL = "Chunk"
+DEFAULT_SECTION_LABEL = "Section"
 DEFAULT_HAS_VERSION = "HAS_VERSION"
 DEFAULT_HAS_PASSAGE = "HAS_CHUNK"
+DEFAULT_HAS_SECTION = "HAS_SECTION"
 
 
 class DocumentIngestor:
@@ -50,12 +55,16 @@ class DocumentIngestor:
         document_label: str = DEFAULT_DOCUMENT_LABEL,
         version_label: str = DEFAULT_VERSION_LABEL,
         passage_label: str = DEFAULT_PASSAGE_LABEL,
+        section_label: str = DEFAULT_SECTION_LABEL,
         has_version_rel: str = DEFAULT_HAS_VERSION,
         has_passage_rel: str = DEFAULT_HAS_PASSAGE,
+        has_section_rel: str = DEFAULT_HAS_SECTION,
         write_next_passage: bool = False,
         next_passage_rel: str = "NEXT_PASSAGE",
         corpus: str | None = None,
         store_full_text: bool = True,
+        hierarchy: bool | Literal["auto"] = "auto",
+        embed_section_summaries: bool = False,
     ) -> None:
         self.db = db
         self.chunker: Chunker = chunker or FixedChunker()
@@ -63,12 +72,16 @@ class DocumentIngestor:
         self.document_label = document_label
         self.version_label = version_label
         self.passage_label = passage_label
+        self.section_label = section_label
         self.has_version_rel = has_version_rel
         self.has_passage_rel = has_passage_rel
+        self.has_section_rel = has_section_rel
         self.write_next_passage = write_next_passage
         self.next_passage_rel = next_passage_rel
         self.corpus = corpus
         self.store_full_text = store_full_text
+        self.hierarchy = hierarchy
+        self.embed_section_summaries = embed_section_summaries
 
     # ------------------------------------------------------------------
     # Ingest / replace / delete
@@ -110,6 +123,15 @@ class DocumentIngestor:
             active_fp = parent.properties.get("active_fingerprint")
             if active_fp == fingerprint:
                 passages = self._list_passages(parent.id, active_gen)
+                sections = self.db.match_nodes(
+                    labels=[self.section_label],
+                    properties={
+                        "managed_by": MANAGED_BY,
+                        "owner_document_id": parent.id,
+                        "generation": active_gen,
+                        "role": "section",
+                    },
+                )
                 return IngestResult(
                     owner_document_id=parent.id,
                     version_id=self._active_version_id(parent.id),
@@ -119,9 +141,26 @@ class DocumentIngestor:
                     skipped=True,
                     fingerprint=fingerprint,
                     document_key=doc_key,
+                    section_ids=[s.id for s in sections],
+                    n_sections=len(sections),
+                    hierarchy=bool(sections),
                 )
 
-        specs = self.chunker.split(text)
+        use_hierarchy = self._use_hierarchy()
+        section_forest: list[SectionSpec] | None = None
+        if use_hierarchy:
+            max_chars = int(getattr(self.chunker, "max_chars", None) or getattr(self.chunker, "max_size", 1200))
+            overlap = int(getattr(self.chunker, "overlap", 0) or 0)
+            section_forest = build_markdown_tree(
+                text,
+                max_chars=max_chars,
+                overlap=overlap,
+                strategy=getattr(self.chunker, "name", "markdown-tree"),
+            )
+            specs = flatten_chunks(section_forest)
+        else:
+            specs = self.chunker.split(text)
+
         generation = active_gen + 1
         ingestion_id = uuid.uuid4().hex
         version = self._create_version(
@@ -131,18 +170,37 @@ class DocumentIngestor:
             fingerprint=fingerprint,
             status="BUILDING",
             n_passages=len(specs),
+            hierarchy=use_hierarchy,
         )
         try:
-            passage_ids = self._write_passages(
-                parent_id=parent.id,
-                version_id=version.id,
-                generation=generation,
-                ingestion_id=ingestion_id,
-                specs=specs,
-            )
+            section_ids: list[int] = []
+            if use_hierarchy and section_forest is not None:
+                passage_ids, section_ids = self._write_hierarchy(
+                    parent_id=parent.id,
+                    version_id=version.id,
+                    generation=generation,
+                    ingestion_id=ingestion_id,
+                    forest=section_forest,
+                )
+            else:
+                passage_ids = self._write_passages(
+                    parent_id=parent.id,
+                    version_id=version.id,
+                    generation=generation,
+                    ingestion_id=ingestion_id,
+                    specs=specs,
+                )
             if embed and self.embed_index and passage_ids:
+                # Re-read embed texts from specs order (matches passage creation order)
                 docs = [s.text_for_embedding() for s in specs]
                 self.db.upsert_embeddings(passage_ids, docs, index=self.embed_index)
+            if (
+                embed
+                and self.embed_index
+                and self.embed_section_summaries
+                and section_ids
+            ):
+                self._embed_section_summaries(section_ids)
             self._activate_version(parent, version, fingerprint=fingerprint, generation=generation)
             self._gc_stale(parent.id, keep_generation=generation)
         except Exception:
@@ -158,6 +216,9 @@ class DocumentIngestor:
             skipped=False,
             fingerprint=fingerprint,
             document_key=doc_key,
+            section_ids=section_ids,
+            n_sections=len(section_ids),
+            hierarchy=use_hierarchy,
         )
 
     def replace(self, document_ref: int | str, text: str, *, embed: bool = True, force: bool = True) -> IngestResult:
@@ -283,6 +344,7 @@ class DocumentIngestor:
         *,
         window: int = 1,
         include_parent: bool = True,
+        include_ancestors: bool = False,
     ) -> ExpandResult:
         node = center if isinstance(center, Node) else self.db.get_node(center)
         if node is None:
@@ -309,7 +371,56 @@ class DocumentIngestor:
         version = None
         if parent and parent.properties.get("active_version_id"):
             version = self.db.get_node(int(parent.properties["active_version_id"]))
-        return ExpandResult(center=node, passages=windowed or [node], parent=parent, version=version)
+        section = None
+        ancestors: list[Node] = []
+        section_id = props.get("section_node_id")
+        if section_id is not None:
+            section = self.db.get_node(int(section_id))
+            if include_ancestors and section is not None:
+                ancestors = self._section_ancestors(section)
+        return ExpandResult(
+            center=node,
+            passages=windowed or [node],
+            parent=parent,
+            version=version,
+            ancestors=ancestors,
+            section=section,
+        )
+
+    def toc(self, document_ref: int | str, *, as_dict: bool = False) -> list[SectionSpec] | list[dict[str, Any]]:
+        """Return the active version's section tree (titles/summaries, no bodies)."""
+        parent = self._find_parent(document_ref)
+        gen = int(parent.properties.get("active_generation") or 0)
+        if gen <= 0:
+            return []
+        roots = self._list_root_sections(parent.id, gen)
+        forest = [self._section_node_to_spec(s, parent.id, gen) for s in roots]
+        if as_dict:
+            return sections_to_toc_dict(forest)
+        return forest
+
+    def load_sections(
+        self,
+        document_ref: int | str,
+        node_keys: list[str],
+    ) -> list[Node]:
+        """Load section nodes by per-document ``node_key`` (not global)."""
+        parent = self._find_parent(document_ref)
+        gen = int(parent.properties.get("active_generation") or 0)
+        if gen <= 0 or not node_keys:
+            return []
+        wanted = set(node_keys)
+        sections = self.db.match_nodes(
+            labels=[self.section_label],
+            properties={
+                "managed_by": MANAGED_BY,
+                "owner_document_id": parent.id,
+                "generation": gen,
+                "role": "section",
+            },
+        )
+        by_key = {s.properties.get("node_key"): s for s in sections if s.properties.get("node_key")}
+        return [by_key[k] for k in node_keys if k in by_key and k in wanted]
 
     def pack(
         self,
@@ -468,6 +579,14 @@ class DocumentIngestor:
             raise DatabaseError(f"No document with document_key={document_ref!r}")
         return found[0]
 
+    def _use_hierarchy(self) -> bool:
+        if self.hierarchy is True:
+            return True
+        if self.hierarchy is False:
+            return False
+        # auto: hierarchical when markdown chunker is configured
+        return isinstance(self.chunker, MarkdownChunker)
+
     def _create_version(
         self,
         owner_id: int,
@@ -477,6 +596,7 @@ class DocumentIngestor:
         fingerprint: str,
         status: str,
         n_passages: int,
+        hierarchy: bool = False,
     ) -> Node:
         props = {
             "managed_by": MANAGED_BY,
@@ -487,6 +607,7 @@ class DocumentIngestor:
             "fingerprint": fingerprint,
             "status": status,
             "n_passages": n_passages,
+            "hierarchy": hierarchy,
             "embed_role": "none",
         }
         if self.corpus:
@@ -494,6 +615,76 @@ class DocumentIngestor:
         version = self.db.create_node(labels=[self.version_label], properties=props)
         self.db.create_relationship(owner_id, version.id, self.has_version_rel, {"generation": generation})
         return version
+
+    def _write_hierarchy(
+        self,
+        *,
+        parent_id: int,
+        version_id: int,
+        generation: int,
+        ingestion_id: str,
+        forest: list[SectionSpec],
+    ) -> tuple[list[int], list[int]]:
+        """Write Section tree + passages. Returns (passage_ids in global order, section_ids)."""
+        passage_ids: list[int] = []
+        section_ids: list[int] = []
+        global_seq = 0
+
+        def write_section(spec: SectionSpec, parent_section_id: int | None) -> int:
+            nonlocal global_seq
+            props: dict[str, Any] = {
+                "title": spec.title,
+                "level": spec.level,
+                "local_ord": spec.local_ord,
+                "node_key": spec.node_key,
+                "managed_by": MANAGED_BY,
+                "role": "section",
+                "embed_role": "section_summary" if spec.summary else "none",
+                "owner_document_id": parent_id,
+                "generation": generation,
+                "ingestion_id": ingestion_id,
+                "version_id": version_id,
+            }
+            if spec.summary is not None:
+                props["summary"] = spec.summary
+            if spec.char_start is not None:
+                props["char_start"] = spec.char_start
+            if spec.char_end is not None:
+                props["char_end"] = spec.char_end
+            if self.corpus:
+                props["corpus"] = self.corpus
+            section_node = self.db.create_node(labels=[self.section_label], properties=props)
+            section_ids.append(section_node.id)
+            rel_source = version_id if parent_section_id is None else parent_section_id
+            self.db.create_relationship(
+                rel_source,
+                section_node.id,
+                self.has_section_rel,
+                {"local_ord": spec.local_ord, "level": spec.level},
+            )
+            for chunk in spec.chunks:
+                chunk.ord = global_seq
+                pid = self._write_one_passage(
+                    parent_id=parent_id,
+                    version_id=version_id,
+                    generation=generation,
+                    ingestion_id=ingestion_id,
+                    spec=chunk,
+                    section_node_id=section_node.id,
+                )
+                passage_ids.append(pid)
+                global_seq += 1
+            for child in spec.children:
+                write_section(child, section_node.id)
+            return section_node.id
+
+        for root in forest:
+            write_section(root, None)
+
+        if self.write_next_passage and len(passage_ids) > 1:
+            for a, b in zip(passage_ids, passage_ids[1:]):
+                self.db.create_relationship(a, b, self.next_passage_rel, {})
+        return passage_ids, section_ids
 
     def _write_passages(
         self,
@@ -506,44 +697,157 @@ class DocumentIngestor:
     ) -> list[int]:
         ids: list[int] = []
         for spec in specs:
-            props: dict[str, Any] = {
-                "text": spec.text,
-                "global_seq": spec.ord,
-                "managed_by": MANAGED_BY,
-                "role": "passage",
-                "embed_role": "passage",
-                "owner_document_id": parent_id,
-                "generation": generation,
-                "ingestion_id": ingestion_id,
-                "version_id": version_id,
-                "strategy": spec.strategy or getattr(self.chunker, "name", None),
-            }
-            if spec.char_start is not None:
-                props["char_start"] = spec.char_start
-            if spec.char_end is not None:
-                props["char_end"] = spec.char_end
-            if spec.token_count is not None:
-                props["token_count"] = spec.token_count
-            if spec.heading is not None:
-                props["heading"] = spec.heading
-            if spec.section_path is not None:
-                props["section_path"] = spec.section_path
-            if spec.context is not None:
-                props["context"] = spec.context
-            if self.corpus:
-                props["corpus"] = self.corpus
-            node = self.db.create_node(labels=[self.passage_label], properties=props)
-            self.db.create_relationship(
-                version_id,
-                node.id,
-                self.has_passage_rel,
-                {"global_seq": spec.ord},
+            ids.append(
+                self._write_one_passage(
+                    parent_id=parent_id,
+                    version_id=version_id,
+                    generation=generation,
+                    ingestion_id=ingestion_id,
+                    spec=spec,
+                    section_node_id=None,
+                )
             )
-            ids.append(node.id)
         if self.write_next_passage and len(ids) > 1:
             for a, b in zip(ids, ids[1:]):
                 self.db.create_relationship(a, b, self.next_passage_rel, {})
         return ids
+
+    def _write_one_passage(
+        self,
+        *,
+        parent_id: int,
+        version_id: int,
+        generation: int,
+        ingestion_id: str,
+        spec: ChunkSpec,
+        section_node_id: int | None,
+    ) -> int:
+        props: dict[str, Any] = {
+            "text": spec.text,
+            "global_seq": spec.ord,
+            "managed_by": MANAGED_BY,
+            "role": "passage",
+            "embed_role": "passage",
+            "owner_document_id": parent_id,
+            "generation": generation,
+            "ingestion_id": ingestion_id,
+            "version_id": version_id,
+            "strategy": spec.strategy or getattr(self.chunker, "name", None),
+        }
+        if section_node_id is not None:
+            props["section_node_id"] = section_node_id
+        if spec.char_start is not None:
+            props["char_start"] = spec.char_start
+        if spec.char_end is not None:
+            props["char_end"] = spec.char_end
+        if spec.token_count is not None:
+            props["token_count"] = spec.token_count
+        if spec.heading is not None:
+            props["heading"] = spec.heading
+        if spec.section_path is not None:
+            props["section_path"] = spec.section_path
+        if spec.context is not None:
+            props["context"] = spec.context
+        if self.corpus:
+            props["corpus"] = self.corpus
+        node = self.db.create_node(labels=[self.passage_label], properties=props)
+        # Link to version for membership
+        self.db.create_relationship(
+            version_id,
+            node.id,
+            self.has_passage_rel,
+            {"global_seq": spec.ord},
+        )
+        # Also link to section when hierarchical
+        if section_node_id is not None:
+            self.db.create_relationship(
+                section_node_id,
+                node.id,
+                self.has_passage_rel,
+                {"global_seq": spec.ord},
+            )
+        return node.id
+
+    def _embed_section_summaries(self, section_ids: list[int]) -> None:
+        docs: list[str] = []
+        ids: list[int] = []
+        for sid in section_ids:
+            node = self.db.get_node(sid)
+            if not node:
+                continue
+            summary = node.properties.get("summary")
+            title = node.properties.get("title") or ""
+            if not summary:
+                continue
+            docs.append(f"{title}\n\n{summary}".strip())
+            ids.append(sid)
+        if ids:
+            self.db.upsert_embeddings(ids, docs, index=self.embed_index)
+
+    def _list_root_sections(self, owner_id: int, generation: int) -> list[Node]:
+        version_id = self._active_version_id(owner_id)
+        if version_id is None:
+            return []
+        # Roots: sections linked from version via HAS_SECTION
+        neighbors = self.db.get_neighbors(version_id, direction="outgoing", rel_type=self.has_section_rel)
+        roots = [
+            n
+            for n in neighbors
+            if self.section_label in (n.labels or [])
+            and n.properties.get("generation") == generation
+        ]
+        roots.sort(key=lambda n: int(n.properties.get("local_ord") or 0))
+        return roots
+
+    def _section_node_to_spec(self, node: Node, owner_id: int, generation: int) -> SectionSpec:
+        children_nodes = self.db.get_neighbors(
+            node.id, direction="outgoing", rel_type=self.has_section_rel
+        )
+        children_nodes = [
+            c
+            for c in children_nodes
+            if self.section_label in (c.labels or [])
+            and c.properties.get("generation") == generation
+        ]
+        children_nodes.sort(key=lambda n: int(n.properties.get("local_ord") or 0))
+        # Count passages under this section only (direct)
+        passage_neighbors = self.db.get_neighbors(
+            node.id, direction="outgoing", rel_type=self.has_passage_rel
+        )
+        n_chunks = sum(1 for p in passage_neighbors if self.passage_label in (p.labels or []))
+        spec = SectionSpec(
+            title=str(node.properties.get("title") or ""),
+            local_ord=int(node.properties.get("local_ord") or 0),
+            level=int(node.properties.get("level") or 0),
+            summary=node.properties.get("summary"),
+            node_key=node.properties.get("node_key"),
+            char_start=node.properties.get("char_start"),
+            char_end=node.properties.get("char_end"),
+            children=[self._section_node_to_spec(c, owner_id, generation) for c in children_nodes],
+        )
+        # Placeholder chunk count via empty list length not available; store in metadata
+        spec.metadata = {"section_node_id": node.id, "n_chunks": n_chunks}
+        return spec
+
+    def _section_ancestors(self, section: Node) -> list[Node]:
+        """Walk incoming HAS_SECTION until version (exclude version)."""
+        chain: list[Node] = []
+        current = section
+        seen: set[int] = set()
+        while current is not None and current.id not in seen:
+            seen.add(current.id)
+            parents = self.db.get_neighbors(
+                current.id, direction="incoming", rel_type=self.has_section_rel
+            )
+            # Prefer section parent over version
+            section_parents = [p for p in parents if self.section_label in (p.labels or [])]
+            if not section_parents:
+                break
+            parent = section_parents[0]
+            chain.append(parent)
+            current = parent
+        chain.reverse()  # root → … → parent of section
+        return chain
 
     def _activate_version(
         self,
@@ -657,6 +961,8 @@ class DocumentIngestor:
             "content_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
             "chunker": chunker_name,
             "chunker_params": chunker_params,
+            "hierarchy": self._use_hierarchy(),
+            "embed_section_summaries": self.embed_section_summaries,
             "embed": embed_meta,
             "corpus": self.corpus,
         }

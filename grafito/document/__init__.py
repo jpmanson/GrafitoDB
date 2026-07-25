@@ -3,6 +3,7 @@
 from .chunkers.fixed import FixedChunker
 from .chunkers.markdown import MarkdownChunker
 from .ingest import DocumentIngestor
+from .tree import build_markdown_tree, flatten_chunks
 from .types import (
     ChunkSpec,
     ExpandResult,
@@ -10,6 +11,7 @@ from .types import (
     PackedContext,
     PackedSegment,
     SearchHit,
+    SectionSpec,
 )
 
 __all__ = [
@@ -22,4 +24,7 @@ __all__ = [
     "PackedContext",
     "PackedSegment",
     "SearchHit",
+    "SectionSpec",
+    "build_markdown_tree",
+    "flatten_chunks",
 ]

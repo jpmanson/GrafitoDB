@@ -36,6 +36,22 @@ class ChunkSpec:
 
 
 @dataclass
+class SectionSpec:
+    """Hierarchical section (structure only; indexable prose lives in ``chunks``)."""
+
+    title: str
+    local_ord: int = 0
+    level: int = 1
+    summary: str | None = None
+    children: list["SectionSpec"] = field(default_factory=list)
+    char_start: int | None = None
+    char_end: int | None = None
+    node_key: str | None = None
+    chunks: list[ChunkSpec] = field(default_factory=list)
+    metadata: dict[str, Any] | None = None
+
+
+@dataclass
 class IngestResult:
     """Outcome of :meth:`DocumentIngestor.ingest` / ``replace``."""
 
@@ -47,6 +63,9 @@ class IngestResult:
     skipped: bool = False
     fingerprint: str | None = None
     document_key: str | None = None
+    section_ids: list[int] = field(default_factory=list)
+    n_sections: int = 0
+    hierarchy: bool = False
 
 
 @dataclass
@@ -64,6 +83,8 @@ class ExpandResult:
     passages: list[Node]
     parent: Node | None = None
     version: Node | None = None
+    ancestors: list[Node] = field(default_factory=list)
+    section: Node | None = None
 
 
 @dataclass
