@@ -27,6 +27,7 @@ from .agent import (
     OpenAIChat,
     ThreadConfinedTools,
     ToolCall,
+    ToolRegistry,
     ToolSet,
     run_agent,
 )
@@ -53,6 +54,7 @@ __all__ = [
     "ThreadConfinedTools",
     "Chat",
     "ToolSet",
+    "ToolRegistry",
     "AnthropicChat",
     "OpenAIChat",
     "run_agent",

@@ -104,6 +104,57 @@ class ToolSet(Protocol):
         ...
 
 
+class ToolRegistry:
+    """Several :class:`ToolSet`\\ s presented as one: merged ``schemas`` plus a
+    single ``call`` that routes each tool to the toolset that owns it.
+
+    This is the seam every tool *consumer* shares — :func:`run_agent`, an MCP
+    server, any other loop — so the aggregation lives here once instead of
+    being re-implemented against each. Consumers depend on this and on the
+    :class:`ToolSet` protocol, never on a concrete toolset like
+    :class:`BundleTools`: that is what lets the same server front an OKF bundle
+    (``BundleTools(kb)``) and, later, a plain graph (a ``ToolSet`` over
+    ``GrafitoDatabase``) without change. A registry is itself a
+    :class:`ToolSet` — it has ``schemas`` and ``call`` — so registries nest.
+
+    Tool names must be unique across the toolsets; a collision raises
+    ``ValueError`` at construction, before any tool can run. A call for a name
+    no toolset owns comes back as ``{"error": ...}`` (JSON), the same shape an
+    individual tool error takes, so the caller handles both the same way.
+    """
+
+    def __init__(self, toolsets: "list[ToolSet]") -> None:
+        self.schemas: list[dict] = []
+        self._dispatch: dict[str, ToolSet] = {}
+        for toolset in toolsets:
+            for schema in toolset.schemas:
+                name = schema["function"]["name"]
+                if name in self._dispatch:
+                    raise ValueError(f"Duplicate tool name {name!r} across toolsets")
+                self._dispatch[name] = toolset
+                self.schemas.append(schema)
+
+    @property
+    def names(self) -> list[str]:
+        """The tool names this registry can dispatch, in schema order."""
+        return [schema["function"]["name"] for schema in self.schemas]
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._dispatch
+
+    def call(self, name: str, args: dict) -> str:
+        """Route one tool call to its owning toolset; unknown names error.
+
+        The routed toolset owns its own error policy (JSON ``{"error": ...}``
+        by default, or raising when built with ``raise_errors=True``); this
+        only adds the unknown-name case.
+        """
+        toolset = self._dispatch.get(name)
+        if toolset is None:
+            return json.dumps({"error": f"Unknown tool {name!r}"})
+        return toolset.call(name, args)
+
+
 class BundleTools:
     """An :class:`OKFBundle` exposed as OpenAI-style function tools.
 
@@ -1086,16 +1137,8 @@ def run_agent(
     tokens each turn; ``run.summary()["result_bytes"]`` measures it.
     """
     bundle_tools = tools if tools is not None else BundleTools(kb)
-    toolsets: list[ToolSet] = [bundle_tools, *(extra_tools or [])]
-    schemas: list[dict] = []
-    dispatch: dict[str, ToolSet] = {}
-    for toolset in toolsets:
-        for schema in toolset.schemas:
-            name = schema["function"]["name"]
-            if name in dispatch:
-                raise ValueError(f"Duplicate tool name {name!r} across toolsets")
-            dispatch[name] = toolset
-            schemas.append(schema)
+    registry = ToolRegistry([bundle_tools, *(extra_tools or [])])
+    schemas = registry.schemas
 
     if messages is None:
         messages = []
@@ -1136,11 +1179,7 @@ def run_agent(
             args = json.loads(call["function"]["arguments"] or "{}")
             if verbose:
                 print(f"  -> {name}({json.dumps(args, ensure_ascii=False)})")
-            toolset = dispatch.get(name)
-            if toolset is None:
-                result = json.dumps({"error": f"Unknown tool {name!r}"})
-            else:
-                result = toolset.call(name, args)
+            result = registry.call(name, args)
             if verbose:
                 print(f"     {_describe_result(name, result)}")
             recorded.append(

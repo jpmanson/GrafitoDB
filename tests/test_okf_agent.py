@@ -180,6 +180,52 @@ class FakeToolSet:
         return self.reply
 
 
+# --- ToolRegistry: the aggregation seam shared by every tool consumer -----------
+
+
+def test_tool_registry_merges_schemas_and_routes_by_name():
+    from grafito.okf import ToolRegistry, ToolSet
+
+    a = FakeToolSet(name="alpha", reply='{"who": "a"}')
+    b = FakeToolSet(name="beta", reply='{"who": "b"}')
+    registry = ToolRegistry([a, b])
+
+    # A registry is itself a ToolSet — that is what lets registries nest.
+    assert isinstance(registry, ToolSet)
+    assert registry.names == ["alpha", "beta"]
+    assert "alpha" in registry and "gamma" not in registry
+
+    assert registry.call("beta", {"x": 1}) == '{"who": "b"}'
+    assert b.calls == [("beta", {"x": 1})] and a.calls == []
+
+
+def test_tool_registry_rejects_duplicate_names_at_construction():
+    from grafito.okf import ToolRegistry
+
+    with pytest.raises(ValueError, match="dup"):
+        ToolRegistry([FakeToolSet(name="dup"), FakeToolSet(name="dup")])
+
+
+def test_tool_registry_unknown_name_is_a_json_error_not_a_raise():
+    from grafito.okf import ToolRegistry
+
+    result = ToolRegistry([FakeToolSet(name="alpha")]).call("missing", {})
+    assert json.loads(result) == {"error": "Unknown tool 'missing'"}
+
+
+def test_tool_registry_nests():
+    """A registry of registries dispatches transparently — the property the MCP
+    server leans on to compose altitude tiers."""
+    from grafito.okf import ToolRegistry
+
+    leaf = FakeToolSet(name="leaf", reply='{"ok": 1}')
+    inner = ToolRegistry([leaf])
+    outer = ToolRegistry([inner, FakeToolSet(name="sibling")])
+
+    assert set(outer.names) == {"leaf", "sibling"}
+    assert outer.call("leaf", {}) == '{"ok": 1}'
+
+
 def test_extra_tools_are_offered_to_the_model_and_dispatched(kb):
     fake = FakeToolSet()
     chat = ScriptedChat(
