@@ -2,6 +2,11 @@
 
 Combining full-text search (BM25) with vector search for better results.
 
+!!! tip "Built-in helper"
+    For passage graphs created with [Document Chunking](document-chunking.md),
+    use `DocumentIngestor.hybrid_search()` (RRF fusion, ownership/generation
+    filters). Manual recipes below still apply to ad-hoc indexes.
+
 ## Why Hybrid Search?
 
 | Search Type | Strengths | Weaknesses |

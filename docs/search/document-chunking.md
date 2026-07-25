@@ -4,6 +4,15 @@ Grafito can index long documents as **many passage nodes** (still **one vector p
 
 Full design: `todo/DOCUMENT_CHUNKING_HELPER.md`.
 
+## Runnable example
+
+```bash
+python examples/semantic/document_chunking.py
+```
+
+Uses a tiny offline embedder so it runs without FAISS or sentence-transformers.
+Swap in a real embedding function for production quality.
+
 ## Quick start
 
 ```python

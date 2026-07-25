@@ -171,6 +171,7 @@ GrafitoDB's semantic search implementation consists of three main components:
 ## Next Steps
 
 - Learn about [Vector Search](vector.md) - Core functionality
+- Use [Document Chunking](document-chunking.md) - Long docs → passage nodes + expand/pack (RAG)
 - Explore [ANN Backends](ann-backends.md) - Choose the right backend
 - Understand [Hybrid Search](hybrid.md) - Combine text and vector search
 - Set up [Embeddings](../embeddings/overview.md) - Configure embedding providers

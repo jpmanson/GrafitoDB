@@ -10,6 +10,12 @@ Vector search allows you to:
 - Build RAG (Retrieval-Augmented Generation) pipelines
 - Combine semantic and keyword search
 
+For **long documents** (runbooks, notes, OKF bodies), prefer the
+[Document Chunking](document-chunking.md) helper (`DocumentIngestor`): one
+document becomes many passage nodes (still **one vector per node**), with
+section hierarchy, expand/pack, and optional hybrid RRF. See also
+`examples/semantic/document_chunking.py`.
+
 ## Creating Vector Indexes
 
 ### Basic FAISS Index

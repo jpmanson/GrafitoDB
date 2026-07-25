@@ -22,6 +22,7 @@ language, vector search, and full-text search.
 - [Database API](api/database.md)
 - [Cypher Guide](cypher/overview.md)
 - [Vector Search](search/vector.md)
+- [Document Chunking](search/document-chunking.md)
 - [Embeddings](embeddings/overview.md)
 - [APOC Procedures](apoc/json.md)
 

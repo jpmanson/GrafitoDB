@@ -34,4 +34,5 @@ Open Knowledge Format (façade `OKFBundle`).
 
 ## `semantic/`
 Búsqueda semántica e indexadores de texto.
+- `document_chunking.py` — `DocumentIngestor`: markdown largo → secciones/pasajes, search, expand/pack, hybrid RRF (sin deps opcionales).
 - `semantic_faiss_hf.py`, `semantic.ipynb`, `benchmark_text_indexers.py`.
