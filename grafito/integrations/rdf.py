@@ -154,3 +154,213 @@ def export_turtle(
     """Export the Grafito graph to Turtle."""
     graph = export_rdf(db, base_uri=base_uri, prefixes=prefixes)
     return graph.serialize(format="turtle")
+
+
+def _local_name(term: Any, base_uri: str) -> str:
+    """Shorten an RDF term to a compact label/property name.
+
+    Strips the base namespace when present, otherwise falls back to the fragment
+    (after ``#``) or the last path segment. Full IRIs are returned unchanged when
+    they cannot be shortened, so information is never silently lost.
+    """
+    text = str(term)
+    if base_uri and text.startswith(base_uri):
+        return text[len(base_uri):]
+    if "#" in text:
+        return text.rsplit("#", 1)[1]
+    if "/" in text:
+        tail = text.rstrip("/").rsplit("/", 1)[1]
+        if tail:
+            return tail
+    return text
+
+
+def _py_value(literal: Any) -> Any:
+    """Convert an rdflib Literal to a Grafito-storable Python value."""
+    from decimal import Decimal
+
+    value = literal.toPython()
+    if isinstance(value, Decimal):
+        return float(value)
+    # Anything Grafito does not store natively (e.g. rdflib types) becomes a str.
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    from datetime import date, datetime, time
+
+    if isinstance(value, (datetime, date, time)):
+        return value
+    return str(value)
+
+
+def import_rdf(
+    db: GrafitoDatabase,
+    graph: "Graph",
+    base_uri: str = "grafito:",
+    store_uri: bool = True,
+    default_rel_type: str = "RELATED",
+) -> dict[str, int]:
+    """Import an rdflib ``Graph`` into a GrafitoDatabase as a property graph.
+
+    This is the inverse of :func:`export_rdf` and also handles arbitrary RDF:
+
+    - A subject's ``rdf:type`` values become node **labels**.
+    - Triples whose object is a literal become node **properties**.
+    - Triples whose object is another resource become **relationships**.
+    - Grafito's reified edges (resources carrying ``<base>source`` and
+      ``<base>target``) are recognised and imported as relationships that keep
+      their literal predicates as **edge properties**; the redundant direct
+      triple emitted by :func:`export_rdf` is de-duplicated.
+
+    Args:
+        db: Target database (nodes/relationships are created in-place).
+        graph: Source ``rdflib.Graph``.
+        base_uri: Namespace used to shorten IRIs to labels/property names and to
+            detect the reification predicates ``<base>source`` / ``<base>target``.
+        store_uri: When True, the original subject IRI is stored on the node's
+            ``uri`` field (enabling loss-free re-export).
+        default_rel_type: Fallback type for reified edges lacking an ``rdf:type``.
+
+    Returns:
+        A summary dict ``{"nodes": int, "relationships": int}``.
+
+    Note:
+        RDF is a set of triples, so parallel edges of the same type between the
+        same pair of nodes collapse into one, and blank nodes are imported as
+        property-less nodes without a stable URI.
+    """
+    try:
+        from rdflib import BNode, Literal, Namespace, RDF, URIRef
+    except ImportError as exc:  # pragma: no cover - guarded like export_rdf
+        raise ImportError(
+            "rdflib is not installed. Install with `pip install grafito[rdf]` "
+            "or `uv pip install grafito[rdf]`."
+        ) from exc
+
+    ns = Namespace(base_uri)
+    source_pred = ns["source"]
+    target_pred = ns["target"]
+    structural = {RDF.type, source_pred, target_pred}
+
+    # --- Pass 1: detect grafito's reified edge resources -------------------- #
+    edge_resources: dict[Any, dict[str, Any]] = {}
+    for subject in set(graph.subjects()):
+        src = graph.value(subject, source_pred)
+        tgt = graph.value(subject, target_pred)
+        if src is None or tgt is None:
+            continue
+        rel_type_term = graph.value(subject, RDF.type)
+        rel_type = _local_name(rel_type_term, base_uri) if rel_type_term else default_rel_type
+        props: dict[str, Any] = {}
+        for pred, obj in graph.predicate_objects(subject):
+            if pred in structural:
+                continue
+            if isinstance(obj, Literal):
+                props[_local_name(pred, base_uri)] = _py_value(obj)
+        edge_resources[subject] = {
+            "source": src,
+            "target": tgt,
+            "type": rel_type,
+            "props": props,
+        }
+
+    edge_subjects = set(edge_resources)
+    # Direct triples (source, <base>type, target) that reified edges already cover.
+    covered: set[tuple] = {
+        (info["source"], ns[info["type"]], info["target"])
+        for info in edge_resources.values()
+    }
+
+    # --- Pass 2: collect node terms ----------------------------------------- #
+    def is_node_term(term: Any) -> bool:
+        return isinstance(term, (URIRef, BNode)) and term not in edge_subjects
+
+    node_terms: set[Any] = set()
+    for s, p, o in graph:
+        if s in edge_subjects:
+            continue
+        if is_node_term(s):
+            node_terms.add(s)
+        if p != RDF.type and is_node_term(o):
+            node_terms.add(o)
+
+    # --- Pass 3: create nodes ----------------------------------------------- #
+    node_map: dict[Any, int] = {}
+    for term in node_terms:
+        labels = [
+            _local_name(o, base_uri)
+            for o in graph.objects(term, RDF.type)
+        ]
+        properties: dict[str, Any] = {}
+        for pred, obj in graph.predicate_objects(term):
+            if pred in structural:
+                continue
+            if isinstance(obj, Literal):
+                properties[_local_name(pred, base_uri)] = _py_value(obj)
+        uri = str(term) if (store_uri and isinstance(term, URIRef)) else None
+        node = db.create_node(labels=labels, properties=properties, uri=uri)
+        node_map[term] = node.id
+
+    # --- Pass 4: create relationships --------------------------------------- #
+    rel_count = 0
+    # 4a) reified edges (carry properties)
+    for info in edge_resources.values():
+        s_id = node_map.get(info["source"])
+        t_id = node_map.get(info["target"])
+        if s_id is None or t_id is None:
+            continue
+        db.create_relationship(s_id, t_id, info["type"], info["props"])
+        rel_count += 1
+    # 4b) direct resource-to-resource triples not already covered
+    for s, p, o in graph:
+        if p == RDF.type or p in (source_pred, target_pred):
+            continue
+        if s in edge_subjects or not isinstance(o, (URIRef, BNode)):
+            continue
+        if (s, p, o) in covered:
+            continue
+        s_id = node_map.get(s)
+        t_id = node_map.get(o)
+        if s_id is None or t_id is None:
+            continue
+        db.create_relationship(s_id, t_id, _local_name(p, base_uri), {})
+        rel_count += 1
+
+    return {"nodes": len(node_map), "relationships": rel_count}
+
+
+def import_turtle(
+    db: GrafitoDatabase,
+    source: str,
+    base_uri: str = "grafito:",
+    store_uri: bool = True,
+    format: str = "turtle",
+) -> dict[str, int]:
+    """Parse Turtle (from a string or file path) and import it into ``db``.
+
+    Args:
+        db: Target database.
+        source: Either a Turtle string or a path to a ``.ttl`` file.
+        base_uri: Namespace used for shortening (see :func:`import_rdf`).
+        store_uri: Store the original IRI on each node's ``uri`` field.
+        format: rdflib parse format (``turtle`` by default; also ``xml``,
+            ``json-ld``, ``nt``, ``n3``, ``trig`` ...).
+
+    Returns:
+        Summary dict from :func:`import_rdf`.
+    """
+    try:
+        from rdflib import Graph
+    except ImportError as exc:  # pragma: no cover - guarded like export_rdf
+        raise ImportError(
+            "rdflib is not installed. Install with `pip install grafito[rdf]` "
+            "or `uv pip install grafito[rdf]`."
+        ) from exc
+
+    graph = Graph()
+    import os
+
+    if "\n" in source or not os.path.exists(source):
+        graph.parse(data=source, format=format)
+    else:
+        graph.parse(source, format=format)
+    return import_rdf(db, graph, base_uri=base_uri, store_uri=store_uri)

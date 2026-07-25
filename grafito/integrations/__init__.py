@@ -3,6 +3,8 @@
 __all__ = [
     "export_rdf",
     "export_turtle",
+    "import_rdf",
+    "import_turtle",
     "export_okf_bundle",
     "to_pyvis",
     "save_pyvis_html",
@@ -17,10 +19,15 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in ("export_rdf", "export_turtle"):
-        from .rdf import export_rdf, export_turtle
+    if name in ("export_rdf", "export_turtle", "import_rdf", "import_turtle"):
+        from .rdf import export_rdf, export_turtle, import_rdf, import_turtle
 
-        return export_rdf if name == "export_rdf" else export_turtle
+        return {
+            "export_rdf": export_rdf,
+            "export_turtle": export_turtle,
+            "import_rdf": import_rdf,
+            "import_turtle": import_turtle,
+        }[name]
     if name == "export_okf_bundle":
         from .okf import export_bundle
 

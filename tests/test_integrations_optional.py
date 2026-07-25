@@ -21,6 +21,81 @@ def test_export_turtle_requires_rdflib():
     assert "KNOWS" in turtle
 
 
+def test_import_turtle_roundtrip():
+    pytest.importorskip("rdflib")
+    from grafito.integrations import export_turtle, import_turtle
+
+    db = GrafitoDatabase(":memory:")
+    alice = db.create_node(labels=["Person"], properties={"name": "Alice", "age": 30})
+    bob = db.create_node(labels=["Person"], properties={"name": "Bob"})
+    corp = db.create_node(labels=["Company"], properties={"name": "TechCorp"})
+    db.create_relationship(alice.id, bob.id, "KNOWS", properties={"since": 2021})
+    db.create_relationship(alice.id, corp.id, "WORKS_AT", properties={})
+
+    turtle = export_turtle(db, base_uri="http://ex.org/")
+
+    db2 = GrafitoDatabase(":memory:")
+    summary = import_turtle(db2, turtle, base_uri="http://ex.org/")
+
+    assert summary == {"nodes": 3, "relationships": 2}
+    assert db2.get_node_count() == 3
+    assert db2.get_relationship_count() == 2
+
+    # Edge properties survive the reification round-trip
+    knows = db2.match_relationships(rel_type="KNOWS")
+    assert len(knows) == 1
+    assert knows[0].properties.get("since") == 2021
+
+    # Labels and node properties are preserved
+    people = db2.match_nodes(labels=["Person"])
+    assert {n.properties["name"] for n in people} == {"Alice", "Bob"}
+    # Original IRIs are stored on the node uri field
+    assert all(n.uri and n.uri.startswith("http://ex.org/") for n in people)
+
+
+def test_import_external_foaf():
+    pytest.importorskip("rdflib")
+    from grafito.integrations import import_turtle
+
+    foaf = """
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix ex: <http://example.org/> .
+    ex:alice a foaf:Person ;
+        foaf:name "Alice" ;
+        foaf:age 30 ;
+        foaf:knows ex:bob .
+    ex:bob a foaf:Person ;
+        foaf:name "Bob" .
+    """
+    db = GrafitoDatabase(":memory:")
+    summary = import_turtle(db, foaf, base_uri="http://example.org/")
+
+    assert summary == {"nodes": 2, "relationships": 1}
+    alice = db.match_nodes(labels=["Person"], properties={"name": "Alice"})
+    assert len(alice) == 1
+    assert alice[0].properties["age"] == 30
+    rels = db.match_relationships()
+    assert len(rels) == 1
+    assert rels[0].type == "knows"
+
+
+def test_import_rdf_from_graph_object():
+    pytest.importorskip("rdflib")
+    from rdflib import Graph
+    from grafito.integrations import import_rdf
+
+    graph = Graph()
+    graph.parse(
+        data='<http://ex.org/a> <http://ex.org/link> <http://ex.org/b> .',
+        format="nt",
+    )
+    db = GrafitoDatabase(":memory:")
+    summary = import_rdf(db, graph, base_uri="http://ex.org/")
+    assert summary["nodes"] == 2
+    assert summary["relationships"] == 1
+    assert db.match_relationships()[0].type == "link"
+
+
 def test_to_pyvis_requires_pyvis():
     pytest.importorskip("pyvis")
     from grafito.integrations import to_pyvis

@@ -2588,71 +2588,55 @@ class GrafitoDatabase:
                 ... )
         """
         properties = properties or {}
-        params: list[Any] = []
 
-        # Build label conditions
-        label_query = ""
-        has_labels = False
+        # Build query components separately so that property predicates land in the
+        # WHERE clause (before GROUP BY). Appending them after a HAVING clause would
+        # push them into HAVING, which is evaluated post-aggregation and prevents
+        # SQLite from using property indexes (forcing a full scan). See #match_nodes.
+        from_join = "FROM nodes n"
+        where_conditions: list[str] = []
+        where_params: list[Any] = []
+        group_having = ""
+        having_params: list[Any] = []
 
         if isinstance(labels, LabelFilter):
-            # LabelFilter with OR/AND logic
-            has_labels = True
-            if labels.operator == 'OR':
-                # OR: Node must have ANY of the labels (no HAVING COUNT)
-                placeholders = ','.join('?' * len(labels.labels))
-                label_query = f"""
-                    FROM nodes n
-                    JOIN node_labels nl ON n.id = nl.node_id
-                    JOIN labels l ON nl.label_id = l.id
-                    WHERE l.name IN ({placeholders})
-                """
-                params.extend(labels.labels)
-            else:
+            from_join = (
+                "FROM nodes n\n"
+                "            JOIN node_labels nl ON n.id = nl.node_id\n"
+                "            JOIN labels l ON nl.label_id = l.id"
+            )
+            placeholders = ','.join('?' * len(labels.labels))
+            where_conditions.append(f"l.name IN ({placeholders})")
+            where_params.extend(labels.labels)
+            if labels.operator != 'OR':
                 # AND: Node must have ALL labels (with HAVING COUNT)
-                placeholders = ','.join('?' * len(labels.labels))
-                label_query = f"""
-                    FROM nodes n
-                    JOIN node_labels nl ON n.id = nl.node_id
-                    JOIN labels l ON nl.label_id = l.id
-                    WHERE l.name IN ({placeholders})
-                    GROUP BY n.id
-                    HAVING COUNT(DISTINCT l.name) = ?
-                """
-                params.extend(labels.labels)
-                params.append(len(labels.labels))
+                group_having = "GROUP BY n.id\n            HAVING COUNT(DISTINCT l.name) = ?"
+                having_params.append(len(labels.labels))
 
         elif labels:
             # Plain list: AND logic (backward compatible)
-            has_labels = True
+            from_join = (
+                "FROM nodes n\n"
+                "            JOIN node_labels nl ON n.id = nl.node_id\n"
+                "            JOIN labels l ON nl.label_id = l.id"
+            )
             placeholders = ','.join('?' * len(labels))
-            label_query = f"""
-                FROM nodes n
-                JOIN node_labels nl ON n.id = nl.node_id
-                JOIN labels l ON nl.label_id = l.id
-                WHERE l.name IN ({placeholders})
-                GROUP BY n.id
-                HAVING COUNT(DISTINCT l.name) = ?
-            """
-            params.extend(labels)
-            params.append(len(labels))
-        else:
-            # No label filter
-            label_query = "FROM nodes n"
+            where_conditions.append(f"l.name IN ({placeholders})")
+            where_params.extend(labels)
+            group_having = "GROUP BY n.id\n            HAVING COUNT(DISTINCT l.name) = ?"
+            having_params.append(len(labels))
 
-        # Build property conditions
+        # Build property conditions (kept in WHERE, before any GROUP BY/HAVING)
         prop_conditions, prop_params = self._build_property_conditions(properties, 'n')
+        where_conditions.extend(prop_conditions)
 
-        # Construct WHERE clause for properties
+        # Params must follow placeholder order in the final SQL:
+        # WHERE (labels, then properties) -> HAVING (label count)
+        params: list[Any] = [*where_params, *prop_params, *having_params]
+
         where_clause = ""
-        if prop_conditions:
-            if has_labels and 'WHERE' in label_query:
-                # Labels already have WHERE, use AND
-                where_clause = " AND " + " AND ".join(prop_conditions)
-            else:
-                # No WHERE yet or no labels, add WHERE
-                where_clause = " WHERE " + " AND ".join(prop_conditions)
-
-        params.extend(prop_params)
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
 
         # Build ORDER BY clause
         order_clause = self._build_order_clause(order_by, ascending, 'n')
@@ -2671,8 +2655,9 @@ class GrafitoDatabase:
         # Construct final query
         query = f"""
             SELECT DISTINCT n.id
-            {label_query}
+            {from_join}
             {where_clause}
+            {group_having}
             {order_clause}
             {limit_clause}
         """

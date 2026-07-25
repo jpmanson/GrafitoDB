@@ -1,6 +1,8 @@
 # RDF/Turtle Integration
 
-GrafitoDB can export to and import from RDF (Resource Description Framework) format.
+GrafitoDB can **export to** and **import from** RDF (Resource Description Framework),
+using [`rdflib`](https://rdflib.readthedocs.io) under the hood. This makes a Grafito
+property graph interoperable with the Semantic Web / Linked Data ecosystem.
 
 ## Prerequisites
 
@@ -10,6 +12,22 @@ pip install grafito[rdf]
 
 This installs `rdflib` for RDF handling.
 
+## Public API
+
+The integration lives in `grafito.integrations` and exposes exactly four helpers:
+
+| Function | Purpose |
+| --- | --- |
+| `export_rdf(db, ...)` | Export the graph to an `rdflib.Graph` |
+| `export_turtle(db, ...)` | Export the graph to a Turtle string |
+| `import_rdf(db, graph, ...)` | Import an `rdflib.Graph` into the database |
+| `import_turtle(db, source, ...)` | Parse Turtle (string or file) and import it |
+
+`rdflib` can serialize/parse many other formats (RDF/XML, JSON-LD, N-Triples,
+TriG, N3…); use `export_rdf` / `import_rdf` with an `rdflib.Graph` to reach them.
+
+---
+
 ## Exporting to RDF
 
 ### Basic Export
@@ -18,174 +36,185 @@ This installs `rdflib` for RDF handling.
 from grafito import GrafitoDatabase
 from grafito.integrations import export_rdf, export_turtle
 
-# Create graph
 db = GrafitoDatabase(':memory:')
 alice = db.create_node(labels=['Person'], properties={'name': 'Alice'})
 bob = db.create_node(labels=['Person'], properties={'name': 'Bob'})
 db.create_relationship(alice.id, bob.id, 'KNOWS', {'since': 2021})
 
-# Export to RDFLib Graph
-rdf_graph = export_rdf(db, base_uri='grafito:')
-
+# Export to an rdflib Graph
+rdf_graph = export_rdf(db, base_uri='http://example.org/')
 print(f'Triples: {len(rdf_graph)}')
 ```
+
+`export_rdf` signature:
+
+```python
+export_rdf(
+    db,
+    base_uri="grafito:",     # namespace for nodes/labels/property predicates
+    node_prefix="node/",     # URI segment for nodes without an explicit uri
+    rel_prefix="rel/",       # URI segment for reified relationships
+    prefixes=None,           # dict {prefix: namespace} merged with the defaults
+) -> rdflib.Graph
+```
+
+The following prefixes are always bound: `rdf`, `rdfs`, `xsd`, `owl`, `schema`.
 
 ### Export to Turtle
 
 ```python
-# Export to Turtle format
 turtle_str = export_turtle(
     db,
-    base_uri='grafito:',
+    base_uri='http://example.org/',
     prefixes={
         'schema': 'http://schema.org/',
-        'foaf': 'http://xmlns.com/foaf/0.1/'
-    }
+        'foaf': 'http://xmlns.com/foaf/0.1/',
+    },
 )
 
-# Save to file
 with open('export.ttl', 'w') as f:
     f.write(turtle_str)
-
-print(turtle_str)
 ```
 
-Output format:
+Output:
+
 ```turtle
-@prefix gr: <grafito:> .
-@prefix schema: <http://schema.org/> .
+@prefix : <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-gr:node_1 a schema:Person ;
-    schema:name "Alice" .
+<http://example.org/rel/1> a :KNOWS ;
+    :since 2021 ;
+    :source <http://example.org/node/1> ;
+    :target <http://example.org/node/2> .
 
-gr:node_2 a schema:Person ;
-    schema:name "Bob" .
+<http://example.org/node/1> a :Person ;
+    :KNOWS <http://example.org/node/2> ;
+    :name "Alice" .
 
-gr:rel_1 a gr:KNOWS ;
-    schema:since 2021 ;
-    schema:source gr:node_1 ;
-    schema:target gr:node_2 .
+<http://example.org/node/2> a :Person ;
+    :name "Bob" .
 ```
 
-### Custom Namespace Mapping
+### How the mapping works
+
+| GrafitoDB concept | RDF mapping |
+| --- | --- |
+| Node | Subject IRI (from the node's `uri`, or `base_uri + node_prefix + id`) |
+| Label | `rdf:type` |
+| Property (literal) | Predicate `base_uri:<key>` → literal object |
+| Relationship | Direct triple `(source) base_uri:<TYPE> (target)` |
+| Relationship **with properties** | Additionally **reified**: a `rel/<id>` resource typed as the relationship, carrying `:source`, `:target` and one predicate per property |
+
+Relationships are reified so that edge properties (which plain RDF triples cannot
+carry) are preserved. This is the inverse of what `import_rdf` recognises, so a
+round-trip is loss-free (see [Round-tripping](#round-tripping)).
+
+### Custom predicates and typed literals (`__rdf__`)
+
+For fine-grained control over predicates, datatypes and language tags, add an
+`__rdf__` block to a node's (or relationship's) properties. It supports a JSON-LD
+style `@context`, plus `@id` (IRI object), `@value`/`@type`/`@lang` (typed/tagged
+literals), and lists:
 
 ```python
-# Map labels to schema types
-turtle = export_turtle(
-    db,
-    base_uri='http://example.org/',
-    prefixes={'ex': 'http://example.org/'},
-    type_map={
-        'Person': 'http://schema.org/Person',
-        'Company': 'http://schema.org/Organization'
-    }
+db.create_node(
+    labels=['Person'],
+    properties={
+        'name': 'Alice',
+        '__rdf__': {
+            '@context': {'foaf': 'http://xmlns.com/foaf/0.1/'},
+            'foaf:homepage': {'@id': 'https://alice.example'},
+            'foaf:age': {'@value': 30, '@type': 'xsd:integer'},
+            'foaf:name': {'@value': 'Alice', '@lang': 'en'},
+        },
+    },
 )
 ```
 
-## RDF to GrafitoDB
+The `__rdf__` key itself is never emitted as a literal; only its expanded triples are.
 
-### Basic Import
+---
+
+## Importing RDF into GrafitoDB
+
+### From a Turtle string or file
+
+```python
+from grafito import GrafitoDatabase
+from grafito.integrations import import_turtle
+
+db = GrafitoDatabase(':memory:')
+summary = import_turtle(db, 'data.ttl', base_uri='http://example.org/')
+print(summary)  # {'nodes': 42, 'relationships': 87}
+```
+
+`import_turtle` accepts either a **file path** or a **Turtle string** as `source`,
+and forwards `format` to `rdflib` (default `"turtle"`; also `"xml"`, `"json-ld"`,
+`"nt"`, `"n3"`, `"trig"`, …).
+
+### From an existing `rdflib.Graph`
 
 ```python
 from rdflib import Graph
-from grafito import GrafitoDatabase
+from grafito.integrations import import_rdf
 
-# Load RDF
-rdf_graph = Graph()
-rdf_graph.parse('data.ttl', format='turtle')
+g = Graph()
+g.parse('data.jsonld', format='json-ld')
 
-# Convert to Grafito
 db = GrafitoDatabase(':memory:')
-# Import functionality would be implemented here
+import_rdf(db, g, base_uri='http://example.org/')
 ```
 
-### Handling Common Vocabularies
+### Import mapping
 
-RDF export handles common vocabularies:
+`import_rdf` projects RDF onto the property-graph model:
 
-| GrafitoDB Concept | RDF Mapping |
-|----------------|-------------|
-| Node | `rdfs:Resource` |
-| Label | `rdf:type` |
-| Property | Predicate |
-| Relationship | Reified statement |
+- A subject's `rdf:type` values become node **labels**.
+- Triples whose object is a **literal** become node **properties**.
+- Triples whose object is another **resource** become **relationships**.
+- Grafito's **reified edges** (resources carrying `<base>source` and `<base>target`)
+  are recognised and imported as relationships that keep their literal predicates as
+  **edge properties**; the redundant direct triple is de-duplicated.
+- When `store_uri=True` (default), the original subject IRI is stored on the node's
+  `uri` field, enabling loss-free re-export.
 
-## Typed RDF Export
+IRIs are shortened to compact label/property names by stripping `base_uri`, or
+falling back to the fragment (`#…`) or last path segment.
 
-```python
-from grafito.integrations import export_typed_rdf
-
-# Export with type inference
-turtle = export_typed_rdf(
-    db,
-    base_uri='http://myapp.org/',
-    type_inference=True
-)
-```
-
-## Ontology Export
-
-Export schema as OWL/RDFS:
+It works on arbitrary RDF, not just Grafito's own export:
 
 ```python
-from grafito.integrations import export_ontology
-
-# Export schema
-turtle = export_ontology(
-    db,
-    base_uri='http://myapp.org/',
-    include_data=False  # Schema only
-)
-```
-
-## Examples
-
-### Exporting Social Network
-
-```python
+foaf = """
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ex: <http://example.org/> .
+ex:alice a foaf:Person ; foaf:name "Alice" ; foaf:knows ex:bob .
+ex:bob a foaf:Person ; foaf:name "Bob" .
+"""
 db = GrafitoDatabase(':memory:')
-
-# Create social network
-alice = db.create_node(labels=['Person'], properties={'name': 'Alice', 'age': 30})
-bob = db.create_node(labels=['Person'], properties={'name': 'Bob', 'age': 25})
-company = db.create_node(labels=['Company'], properties={'name': 'TechCorp'})
-
-db.create_relationship(alice.id, bob.id, 'FRIEND', {'since': 2020})
-db.create_relationship(alice.id, company.id, 'WORKS_AT', {'role': 'Engineer'})
-
-# Export with FOAF vocabulary
-turtle = export_turtle(
-    db,
-    base_uri='http://example.org/',
-    prefixes={
-        'foaf': 'http://xmlns.com/foaf/0.1/',
-        'schema': 'http://schema.org/'
-    },
-    type_map={
-        'Person': 'foaf:Person',
-        'Company': 'schema:Organization'
-    }
-)
-
-print(turtle)
+import_turtle(db, foaf, base_uri='http://example.org/')
+# -> node Person{name: Alice} -[knows]-> node Person{name: Bob}
 ```
 
-### Working with Schema.org
+### Round-tripping
+
+`export` and `import` are inverses, so a graph survives a full cycle:
 
 ```python
-# Export using Schema.org vocabulary
-schema = {
-    'Person': 'http://schema.org/Person',
-    'name': 'http://schema.org/name',
-    'email': 'http://schema.org/email',
-    'KNOWS': 'http://schema.org/knows'
-}
+turtle = export_turtle(db, base_uri='http://example.org/')
 
-turtle = export_turtle(db, base_uri='https://example.com/', type_map=schema)
+restored = GrafitoDatabase(':memory:')
+import_turtle(restored, turtle, base_uri='http://example.org/')
+# restored has the same nodes, labels, properties, relationships and edge properties
 ```
+
+---
 
 ## Limitations
 
-- RDF export reifies relationships (creates separate nodes for edges)
-- Property types are mapped to RDF literals
-- Multiple labels become multiple `rdf:type` statements
+- **Relationships are reified** to carry edge properties (an extra resource per edge
+  with properties). This is the standard RDF n-ary/reification pattern.
+- **Parallel edges collapse**: RDF is a *set* of triples, so two relationships of the
+  same type between the same pair of nodes cannot be distinguished after export.
+- **Blank nodes** are imported as property-less nodes without a stable `uri`.
+- Datatypes are inferred by `rdflib` on import (`toPython()`); `xsd:decimal` becomes a
+  Python `float`, and RDF types Grafito cannot store natively are coerced to strings.
