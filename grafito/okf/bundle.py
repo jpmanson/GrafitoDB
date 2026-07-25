@@ -24,6 +24,7 @@ from .concept import Concept, ContextPack, Hit, Proposal
 
 if TYPE_CHECKING:
     from ..database import GrafitoDatabase
+    from ..document import SearchHit
     from ..filters import PropertyFilterGroup
     from .rerank import Reranker
 
@@ -117,6 +118,11 @@ class OKFBundle:
         self._okf_version = okf_version
         self._summary = summary or {}
         self.autolog = autolog
+        # Long-body chunking (opt-in via enable_body_chunking()).
+        self._chunk_long_bodies = False
+        self._chunk_ingestor: Any = None
+        self._chunk_index: str | None = None
+        self._chunk_threshold = 0
 
     # --- lifecycle ---------------------------------------------------------
 
@@ -771,6 +777,7 @@ class OKFBundle:
             self._db.upsert_embeddings(
                 [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
             )
+        self._maybe_chunk_concept(concept_id, body)
         concept = Concept(self, node)
         if self.autolog:
             self.log_entry(
@@ -834,6 +841,7 @@ class OKFBundle:
             self._db.upsert_embeddings(
                 [node.id], [concept_document(props, self._embed_fields)], index=self._embed_index
             )
+        self._maybe_chunk_concept(concept.id, props.get("body") or "")
         updated = Concept(self, self._db.get_node(node.id))
         if self.autolog:
             changed = [k for k, v in {**named, **frontmatter}.items() if v is not _UNSET]
@@ -891,6 +899,7 @@ class OKFBundle:
                 self._db.remove_embedding(node_id, index=self._embed_index)
             except Exception:
                 pass
+        self._remove_concept_chunks(concept_id)
         deleted = self._db.delete_node(node_id)
         if deleted and self.autolog:
             self.log_entry(f"Removed {concept_id}.", kind="Removal")
@@ -1235,6 +1244,149 @@ class OKFBundle:
             "json_extract(n.properties, '$.concept_id') AS cid", tag=tag, where=where
         )
         return {row["cid"] for row in rows}
+
+    # --- long-body chunking (opt-in) --------------------------------------
+
+    def enable_body_chunking(
+        self,
+        *,
+        threshold: int = 2000,
+        index: str | None = None,
+        embed: Any = None,
+        max_chars: int = 1200,
+        overlap: int = 150,
+    ) -> "OKFBundle":
+        """Opt in to passage-chunking long concept bodies (keeps short ones single-node).
+
+        When enabled, :meth:`add_concept` / :meth:`update_concept` also index any
+        concept whose ``body`` reaches ``threshold`` characters as a set of
+        passage nodes (via :class:`~grafito.document.DocumentIngestor`), stored on
+        a **separate** vector index (default ``f"{embed_index}_chunks"``) so
+        concept-level recall on the main index is unchanged. Short concepts keep
+        their single title+description+body vector only.
+
+        The chunk index uses ``embed`` if given, otherwise the bundle's existing
+        concept embedder. The concept node itself is never mutated with helper
+        bookkeeping — each chunked concept gets a dedicated managed ``Document``
+        node (flagged ``okf_auto`` so it never round-trips as a concept) linked
+        via ``HAS_PASSAGES``. Passages are searchable with :meth:`search_passages`.
+
+        Note: a chunked long concept is embedded twice — once as a concept vector
+        on the main index and once as passages on the chunk index. That is the
+        intended cost of passage-level retrieval; disable for corpora where it is
+        not worth it.
+        """
+        from ..document import DocumentIngestor, MarkdownChunker
+
+        self._chunk_threshold = int(threshold)
+        overlap = min(int(overlap), max(0, int(max_chars) - 1))  # overlap must be < max_chars
+        self._chunk_index = index or f"{self._embed_index}_chunks"
+        if not any(i.get("name") == self._chunk_index for i in self._db.list_vector_indexes()):
+            embedder = embed or self._db._get_embedding_function(self._embed_index)
+            if embedder is None:
+                raise ValueError(
+                    "enable_body_chunking needs an embedding function for the chunk index: "
+                    "pass embed=..., or load/open the bundle with an embedder."
+                )
+            self._db.create_vector_index(self._chunk_index, embedding_function=embedder)
+        self._chunk_ingestor = DocumentIngestor(
+            self._db,
+            chunker=MarkdownChunker(max_chars=max_chars, overlap=overlap),
+            embed_index=self._chunk_index,
+            corpus="okf",
+        )
+        self._chunk_long_bodies = True
+        return self
+
+    def chunk_concept(self, concept_id: str, *, force: bool = False) -> int:
+        """(Re)chunk one concept's body now. Returns the number of passages.
+
+        Requires :meth:`enable_body_chunking`. Bodies below the threshold are
+        left as a single concept vector (returns 0 and removes any old passages).
+        """
+        if not self._chunk_long_bodies:
+            raise ValueError("Call enable_body_chunking() before chunk_concept().")
+        concept = self.concept(concept_id)
+        if concept is None:
+            raise ValueError(f"Unknown concept: {concept_id!r}")
+        body = concept.node.properties.get("body") or ""
+        return self._maybe_chunk_concept(concept_id, body, force=force)
+
+    def search_passages(
+        self,
+        query: str,
+        *,
+        k: int = 5,
+        concept_id: str | None = None,
+    ) -> list["SearchHit"]:
+        """Semantic search over chunked concept passages (requires body chunking).
+
+        Restrict to one concept with ``concept_id``. Returns
+        :class:`~grafito.document.SearchHit` objects; use the ingestor's
+        ``expand``/``pack`` on the underlying nodes for context assembly.
+        """
+        if not self._chunk_long_bodies:
+            raise ValueError("Call enable_body_chunking() before search_passages().")
+        owner_id: int | None = None
+        if concept_id is not None:
+            doc = self._chunk_doc_for(concept_id)
+            if doc is None:
+                return []
+            owner_id = doc.id
+        return self._chunk_ingestor.search(query, k=k, owner_document_id=owner_id)
+
+    def _chunk_doc_key(self, concept_id: str) -> str:
+        return f"okf-chunk:{concept_id}"
+
+    def _chunk_doc_for(self, concept_id: str) -> Node | None:
+        found = self._db.match_nodes(
+            labels=["Document"],
+            properties={"document_key": self._chunk_doc_key(concept_id)},
+            limit=1,
+        )
+        return found[0] if found else None
+
+    def _maybe_chunk_concept(self, concept_id: str, body: str, *, force: bool = False) -> int:
+        """Index/refresh/remove passages for one concept per its body length."""
+        if not self._chunk_long_bodies:
+            return 0
+        ing = self._chunk_ingestor
+        key = self._chunk_doc_key(concept_id)
+        if body and len(body) >= self._chunk_threshold:
+            result = ing.ingest(
+                body,
+                document_key=key,
+                title=concept_id,
+                properties={"okf_auto": True, "okf_concept_id": concept_id},
+                embed=True,
+                force=force,
+            )
+            self._link_concept_chunks(concept_id, result.owner_document_id)
+            return result.n_passages
+        # Short/cleared body → drop any existing passages, keep the concept vector.
+        try:
+            ing.delete(key, delete_owned_parent=True)
+        except Exception:
+            pass
+        return 0
+
+    def _remove_concept_chunks(self, concept_id: str) -> None:
+        if not self._chunk_long_bodies:
+            return
+        try:
+            self._chunk_ingestor.delete(self._chunk_doc_key(concept_id), delete_owned_parent=True)
+        except Exception:
+            pass
+
+    def _link_concept_chunks(self, concept_id: str, doc_id: int) -> None:
+        concept = self.concept(concept_id)
+        if concept is None:
+            return
+        existing = self._db.get_neighbors(
+            concept.node.id, direction="outgoing", rel_type="HAS_PASSAGES"
+        )
+        if not any(n.id == doc_id for n in existing):
+            self._db.create_relationship(concept.node.id, doc_id, "HAS_PASSAGES", {})
 
     def _resolve(self, value: "Concept | str") -> Concept:
         if isinstance(value, Concept):

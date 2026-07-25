@@ -69,6 +69,7 @@ class DocumentIngestor:
         embed_section_summaries: bool = False,
         enricher: ChunkEnricher | None = None,
         configure_fts: bool = False,
+        views: list[str] | None = None,
     ) -> None:
         self.db = db
         self.chunker: Chunker = chunker or FixedChunker()
@@ -88,6 +89,7 @@ class DocumentIngestor:
         self.embed_section_summaries = embed_section_summaries
         self.enricher = enricher
         self.configure_fts = configure_fts
+        self.views = views
         if configure_fts and getattr(db, "has_fts5", lambda: False)():
             try:
                 db.create_text_index("node", passage_label, ["text"])
@@ -109,11 +111,18 @@ class DocumentIngestor:
         properties: dict[str, Any] | None = None,
         embed: bool = True,
         force: bool = False,
+        views: list[str] | None = None,
     ) -> IngestResult:
         """Create or update a document's active passage version.
 
         If ``document_key`` matches an existing parent and the fingerprint is
         unchanged (and ``force`` is False), returns ``skipped=True``.
+
+        ``views`` (advanced): index the document under more than one segmentation
+        (e.g. ``["hierarchy", "fixed"]``). Each view's passages carry a ``view``
+        property and its own ``global_seq`` reading order; use
+        ``search(..., diversify_by_span=True)`` to fuse them without near-duplicate
+        spans crowding top-k. Defaults to a single view derived from the chunker.
         """
         if parent_id is not None and self.db.get_node(parent_id) is None:
             raise NodeNotFoundError(parent_id)
@@ -127,7 +136,8 @@ class DocumentIngestor:
             text=text,
         )
         doc_key = document_key or parent.properties.get("document_key")
-        fingerprint = self._fingerprint(text, embed=embed)
+        resolved_views, is_default_view = self._resolve_views(views)
+        fingerprint = self._fingerprint(text, embed=embed, views=resolved_views)
         active_gen = int(parent.properties.get("active_generation") or 0)
 
         if not force and active_gen > 0:
@@ -155,25 +165,22 @@ class DocumentIngestor:
                     section_ids=[s.id for s in sections],
                     n_sections=len(sections),
                     hierarchy=bool(sections),
+                    views=resolved_views,
                 )
 
-        use_hierarchy = self._use_hierarchy()
-        section_forest: list[SectionSpec] | None = None
-        if use_hierarchy:
-            max_chars = int(getattr(self.chunker, "max_chars", None) or getattr(self.chunker, "max_size", 1200))
-            overlap = int(getattr(self.chunker, "overlap", 0) or 0)
-            section_forest = build_markdown_tree(
-                text,
-                max_chars=max_chars,
-                overlap=overlap,
-                strategy=getattr(self.chunker, "name", "markdown-tree"),
-            )
-            specs = flatten_chunks(section_forest)
-        else:
-            specs = self.chunker.split(text)
-
-        if self.enricher is not None:
-            specs = self.enricher.enrich(specs, document_title=title or parent.properties.get("title"))
+        # Segment once per view; keep per-view specs/forest for the write loop.
+        title_for_embed = title or parent.properties.get("title")
+        per_view: list[tuple[str, list[ChunkSpec], list[SectionSpec] | None]] = []
+        any_hierarchy = False
+        total_passages = 0
+        for view in resolved_views:
+            specs, forest = self._segment(view, text, is_default=is_default_view)
+            if self.enricher is not None:
+                specs = self.enricher.enrich(specs, document_title=title_for_embed)
+            if forest is not None:
+                any_hierarchy = True
+            per_view.append((view, specs, forest))
+            total_passages += len(specs)
 
         generation = active_gen + 1
         ingestion_id = uuid.uuid4().hex
@@ -183,31 +190,38 @@ class DocumentIngestor:
             ingestion_id=ingestion_id,
             fingerprint=fingerprint,
             status="BUILDING",
-            n_passages=len(specs),
-            hierarchy=use_hierarchy,
+            n_passages=total_passages,
+            hierarchy=any_hierarchy,
+            views=resolved_views,
         )
         try:
+            passage_ids: list[int] = []
             section_ids: list[int] = []
-            if use_hierarchy and section_forest is not None:
-                passage_ids, section_ids = self._write_hierarchy(
-                    parent_id=parent.id,
-                    version_id=version.id,
-                    generation=generation,
-                    ingestion_id=ingestion_id,
-                    forest=section_forest,
-                )
-            else:
-                passage_ids = self._write_passages(
-                    parent_id=parent.id,
-                    version_id=version.id,
-                    generation=generation,
-                    ingestion_id=ingestion_id,
-                    specs=specs,
-                )
+            embed_docs: list[str] = []
+            for view, specs, forest in per_view:
+                if forest is not None:
+                    v_pids, v_sids = self._write_hierarchy(
+                        parent_id=parent.id,
+                        version_id=version.id,
+                        generation=generation,
+                        ingestion_id=ingestion_id,
+                        forest=forest,
+                        view=view,
+                    )
+                    section_ids.extend(v_sids)
+                else:
+                    v_pids = self._write_passages(
+                        parent_id=parent.id,
+                        version_id=version.id,
+                        generation=generation,
+                        ingestion_id=ingestion_id,
+                        specs=specs,
+                        view=view,
+                    )
+                passage_ids.extend(v_pids)
+                embed_docs.extend(s.text_for_embedding() for s in specs)
             if embed and self.embed_index and passage_ids:
-                # Re-read embed texts from specs order (matches passage creation order)
-                docs = [s.text_for_embedding() for s in specs]
-                self.db.upsert_embeddings(passage_ids, docs, index=self.embed_index)
+                self.db.upsert_embeddings(passage_ids, embed_docs, index=self.embed_index)
             if (
                 embed
                 and self.embed_index
@@ -232,7 +246,8 @@ class DocumentIngestor:
             document_key=doc_key,
             section_ids=section_ids,
             n_sections=len(section_ids),
-            hierarchy=use_hierarchy,
+            hierarchy=any_hierarchy,
+            views=resolved_views,
         )
 
     def replace(self, document_ref: int | str, text: str, *, embed: bool = True, force: bool = True) -> IngestResult:
@@ -301,7 +316,16 @@ class DocumentIngestor:
         owner_document_id: int | None = None,
         embed_roles: list[str] | None = None,
         diversify_by_document: bool = False,
+        views: list[str] | None = None,
+        diversify_by_span: bool = False,
     ) -> list[SearchHit]:
+        """Scoped semantic search over managed passages.
+
+        ``views`` restricts hits to those segmentations (multi-view documents);
+        ``diversify_by_span`` keeps only the best-scored hit among overlapping
+        character spans, so a passage indexed under two views does not appear
+        twice. Both default off (single-view behaviour unchanged).
+        """
         if not self.embed_index:
             raise DatabaseError("DocumentIngestor.embed_index is not set")
         roles = embed_roles or ["passage"]
@@ -309,9 +333,12 @@ class DocumentIngestor:
         filter_props: dict[str, Any] = {"managed_by": MANAGED_BY}
         if len(roles) == 1:
             filter_props["embed_role"] = roles[0]
+        over_fetch = (
+            diversify_by_document or diversify_by_span or views is not None or len(roles) > 1
+        )
         hits_raw = self.db.semantic_search(
             query,
-            k=k * (4 if diversify_by_document or len(roles) > 1 else 1),
+            k=k * (4 if over_fetch else 1),
             index=self.embed_index,
             filter_labels=[self.passage_label],
             filter_props=filter_props,
@@ -323,6 +350,8 @@ class DocumentIngestor:
             owner_document_id=owner_document_id,
             diversify_by_document=diversify_by_document,
             score_key="score",
+            views=views,
+            diversify_by_span=diversify_by_span,
         )
 
     def hybrid_search(
@@ -465,15 +494,21 @@ class DocumentIngestor:
         owner_document_id: int | None,
         diversify_by_document: bool,
         score_key: str = "score",
+        views: list[str] | None = None,
+        diversify_by_span: bool = False,
     ) -> list[SearchHit]:
         results: list[SearchHit] = []
         seen_docs: set[int] = set()
+        # For span max-pool: accepted [char_start, char_end) intervals per document.
+        accepted_spans: dict[int, list[tuple[int, int]]] = {}
         for row in hits_raw:
             node: Node = row["node"]
             props = node.properties or {}
             if props.get("managed_by") != MANAGED_BY:
                 continue
             if props.get("embed_role") not in roles:
+                continue
+            if views is not None and props.get("view") not in views:
                 continue
             oid = props.get("owner_document_id")
             gen = props.get("generation")
@@ -488,6 +523,14 @@ class DocumentIngestor:
                 if int(oid) in seen_docs:
                     continue
                 seen_docs.add(int(oid))
+            if diversify_by_span and oid is not None:
+                span = self._passage_span(props)
+                if span is not None:
+                    doc_spans = accepted_spans.setdefault(int(oid), [])
+                    if any(_spans_overlap(span, s) for s in doc_spans):
+                        # A higher-scored hit already covers this span (different view).
+                        continue
+                    doc_spans.append(span)
             results.append(
                 SearchHit(
                     node=node,
@@ -495,11 +538,19 @@ class DocumentIngestor:
                     owner_document_id=int(oid) if oid is not None else None,
                     generation=int(gen) if gen is not None else None,
                     global_seq=int(props["global_seq"]) if props.get("global_seq") is not None else None,
+                    view=props.get("view"),
                 )
             )
             if len(results) >= k:
                 break
         return results
+
+    @staticmethod
+    def _passage_span(props: dict[str, Any]) -> tuple[int, int] | None:
+        cs, ce = props.get("char_start"), props.get("char_end")
+        if cs is None or ce is None:
+            return None
+        return (int(cs), int(ce))
 
     @staticmethod
     def _collect_node_keys(toc: list[dict[str, Any]]) -> list[str]:
@@ -559,7 +610,9 @@ class DocumentIngestor:
         owner_id = int(owner_id)
         gen = int(gen)
         seq = int(seq)
-        candidates = self._list_passages(owner_id, gen)
+        # Stay within the centre passage's own view so the window follows a single
+        # reading order (multi-view documents number global_seq per view).
+        candidates = self._list_passages(owner_id, gen, view=props.get("view"))
         lo, hi = seq - window, seq + window
         windowed = [
             p
@@ -788,6 +841,66 @@ class DocumentIngestor:
         # auto: hierarchical when markdown chunker is configured
         return isinstance(self.chunker, MarkdownChunker)
 
+    _SUPPORTED_VIEWS = ("hierarchy", "fixed")
+
+    def _resolve_views(self, views: list[str] | None) -> tuple[list[str], bool]:
+        """Return ``(view_names, is_default)``.
+
+        ``is_default`` means a single implicit view derived from the configured
+        chunker (segmentation uses ``self.chunker``, preserving semantic/Chonkie
+        chunkers). Explicit views use canonical segmentation per name.
+        """
+        override = views if views is not None else self.views
+        if override is None:
+            return (["hierarchy"] if self._use_hierarchy() else ["fixed"]), True
+        if not override:
+            raise DatabaseError("views must be a non-empty list of view names")
+        resolved: list[str] = []
+        for view in override:
+            if view not in self._SUPPORTED_VIEWS:
+                raise DatabaseError(
+                    f"unknown view {view!r}; supported views: {list(self._SUPPORTED_VIEWS)}"
+                )
+            if view not in resolved:
+                resolved.append(view)
+        return resolved, False
+
+    def _tree_params(self) -> tuple[int, int]:
+        max_chars = int(
+            getattr(self.chunker, "max_chars", None) or getattr(self.chunker, "max_size", 1200)
+        )
+        overlap = int(getattr(self.chunker, "overlap", 0) or 0)
+        return max_chars, overlap
+
+    def _segment(
+        self,
+        view: str,
+        text: str,
+        *,
+        is_default: bool,
+    ) -> tuple[list[ChunkSpec], list[SectionSpec] | None]:
+        """Segment ``text`` for one view → ``(specs, section_forest_or_None)``."""
+        max_chars, overlap = self._tree_params()
+        if is_default:
+            # Single implicit view: honour the configured chunker exactly.
+            if self._use_hierarchy():
+                forest = build_markdown_tree(
+                    text,
+                    max_chars=max_chars,
+                    overlap=overlap,
+                    strategy=getattr(self.chunker, "name", "markdown-tree"),
+                )
+                return flatten_chunks(forest), forest
+            return self.chunker.split(text), None
+        if view == "hierarchy":
+            forest = build_markdown_tree(
+                text, max_chars=max_chars, overlap=overlap, strategy="markdown-tree"
+            )
+            return flatten_chunks(forest), forest
+        if view == "fixed":
+            return FixedChunker(max_size=max_chars, overlap=overlap).split(text), None
+        raise DatabaseError(f"unknown view {view!r}")  # pragma: no cover - guarded above
+
     def _create_version(
         self,
         owner_id: int,
@@ -798,6 +911,7 @@ class DocumentIngestor:
         status: str,
         n_passages: int,
         hierarchy: bool = False,
+        views: list[str] | None = None,
     ) -> Node:
         props = {
             "managed_by": MANAGED_BY,
@@ -809,6 +923,7 @@ class DocumentIngestor:
             "status": status,
             "n_passages": n_passages,
             "hierarchy": hierarchy,
+            "views": list(views) if views else [],
             "embed_role": "none",
         }
         if self.corpus:
@@ -825,6 +940,7 @@ class DocumentIngestor:
         generation: int,
         ingestion_id: str,
         forest: list[SectionSpec],
+        view: str = "hierarchy",
     ) -> tuple[list[int], list[int]]:
         """Write Section tree + passages. Returns (passage_ids in global order, section_ids)."""
         passage_ids: list[int] = []
@@ -845,6 +961,7 @@ class DocumentIngestor:
                 "generation": generation,
                 "ingestion_id": ingestion_id,
                 "version_id": version_id,
+                "view": view,
             }
             if spec.summary is not None:
                 props["summary"] = spec.summary
@@ -872,6 +989,7 @@ class DocumentIngestor:
                     ingestion_id=ingestion_id,
                     spec=chunk,
                     section_node_id=section_node.id,
+                    view=view,
                 )
                 passage_ids.append(pid)
                 global_seq += 1
@@ -895,6 +1013,7 @@ class DocumentIngestor:
         generation: int,
         ingestion_id: str,
         specs: list[ChunkSpec],
+        view: str = "fixed",
     ) -> list[int]:
         ids: list[int] = []
         for spec in specs:
@@ -906,6 +1025,7 @@ class DocumentIngestor:
                     ingestion_id=ingestion_id,
                     spec=spec,
                     section_node_id=None,
+                    view=view,
                 )
             )
         if self.write_next_passage and len(ids) > 1:
@@ -922,6 +1042,7 @@ class DocumentIngestor:
         ingestion_id: str,
         spec: ChunkSpec,
         section_node_id: int | None,
+        view: str = "fixed",
     ) -> int:
         props: dict[str, Any] = {
             "text": spec.text,
@@ -933,6 +1054,7 @@ class DocumentIngestor:
             "generation": generation,
             "ingestion_id": ingestion_id,
             "version_id": version_id,
+            "view": view,
             "strategy": spec.strategy or getattr(self.chunker, "name", None),
         }
         if section_node_id is not None:
@@ -1121,16 +1243,18 @@ class DocumentIngestor:
         )
         return nodes
 
-    def _list_passages(self, owner_id: int, generation: int) -> list[Node]:
-        nodes = self.db.match_nodes(
-            labels=[self.passage_label],
-            properties={
-                "managed_by": MANAGED_BY,
-                "owner_document_id": owner_id,
-                "generation": generation,
-                "role": "passage",
-            },
-        )
+    def _list_passages(
+        self, owner_id: int, generation: int, *, view: str | None = None
+    ) -> list[Node]:
+        props: dict[str, Any] = {
+            "managed_by": MANAGED_BY,
+            "owner_document_id": owner_id,
+            "generation": generation,
+            "role": "passage",
+        }
+        if view is not None:
+            props["view"] = view
+        nodes = self.db.match_nodes(labels=[self.passage_label], properties=props)
         nodes.sort(key=lambda n: int(n.properties.get("global_seq") or 0))
         return nodes
 
@@ -1141,7 +1265,7 @@ class DocumentIngestor:
         vid = parent.properties.get("active_version_id")
         return int(vid) if vid is not None else None
 
-    def _fingerprint(self, text: str, *, embed: bool) -> str:
+    def _fingerprint(self, text: str, *, embed: bool, views: list[str] | None = None) -> str:
         chunker_name = getattr(self.chunker, "name", type(self.chunker).__name__)
         chunker_params: dict[str, Any] = {}
         for attr in ("max_size", "max_chars", "overlap", "unit"):
@@ -1163,6 +1287,7 @@ class DocumentIngestor:
             "chunker": chunker_name,
             "chunker_params": chunker_params,
             "hierarchy": self._use_hierarchy(),
+            "views": sorted(views) if views else None,
             "embed_section_summaries": self.embed_section_summaries,
             "enricher": type(self.enricher).__name__ if self.enricher else None,
             "embed": embed_meta,
@@ -1348,3 +1473,8 @@ class DocumentIngestor:
             if cursor >= b:
                 break
         return "".join(parts)
+
+
+def _spans_overlap(a: tuple[int, int], b: tuple[int, int]) -> bool:
+    """True if half-open intervals [a0, a1) and [b0, b1) overlap."""
+    return a[0] < b[1] and b[0] < a[1]

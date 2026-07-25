@@ -66,6 +66,7 @@ class IngestResult:
     section_ids: list[int] = field(default_factory=list)
     n_sections: int = 0
     hierarchy: bool = False
+    views: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,6 +76,7 @@ class SearchHit:
     owner_document_id: int | None = None
     generation: int | None = None
     global_seq: int | None = None
+    view: str | None = None
 
 
 @dataclass

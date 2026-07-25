@@ -1,5 +1,6 @@
 """Document → graph chunking helper (passages as nodes, 1 node = 1 vector)."""
 
+from .chunkers.chonkie_adapter import ChonkieChunker
 from .chunkers.fixed import FixedChunker
 from .chunkers.markdown import MarkdownChunker
 from .chunkers.semantic import SemanticBreakpointChunker
@@ -18,6 +19,7 @@ from .types import (
 )
 
 __all__ = [
+    "ChonkieChunker",
     "ChunkSpec",
     "DocumentIngestor",
     "ExpandResult",

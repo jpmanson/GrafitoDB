@@ -158,10 +158,67 @@ ing = DocumentIngestor(..., enricher=TitleContextEnricher())
 
 Sets `context` on passages so embeddings use title/section situating text.
 
-## Not yet available
+### Dual multi-view indexing
 
-The following are planned but not implemented:
+Index one document under more than one segmentation and fuse them at query time.
+Each view's passages carry a `view` property and their own `global_seq` reading
+order; `diversify_by_span=True` keeps only the best-scored hit among overlapping
+character spans, so a passage indexed under two views does not appear twice.
 
-- **Dual multi-view indexing** — indexing one document under two segmentations (e.g. fixed *and* hierarchical) with span-aware fusion.
-- **Chonkie adapter** — optional `ChonkieChunker` behind an extra for token-aware production chunking.
-- **OKF long-body opt-in** — auto-chunking long OKF concept bodies while keeping short concepts as single nodes.
+```python
+ing = DocumentIngestor(db, chunker=MarkdownChunker(), embed_index="docs_chunks")
+
+# Opt-in: index the same document as a hierarchy AND fixed windows.
+ing.ingest(text, document_key="doc", views=["hierarchy", "fixed"])
+
+hits = ing.search("connection pool", k=5, diversify_by_span=True)  # fused, no dup spans
+only_fixed = ing.search("connection pool", k=5, views=["fixed"])   # restrict to one view
+```
+
+Default is a single view derived from the chunker — dual views double embedding
+cost, so reach for them only when one granularity is not enough. `replace()`
+rebuilds every view (generational GC), and the fingerprint includes the view set.
+
+### Chonkie adapter
+
+Reuse [Chonkie](https://github.com/chonkie-ai/chonkie)'s token-aware chunkers
+(extra: `pip install 'grafito[document-chonkie]'`).
+
+```python
+from grafito.document import ChonkieChunker
+
+# Build from a short recipe name (imports chonkie lazily)...
+chunker = ChonkieChunker.from_recipe("recursive", chunk_size=512)
+# ...or wrap an existing Chonkie chunker instance.
+from chonkie import TokenChunker
+chunker = ChonkieChunker(TokenChunker(chunk_size=512))
+
+ing = DocumentIngestor(db, chunker=chunker, embed_index="docs_chunks", hierarchy=False)
+```
+
+Chonkie offsets and `token_count` map onto `ChunkSpec`.
+
+## OKF long-body chunking (opt-in)
+
+For OKF bundles, `enable_body_chunking()` indexes any concept whose `body`
+reaches a threshold as passage nodes on a **separate** vector index, while short
+concepts keep their single title+description+body vector. The concept node is
+never mutated with helper bookkeeping — each chunked concept gets a dedicated
+managed `Document` (flagged `okf_auto`, so it never round-trips as a concept)
+linked via `HAS_PASSAGES`.
+
+```python
+from grafito.okf import OKFBundle
+
+kb = OKFBundle.load("kb/", embed=my_embedder)
+kb.enable_body_chunking(threshold=2000)  # chars; separate index "okf_chunks"
+
+kb.add_concept("runbooks/slow", type="Runbook", body=long_markdown)  # auto-chunked
+kb.add_concept("glossary/term", type="Term", body="Short definition.")  # single node
+
+hits = kb.search_passages("connection pool timeouts", k=5)
+hits = kb.search_passages("...", k=5, concept_id="runbooks/slow")  # scope to one concept
+```
+
+A chunked long concept is embedded twice (concept vector on the main index,
+passages on the chunk index) — the intended cost of passage-level retrieval.

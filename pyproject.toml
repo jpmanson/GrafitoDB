@@ -49,6 +49,9 @@ viz = [
 bm25s = [
     "bm25s>=0.2.2",
 ]
+document-chonkie = [
+    "chonkie>=1.0.0",
+]
 d2 = [
 ]
 netgraph = [
