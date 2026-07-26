@@ -198,27 +198,133 @@ def to_pyvis(
     return net
 
 
-_PHYSICS_PRESETS = {
+# Named presets for :func:`save_pyvis_html` / :func:`to_pyvis`.
+#
+# IMPORTANT: vis.js only honours a solver's parameter block when
+# ``physics.solver`` matches (e.g. ``"repulsion"`` + ``physics.repulsion``).
+# Putting ``nodeDistance`` under ``repulsion`` without setting the solver leaves
+# the default Barnes-Hut attractor running — distances look "ignored".
+# Prefer applying via :meth:`pyvis.network.Network.repulsion` / ``barnes_hut``
+# (see :func:`_apply_pyvis_physics`) so the solver is set correctly.
+_PHYSICS_PRESETS: dict[str, dict[str, Any]] = {
     "compact": {
         "physics": {
+            "solver": "barnesHut",
             "barnesHut": {
                 "gravitationalConstant": -8000,
                 "centralGravity": 0.4,
                 "springLength": 80,
                 "springConstant": 0.04,
-            }
+            },
         }
     },
     "spread": {
         "physics": {
+            "solver": "repulsion",
             "repulsion": {
                 "nodeDistance": 200,
                 "springLength": 200,
                 "springConstant": 0.01,
-            }
+                "centralGravity": 0.1,
+                "damping": 0.09,
+            },
         }
     },
 }
+
+
+def _apply_pyvis_physics(net: Any, physics: str | dict[str, Any] | None) -> None:
+    """Apply physics without wiping PyVis's full options object.
+
+    ``Network.set_options(json)`` *replaces* the entire options blob. A partial
+    dict like ``{"physics": {"repulsion": {...}}}`` also tends to omit
+    ``solver``, so Barnes-Hut keeps running and spring "magnetism" dominates.
+
+    Named presets and repulsion/barnesHut dicts are applied through the native
+    PyVis helpers (which set ``solver``). A full options export from the browser
+    can still be passed as a dict and is forwarded to ``set_options``.
+    """
+    if physics is None:
+        return
+
+    if isinstance(physics, str):
+        if physics in _PHYSICS_PRESETS:
+            _apply_pyvis_physics(net, _PHYSICS_PRESETS[physics])
+            return
+        if physics == "barnes_hut":
+            net.barnes_hut()
+            return
+        if physics == "repulsion":
+            net.repulsion()
+            return
+        if physics == "force_atlas_2based":
+            net.force_atlas_2based()
+            return
+        # Unknown name: ignore rather than crash (backward compatible).
+        return
+
+    if not isinstance(physics, dict):
+        return
+
+    # Full browser-exported options (configure/edges/interaction/physics/...).
+    top_keys = set(physics.keys())
+    if top_keys & {"configure", "interaction", "layout", "edges", "nodes"} and "physics" in physics:
+        net.set_options(json.dumps(physics))
+        return
+
+    block = physics.get("physics", physics)
+    if not isinstance(block, dict):
+        net.set_options(json.dumps(physics))
+        return
+
+    solver = block.get("solver")
+    if solver is None:
+        if "repulsion" in block:
+            solver = "repulsion"
+        elif "barnesHut" in block:
+            solver = "barnesHut"
+        elif "forceAtlas2Based" in block:
+            solver = "forceAtlas2Based"
+
+    if solver == "repulsion" and isinstance(block.get("repulsion"), dict):
+        r = block["repulsion"]
+        net.repulsion(
+            node_distance=int(r.get("nodeDistance", 200)),
+            central_gravity=float(r.get("centralGravity", 0.1)),
+            spring_length=int(r.get("springLength", 200)),
+            spring_strength=float(r.get("springConstant", 0.01)),
+            damping=float(r.get("damping", 0.09)),
+        )
+        return
+
+    if solver in ("barnesHut", "barnes_hut") and isinstance(block.get("barnesHut"), dict):
+        b = block["barnesHut"]
+        net.barnes_hut(
+            gravity=float(b.get("gravitationalConstant", -8000)),
+            central_gravity=float(b.get("centralGravity", 0.3)),
+            spring_length=int(b.get("springLength", 95)),
+            spring_strength=float(b.get("springConstant", 0.04)),
+            damping=float(b.get("damping", 0.09)),
+            overlap=float(b.get("avoidOverlap", 0)),
+        )
+        return
+
+    if solver in ("forceAtlas2Based", "force_atlas_2based") and isinstance(
+        block.get("forceAtlas2Based"), dict
+    ):
+        f = block["forceAtlas2Based"]
+        net.force_atlas_2based(
+            gravity=float(f.get("gravitationalConstant", -50)),
+            central_gravity=float(f.get("centralGravity", 0.01)),
+            spring_length=int(f.get("springLength", 100)),
+            spring_strength=float(f.get("springConstant", 0.08)),
+            damping=float(f.get("damping", 0.4)),
+            overlap=float(f.get("avoidOverlap", 0)),
+        )
+        return
+
+    # Last resort: user-supplied full/partial JSON.
+    net.set_options(json.dumps(physics))
 
 
 def plot_matplotlib(
@@ -1602,21 +1708,18 @@ def save_pyvis_html(
     physics: str | dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> str:
-    """Render a NetworkX graph to a PyVis HTML file."""
+    """Render a NetworkX graph to a PyVis HTML file.
+
+    ``physics`` may be a preset name (``\"spread\"``, ``\"compact\"``), a PyVis
+    helper alias (``\"repulsion\"``, ``\"barnes_hut\"``, ``\"force_atlas_2based\"``),
+    or a dict of solver parameters. Partial repulsion/barnesHut dicts are applied
+    via the native PyVis helpers so ``solver`` is set correctly (raw
+    ``set_options`` alone often leaves Barnes-Hut running and ignores distances).
+    """
     if "cdn_resources" not in kwargs:
         kwargs["cdn_resources"] = "in_line"
     net = to_pyvis(graph, notebook=notebook, directed=directed, **kwargs)
-    if isinstance(physics, dict):
-        net.set_options(json.dumps(physics))
-    elif isinstance(physics, str):
-        if physics in _PHYSICS_PRESETS:
-            net.set_options(json.dumps(_PHYSICS_PRESETS[physics]))
-        elif physics == "barnes_hut":
-            net.barnes_hut()
-        elif physics == "repulsion":
-            net.repulsion()
-        elif physics == "force_atlas_2based":
-            net.force_atlas_2based()
+    _apply_pyvis_physics(net, physics)
     html = net.generate_html(notebook=notebook)
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(html)
