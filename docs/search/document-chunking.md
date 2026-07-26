@@ -68,6 +68,7 @@ for sec in ing.toc("runbooks/slow-queries"):
 | External parent | `parent_id=` attach without owning/deleting the parent (e.g. OKF Concept) |
 | Search | Filters managed + active generation + `embed_role=passage`; `diversify_by_document=` |
 | Expand | `global_seq` window; optional `include_ancestors=True` (section path) |
+| Reading chain | By default each passage links to the next: `Chunk_i -[:NEXT_PASSAGE]-> Chunk_{i+1}` (`write_next_passage=True`). Disable with `write_next_passage=False`. `expand` still uses `global_seq`, not these edges. |
 | ToC | `toc(document_key)` / `load_sections(document_key, node_keys=[…])` |
 | Pack | Budget (`max_chars`, or `max_tokens` with optional `token_counter`), overlap merge via `char_start`/`char_end` |
 

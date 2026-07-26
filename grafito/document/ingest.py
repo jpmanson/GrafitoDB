@@ -45,6 +45,12 @@ class DocumentIngestor:
     ``generation``, ``owner_document_id``, ``role``. External ``parent_id`` is
     never deleted. Replace is generational (BUILDING → ACTIVE; previous STALE).
 
+    Reading order is stored as ``global_seq`` on each passage. By default the
+    ingestor also materializes a forward chain
+    ``Chunk_i -[:NEXT_PASSAGE]-> Chunk_{i+1}`` (disable with
+    ``write_next_passage=False``). ``expand`` still windows by ``global_seq``;
+    the edges are for Cypher/graph viz.
+
     External relationships to passages are treated as ephemeral (policy A).
     """
 
@@ -61,7 +67,7 @@ class DocumentIngestor:
         has_version_rel: str = DEFAULT_HAS_VERSION,
         has_passage_rel: str = DEFAULT_HAS_PASSAGE,
         has_section_rel: str = DEFAULT_HAS_SECTION,
-        write_next_passage: bool = False,
+        write_next_passage: bool = True,
         next_passage_rel: str = "NEXT_PASSAGE",
         corpus: str | None = None,
         store_full_text: bool = True,

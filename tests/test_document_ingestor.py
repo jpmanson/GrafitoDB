@@ -303,6 +303,55 @@ Multi factor devices.
     assert packed.segments
 
 
+def test_ingest_writes_next_passage_chain(db_ing):
+    """Default: materialize Chunk_i -[:NEXT_PASSAGE]-> Chunk_{i+1} in reading order."""
+    db, _ = db_ing
+    ing = DocumentIngestor(
+        db,
+        chunker=FixedChunker(max_size=20, overlap=0),
+        hierarchy=False,
+        embed_index="docs_chunks",
+    )
+    assert ing.write_next_passage is True
+    result = ing.ingest(
+        "one two three four five six seven eight nine ten eleven twelve",
+        document_key="next-chain",
+        embed=False,
+    )
+    assert result.n_passages >= 2
+    # Walk forward edges and recover the same global_seq order
+    pids = result.passage_ids
+    next_edges = []
+    for pid in pids:
+        for n in db.get_neighbors(pid, direction="outgoing", rel_type=ing.next_passage_rel):
+            next_edges.append((pid, n.id))
+    assert len(next_edges) == len(pids) - 1
+    # Chain is a single path covering all passages in seq order
+    by_src = dict(next_edges)
+    start = next(p for p in pids if p not in {t for _, t in next_edges})
+    walked = [start]
+    while walked[-1] in by_src:
+        walked.append(by_src[walked[-1]])
+    assert walked == pids
+    seqs = [db.get_node(pid).properties["global_seq"] for pid in walked]
+    assert seqs == list(range(len(pids)))
+
+
+def test_write_next_passage_can_be_disabled(db_ing):
+    db, _ = db_ing
+    ing = DocumentIngestor(
+        db,
+        chunker=FixedChunker(max_size=20, overlap=0),
+        hierarchy=False,
+        write_next_passage=False,
+        embed_index="docs_chunks",
+    )
+    result = ing.ingest("alpha beta gamma delta epsilon zeta", document_key="no-next", embed=False)
+    assert result.n_passages >= 2
+    for pid in result.passage_ids:
+        assert not db.get_neighbors(pid, direction="outgoing", rel_type="NEXT_PASSAGE")
+
+
 def test_ingest_idempotent_skip(db_ing):
     db, ing = db_ing
     text = "Hello world document for fingerprint."
