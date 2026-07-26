@@ -148,6 +148,10 @@ def to_pyvis(
     node_color_attr: str | None = None,
     node_size: int | float | None = None,
     node_size_attr: str | None = None,
+    node_font_size: int | float | None = None,
+    node_font_size_attr: str | None = None,
+    node_font_color: str | None = None,
+    node_font_color_attr: str | None = None,
     color_map: dict[str, str] | None = None,
     color_by_label: bool = False,
     default_color: str = "#8ecae6",
@@ -161,6 +165,13 @@ def to_pyvis(
             Diameter scales with this value — use ``50`` for ~2× the default.
         node_size_attr: If set, read size from node attrs or ``properties[attr]``
             (falls back to ``node_size`` or 25).
+        node_font_size: Uniform label font size in px (vis.js default is 14).
+        node_font_size_attr: If set, read the label font size from node attrs or
+            ``properties[attr]`` (falls back to ``node_font_size``).
+        node_font_color: Per-node label font color. Overrides the global
+            ``font_color`` for the label text of every node.
+        node_font_color_attr: If set, read the label font color from node attrs
+            or ``properties[attr]`` (falls back to ``node_font_color``).
     """
     try:
         from pyvis.network import Network
@@ -202,6 +213,18 @@ def to_pyvis(
                 size = raw
         if size is None:
             size = node_size
+        font_size: int | float | None = None
+        if node_font_size_attr:
+            raw = props.get(node_font_size_attr, attrs.get(node_font_size_attr))
+            if raw is not None:
+                font_size = raw
+        if font_size is None:
+            font_size = node_font_size
+        font_color: str | None = None
+        if node_font_color_attr:
+            font_color = props.get(node_font_color_attr) or attrs.get(node_font_color_attr)
+        if font_color is None:
+            font_color = node_font_color
         node_kwargs: dict[str, Any] = {
             "label": _resolve_label(node_id, attrs, node_label, label_attr, label_fn),
             "title": f"{labels} {title}",
@@ -209,6 +232,13 @@ def to_pyvis(
         }
         if size is not None:
             node_kwargs["size"] = size
+        font: dict[str, Any] = {}
+        if font_size is not None:
+            font["size"] = font_size
+        if font_color is not None:
+            font["color"] = font_color
+        if font:
+            node_kwargs["font"] = font
         net.add_node(node_id, **node_kwargs)
     for source, target, key, attrs in graph.edges(keys=True, data=True):
         rel_type = attrs.get("type", "RELATED_TO")
