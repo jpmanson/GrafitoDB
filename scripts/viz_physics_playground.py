@@ -227,6 +227,7 @@ def main() -> None:
             node_color_attr="_c",
             label_fn=_label,
             physics=physics,
+            node_size=50,
             height="700px",
             width="100%",
             bgcolor="#fff",

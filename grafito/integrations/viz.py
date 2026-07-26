@@ -146,13 +146,22 @@ def to_pyvis(
     label_attr: str | None = None,
     label_fn: Callable[[Any, dict[str, Any]], str] | None = None,
     node_color_attr: str | None = None,
+    node_size: int | float | None = None,
+    node_size_attr: str | None = None,
     color_map: dict[str, str] | None = None,
     color_by_label: bool = False,
     default_color: str = "#8ecae6",
     palette: list[str] | None = None,
     **kwargs: Any,
 ):
-    """Convert a NetworkX graph into a PyVis Network."""
+    """Convert a NetworkX graph into a PyVis Network.
+
+    Args:
+        node_size: Uniform vis.js node size (radius scale; default vis.js is 25).
+            Diameter scales with this value — use ``50`` for ~2× the default.
+        node_size_attr: If set, read size from node attrs or ``properties[attr]``
+            (falls back to ``node_size`` or 25).
+    """
     try:
         from pyvis.network import Network
     except ImportError as exc:
@@ -179,19 +188,28 @@ def to_pyvis(
 
     for node_id, attrs in graph.nodes(data=True):
         labels = attrs.get("labels", [])
-        title = attrs.get("properties", {}).get("name", str(node_id))
+        props = attrs.get("properties") or {}
+        title = props.get("name", str(node_id))
         color = default_color
         if node_color_attr:
-            props = attrs.get("properties", {})
             color = props.get(node_color_attr) or attrs.get(node_color_attr) or default_color
         else:
             color = pick_label_color(labels)
-        net.add_node(
-            node_id,
-            label=_resolve_label(node_id, attrs, node_label, label_attr, label_fn),
-            title=f"{labels} {title}",
-            color=color,
-        )
+        size: int | float | None = None
+        if node_size_attr:
+            raw = props.get(node_size_attr, attrs.get(node_size_attr))
+            if raw is not None:
+                size = raw
+        if size is None:
+            size = node_size
+        node_kwargs: dict[str, Any] = {
+            "label": _resolve_label(node_id, attrs, node_label, label_attr, label_fn),
+            "title": f"{labels} {title}",
+            "color": color,
+        }
+        if size is not None:
+            node_kwargs["size"] = size
+        net.add_node(node_id, **node_kwargs)
     for source, target, key, attrs in graph.edges(keys=True, data=True):
         rel_type = attrs.get("type", "RELATED_TO")
         net.add_edge(source, target, label=rel_type)
