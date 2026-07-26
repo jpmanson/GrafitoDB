@@ -17,6 +17,7 @@ GrafitoDB implements the Property Graph Model (Neo4j-like) with:
 - **Full-text search** (FTS5) and hybrid workflows
 - **RDF/Turtle export** (optional)
 - **Open Knowledge Format (OKF)** import/export + the `OKFBundle` agent-memory façade (grounded retrieval, pluggable rerank)
+- **MCP server** — serve your graph as GraphRAG tools (schema, read-only Cypher, vector + passage-level retrieval) to any Model Context Protocol client (`grafito-mcp --db graph.db`)
 - **Visualization helpers** (optional, via PyVis)
 
 ## Documentation
@@ -41,6 +42,7 @@ Read the full documentation at: https://jpmanson.github.io/GrafitoDB/
 - **Semantic/Vector Search**: Optional ANN backends with similarity search and reranker hooks
 - **Document Chunking** (`grafito.document`): `DocumentIngestor` turns long markdown into managed passage nodes (hierarchy, hybrid RRF, expand/pack). Docs: [Document Chunking](https://jpmanson.github.io/GrafitoDB/search/document-chunking/); examples: `examples/semantic/document_chunking.py`, [Colab PDF notebook](https://colab.research.google.com/github/jpmanson/GrafitoDB/blob/main/examples/semantic/pdf_chunking_colab.ipynb)
 - **Open Knowledge Format (OKF)**: Import/export git-diffable markdown bundles as a graph, plus the `OKFBundle` agent-memory façade (grounded retrieval, review queue, layered linting, bundle diff/preview, Obsidian wikilinks)
+- **MCP server** (`grafito.mcp`, extra `grafito[mcp]`): Serve a graph or an OKF bundle to any [Model Context Protocol](https://modelcontextprotocol.io) client over stdio via the `grafito-mcp` CLI. Composable, OKF-free tool tiers — `GraphTools` (schema, neighbours, text + vector search), `CypherTools` (read-only Cypher escape hatch) and `DocumentTools` (passage-level GraphRAG: `document_context` / search / expand / toc). Read-only by default; opt-in writes. See the [MCP Server](#mcp-server) section below.
 - **Transactions**: Full ACID transaction support with context managers
 
 ### Technical Details
@@ -77,6 +79,7 @@ uv pip install grafito[faiss]
 uv pip install grafito[hnswlib]
 uv pip install grafito[annoy]
 uv pip install grafito[leann]
+uv pip install grafito[mcp]
 ```
 
 Note: `grafito[all]` may fail on some OS/Python combinations depending on native wheels
@@ -250,6 +253,37 @@ with db:
 # Close when done
 db.close()
 ```
+
+## MCP Server
+
+Serve a Grafito graph — or an OKF bundle — to any [Model Context Protocol](https://modelcontextprotocol.io) client (Claude Desktop, IDE agents, custom loops) over stdio. Install the extra and run the `grafito-mcp` CLI:
+
+```bash
+uv pip install grafito[mcp]
+
+# A plain graph: read-only GraphRAG tools (schema, neighbours, text + vector search,
+# a read-only Cypher escape hatch)
+grafito-mcp --db graph.db
+
+# Add the passage tier (document_context / search / expand / toc) over a vector index
+# of ingested passages — the index carries its own embedder, so no --embed needed
+grafito-mcp --db graph.db --document-index docs_chunks
+
+# Opt into passage writes (document_ingest / replace / delete); off by default
+grafito-mcp --db graph.db --document-index docs_chunks --enable-document-writes
+
+# Or front an OKF bundle: grounded context + browse/search, read-only
+grafito-mcp --bundle ./okf_bundle --embed sentence_transformer
+```
+
+The server is generic over a `ToolRegistry`; tool tiers are composable and OKF-free:
+
+- **`GraphTools`** — `graph_schema`, `graph_neighbors`, `text_search`, `vector_search`.
+- **`CypherTools`** — `graph_query`, a read-only, row-capped Cypher escape hatch.
+- **`DocumentTools`** — passage-level GraphRAG: `document_context` (one-shot search → expand → pack into grounded, token-budgeted context with citations), plus `document_search` / `document_expand` / `document_toc` / `document_load_sections`. Writes (`document_ingest` / `replace` / `delete`) are opt-in.
+
+Everything is read-only unless a write flag is passed. No build step needed:
+`uvx --from 'grafitodb[mcp]' grafito-mcp --db graph.db`.
 
 ## Cypher Query Language
 
