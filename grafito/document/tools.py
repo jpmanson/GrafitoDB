@@ -5,9 +5,11 @@ passages, reading-order ``expand`` and budgeted ``pack`` — the retrieval seman
 ``GraphTools.vector_search`` cannot express. OKF-free: the ingestor hangs on a
 :class:`~grafito.GrafitoDatabase`, so this tier serves a plain graph unchanged.
 
-Read-only: ``document_context``/``search``/``expand``/``toc``/``load_sections``.
-Ingest/replace/delete (the write tier) are intentionally not here yet — this
-toolset cannot mutate the graph. Errors come back as JSON ``{"error": ...}`` like
+Read-only by default: ``document_context``/``search``/``expand``/``toc``/
+``load_sections``. ``enable_writes`` adds the write tier
+(``document_ingest``/``replace``/``delete``); those are generational and scoped by
+``managed_by`` — they never delete external parent nodes. Off by default, matching
+the MCP server's read-only stance. Errors come back as JSON ``{"error": ...}`` like
 every other toolset, so a bad call does not kill the consumer's loop.
 
 Altitude, one tier up from :class:`~grafito.GraphTools`: ``document_context`` is
@@ -25,7 +27,7 @@ from ..tools import _dispatch, _node_dict
 
 if TYPE_CHECKING:
     from .ingest import DocumentIngestor
-    from .types import ExpandResult, PackedContext, SearchHit
+    from .types import ExpandResult, IngestResult, PackedContext, SearchHit
 
 
 def _ref(document_ref: Any) -> int | str:
@@ -63,6 +65,17 @@ def _packed_dict(packed: "PackedContext") -> dict:
     }
 
 
+def _ingest_dict(result: "IngestResult") -> dict:
+    return {
+        "owner_document_id": result.owner_document_id,
+        "generation": result.generation,
+        "n_passages": result.n_passages,
+        "n_sections": result.n_sections,
+        "skipped": result.skipped,
+        "document_key": result.document_key,
+    }
+
+
 def _expand_dict(result: "ExpandResult") -> dict:
     return {
         "center_id": result.center.id,
@@ -74,27 +87,28 @@ def _expand_dict(result: "ExpandResult") -> dict:
 
 
 class DocumentTools:
-    """Passage-level RAG over a :class:`DocumentIngestor` (read-only).
+    """Passage-level RAG over a :class:`DocumentIngestor`.
 
-    Read-only by construction: only ``document_context``/``search``/``expand``/
-    ``toc``/``load_sections`` are exposed; nothing here mutates the graph.
-    ``raise_errors`` matches the graph tiers — wrapped ``{"error": ...}`` by
-    default, propagated when a framework drives its own retry.
+    Read-only by default: ``document_context``/``search``/``expand``/``toc``/
+    ``load_sections``. ``enable_writes`` adds ``document_ingest``/``replace``/
+    ``delete`` — generational writes scoped by ``managed_by`` that never delete
+    external parent nodes; off by default, so nothing mutates the graph unless a
+    deployment opts in. ``raise_errors`` matches the graph tiers — wrapped
+    ``{"error": ...}`` by default, propagated when a framework drives its own retry.
 
     ``default_window`` / ``default_budget_tokens`` are deployment decisions (like
     ``budget_tokens`` in the OKF context tool), fixed here rather than per call,
     though ``document_context``/``document_expand`` still accept per-call overrides.
     """
 
-    enabled = frozenset(
-        {
-            "document_context",
-            "document_search",
-            "document_expand",
-            "document_toc",
-            "document_load_sections",
-        }
+    _READ = (
+        "document_context",
+        "document_search",
+        "document_expand",
+        "document_toc",
+        "document_load_sections",
     )
+    _WRITE = ("document_ingest", "document_replace", "document_delete")
 
     def __init__(
         self,
@@ -102,13 +116,16 @@ class DocumentTools:
         *,
         default_window: int = 1,
         default_budget_tokens: int = 1500,
+        enable_writes: bool = False,
         raise_errors: bool = False,
     ) -> None:
         self.ing = ingestor
         self.default_window = default_window
         self.default_budget_tokens = default_budget_tokens
         self.raise_errors = raise_errors
-        self.schemas = [self._SCHEMAS[name] for name in self._SCHEMA_ORDER]
+        names = self._READ + (self._WRITE if enable_writes else ())
+        self.enabled = frozenset(names)
+        self.schemas = [self._SCHEMAS[name] for name in names]
 
     # --- ToolSet contract -------------------------------------------------
     def call(self, name: str, args: dict) -> str:
@@ -188,15 +205,34 @@ class DocumentTools:
         nodes = self.ing.load_sections(_ref(document_ref), node_keys)
         return [_node_dict(node) for node in nodes]
 
-    # --- schemas ----------------------------------------------------------
-    _SCHEMA_ORDER = (
-        "document_context",
-        "document_search",
-        "document_expand",
-        "document_toc",
-        "document_load_sections",
-    )
+    # --- write tools (only when enable_writes) ----------------------------
+    def _document_ingest(
+        self,
+        text: str,
+        title: str | None = None,
+        source: str | None = None,
+        document_key: str | None = None,
+        embed: bool = True,
+    ) -> dict:
+        result = self.ing.ingest(
+            text=text,
+            title=title,
+            source=source,
+            document_key=document_key,
+            embed=embed,
+        )
+        return _ingest_dict(result)
 
+    def _document_replace(self, document_ref: Any, text: str, embed: bool = True) -> dict:
+        result = self.ing.replace(_ref(document_ref), text=text, embed=embed)
+        return _ingest_dict(result)
+
+    def _document_delete(self, document_ref: Any) -> dict:
+        # delete_owned_parent is deliberately not exposed: the tool only removes the
+        # managed subgraph (versions/passages/sections/embeddings), never a parent.
+        return {"deleted": self.ing.delete(_ref(document_ref))}
+
+    # --- schemas ----------------------------------------------------------
     _SCHEMAS: dict[str, dict] = {
         "document_context": {
             "type": "function",
@@ -302,6 +338,64 @@ class DocumentTools:
                         "node_keys": {"type": "array", "items": {"type": "string"}},
                     },
                     "required": ["document_ref", "node_keys"],
+                },
+            },
+        },
+        "document_ingest": {
+            "type": "function",
+            "function": {
+                "name": "document_ingest",
+                "description": "Ingest text as a managed document: chunk it into passages, "
+                "wire reading order, and embed. Idempotent by document_key (re-ingesting "
+                "the same key updates in place). Returns the document id, generation and "
+                "passage count.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "title": {"type": "string"},
+                        "source": {"type": "string"},
+                        "document_key": {
+                            "type": "string",
+                            "description": "Stable key for idempotent re-ingest.",
+                        },
+                        "embed": {"type": "boolean", "default": True},
+                    },
+                    "required": ["text"],
+                },
+            },
+        },
+        "document_replace": {
+            "type": "function",
+            "function": {
+                "name": "document_replace",
+                "description": "Replace a document's content generationally: build a new "
+                "version, activate it, retire the previous one. Never deletes external "
+                "parent nodes.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "document_ref": {"type": ["string", "integer"]},
+                        "text": {"type": "string"},
+                        "embed": {"type": "boolean", "default": True},
+                    },
+                    "required": ["document_ref", "text"],
+                },
+            },
+        },
+        "document_delete": {
+            "type": "function",
+            "function": {
+                "name": "document_delete",
+                "description": "Delete a document's managed subgraph (versions, passages, "
+                "sections and their embeddings). The external parent node, if any, is left "
+                "untouched.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "document_ref": {"type": ["string", "integer"]},
+                    },
+                    "required": ["document_ref"],
                 },
             },
         },

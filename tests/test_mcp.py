@@ -273,6 +273,51 @@ def test_db_mode_rejects_bundle_only_flags():
         main(["--db", "x.db", "--enable-writes"])
 
 
+def test_db_mode_document_index_adds_read_only_passage_tier(tmp_path):
+    db_path = str(tmp_path / "graph.db")
+    db = GrafitoDatabase(db_path)
+    db.create_vector_index("docs", dim=4)
+    db.close()
+
+    tools = build_graph_tools(db_path, document_index="docs")
+    try:
+        names = set(_tool_names(tools))
+        assert {
+            "document_context", "document_search", "document_expand",
+            "document_toc", "document_load_sections",
+        } <= names
+        # read-only by default: no write tools
+        assert not {"document_ingest", "document_replace", "document_delete"} & names
+        # graph tiers still present
+        assert "graph_schema" in names
+    finally:
+        tools.close()
+
+
+def test_db_mode_document_writes_adds_write_tools(tmp_path):
+    db_path = str(tmp_path / "graph.db")
+    db = GrafitoDatabase(db_path)
+    db.create_vector_index("docs", dim=4)
+    db.close()
+
+    tools = build_graph_tools(db_path, document_index="docs", document_writes=True)
+    try:
+        names = set(_tool_names(tools))
+        assert {"document_ingest", "document_replace", "document_delete"} <= names
+    finally:
+        tools.close()
+
+
+def test_document_writes_requires_document_index():
+    with pytest.raises(SystemExit):
+        main(["--db", "x.db", "--enable-document-writes"])
+
+
+def test_document_writes_rejected_over_bundle():
+    with pytest.raises(SystemExit):
+        main(["--bundle", BUNDLE, "--document-index", "docs", "--enable-document-writes"])
+
+
 def test_requires_a_source():
     with pytest.raises(SystemExit):
         main(["--name", "x"])

@@ -167,6 +167,68 @@ def test_document_ref_accepts_numeric_string(tools):
     assert by_int == by_str
 
 
+# --- write tier (enable_writes) -----------------------------------------------
+
+
+@pytest.fixture
+def rw_tools(tools):
+    # reuse the read fixture's ingestor, but with the write tier enabled
+    dt = DocumentTools(tools.ing, enable_writes=True)
+    dt._doc_id = tools._doc_id
+    return dt
+
+
+def test_write_tools_absent_unless_enabled(tools, rw_tools):
+    read_names = [s["function"]["name"] for s in tools.schemas]
+    for w in ("document_ingest", "document_replace", "document_delete"):
+        assert w not in read_names
+        assert w in rw_tools.enabled
+    rw_names = [s["function"]["name"] for s in rw_tools.schemas]
+    assert rw_names[:5] == list(tools._READ)  # read tools still come first, same order
+
+
+def test_document_ingest_creates_a_searchable_document(rw_tools):
+    out = json.loads(
+        rw_tools.call(
+            "document_ingest",
+            {"text": "# Backups\n\nNightly backups run at 02:00 UTC and are retained 30 days.",
+             "title": "Backups", "document_key": "backups"},
+        )
+    )
+    assert "error" not in out
+    assert out["n_passages"] >= 1
+    assert out["document_key"] == "backups"
+    # the new document is retrievable
+    hits = json.loads(rw_tools.call("document_search", {"query": "nightly backup retention", "k": 3}))
+    assert any(h["owner_document_id"] == out["owner_document_id"] for h in hits)
+
+
+def test_document_ingest_is_idempotent_by_key(rw_tools):
+    first = json.loads(rw_tools.call("document_ingest", {"text": "hello world", "document_key": "k1"}))
+    again = json.loads(rw_tools.call("document_ingest", {"text": "hello world", "document_key": "k1"}))
+    assert again["owner_document_id"] == first["owner_document_id"]
+    assert again["skipped"] is True
+
+
+def test_document_replace_bumps_generation(rw_tools):
+    created = json.loads(rw_tools.call("document_ingest", {"text": "version one", "document_key": "r1"}))
+    replaced = json.loads(
+        rw_tools.call("document_replace", {"document_ref": "r1", "text": "version two updated"})
+    )
+    assert replaced["owner_document_id"] == created["owner_document_id"]
+    assert replaced["generation"] > created["generation"]
+
+
+def test_document_delete_removes_managed_subgraph(rw_tools):
+    created = json.loads(rw_tools.call("document_ingest", {"text": "delete me please", "document_key": "d1"}))
+    doc_id = created["owner_document_id"]
+    out = json.loads(rw_tools.call("document_delete", {"document_ref": "d1"}))
+    assert out["deleted"] is True
+    # its passages are gone from search
+    hits = json.loads(rw_tools.call("document_search", {"query": "delete me please", "k": 5}))
+    assert all(h["owner_document_id"] != doc_id for h in hits)
+
+
 def test_document_tools_do_not_drag_in_okf():
     import subprocess
     import sys

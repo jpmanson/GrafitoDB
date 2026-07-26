@@ -208,19 +208,26 @@ def build_tools(
     return ThreadConfinedTools(factory, name="grafito-mcp-bundle")
 
 
-def _document_tools(db: Any, index: str, *, budget_tokens: int) -> "ToolSet":
-    """A read-only :class:`~grafito.document.DocumentTools` over ``db``'s passages.
+def _document_tools(
+    db: Any, index: str, *, budget_tokens: int, enable_writes: bool = False
+) -> "ToolSet":
+    """A :class:`~grafito.document.DocumentTools` over ``db``'s passages.
 
-    Shared by the bundle and db builders. The :class:`DocumentIngestor` here is
-    used for retrieval only — ``search``/``expand``/``toc`` read the passages the
-    named vector ``index`` holds, and that index carries its own embedding
-    function, so retrieval works with no embedder passed in. The chunker default
-    is irrelevant to reads; it only matters if a write tier is added later.
+    Shared by the bundle and db builders. ``search``/``expand``/``toc`` read the
+    passages the named vector ``index`` holds, and that index carries its own
+    embedding function, so retrieval works with no embedder passed in.
+
+    ``enable_writes`` adds the write tier (``document_ingest``/``replace``/
+    ``delete``); the :class:`MarkdownChunker` default is what those use to split
+    ingested text. Reads ignore the chunker entirely. Writes go straight to ``db``
+    (SQLite), so they only make sense over a durable file database.
     """
     from ..document import DocumentIngestor, DocumentTools, MarkdownChunker
 
     ingestor = DocumentIngestor(db, chunker=MarkdownChunker(), embed_index=index)
-    return DocumentTools(ingestor, default_budget_tokens=budget_tokens)
+    return DocumentTools(
+        ingestor, default_budget_tokens=budget_tokens, enable_writes=enable_writes
+    )
 
 
 def build_graph_tools(
@@ -229,6 +236,7 @@ def build_graph_tools(
     max_rows: int = 100,
     document_index: str | None = None,
     budget_tokens: int = 2000,
+    document_writes: bool = False,
 ) -> ThreadConfinedTools:
     """A thread-confined graph toolset over the Grafito database at ``db_path``.
 
@@ -239,14 +247,17 @@ def build_graph_tools(
     fronts an arbitrary graph by loading these instead of the bundle tiers, with
     no OKF anywhere in the process.
 
-    ``document_index`` adds the read-only passage tier
+    ``document_index`` adds the passage tier
     (:class:`~grafito.document.DocumentTools`) over the same db, retrieving from
     that named vector index of ingested passages. Built in the same factory, so it
     shares the one confinement thread; the index carries its own embedder.
+    ``document_writes`` additionally exposes that tier's write tools
+    (``document_ingest``/``replace``/``delete``), which write straight to the db.
 
     The database is opened **inside** the confinement thread, for the same
-    thread-affinity reason as the bundle path — the MCP server runs tool calls
-    off the event loop. All read-only: nothing here can mutate the graph.
+    thread-affinity reason as the bundle path — the MCP server runs tool calls off
+    the event loop. The graph tiers are read-only; the passage tier is read-only
+    unless ``document_writes``.
     """
 
     def factory() -> ToolRegistry:
@@ -255,7 +266,14 @@ def build_graph_tools(
         db = GrafitoDatabase(db_path)
         toolsets: list["ToolSet"] = [GraphTools(db), CypherTools(db, max_rows=max_rows)]
         if document_index is not None:
-            toolsets.append(_document_tools(db, document_index, budget_tokens=budget_tokens))
+            toolsets.append(
+                _document_tools(
+                    db,
+                    document_index,
+                    budget_tokens=budget_tokens,
+                    enable_writes=document_writes,
+                )
+            )
         return ToolRegistry(toolsets)
 
     return ThreadConfinedTools(factory, name="grafito-mcp-graph")
@@ -324,6 +342,13 @@ def main(argv: list[str] | None = None) -> None:
         "or --bundle; the index carries its own embedder, so --embed is not needed.",
     )
     parser.add_argument(
+        "--enable-document-writes",
+        action="store_true",
+        help="Add the passage tier's write tools (document_ingest/replace/delete), which "
+        "write straight to the db. Requires --document-index and --db (not --bundle). Off "
+        "by default.",
+    )
+    parser.add_argument(
         "--max-rows",
         type=int,
         default=100,
@@ -360,13 +385,21 @@ def main(argv: list[str] | None = None) -> None:
         ]
         if misused:
             parser.error(f"{', '.join(misused)} apply to --bundle, not --db")
+        if args.enable_document_writes and args.document_index is None:
+            parser.error("--enable-document-writes requires --document-index")
         tools = build_graph_tools(
             args.db,
             max_rows=args.max_rows,
             document_index=args.document_index,
             budget_tokens=args.budget_tokens,
+            document_writes=args.enable_document_writes,
         )
     else:
+        # Document writes over a bundle would land in kb.db but not the bundle's
+        # markdown/changelog (that is what remember + save do), so a "written"
+        # document would silently not persist. Refuse rather than mislead.
+        if args.enable_document_writes:
+            parser.error("--enable-document-writes applies to --db, not --bundle")
         embed_config = json.loads(args.embed_config) if args.embed_config else None
         rerank_config = json.loads(args.rerank_config) if args.rerank_config else None
         tools = build_tools(
