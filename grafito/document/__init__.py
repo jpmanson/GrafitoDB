@@ -8,6 +8,7 @@ from .chunkers.semantic import SemanticBreakpointChunker
 from .enrich import TitleContextEnricher
 from .hybrid import rrf_fuse
 from .ingest import DocumentIngestor
+from .tools import DocumentTools
 from .tree import build_markdown_tree, flatten_chunks
 from .types import (
     ChunkSpec,
@@ -24,6 +25,7 @@ __all__ = [
     "ChonkieChunker",
     "ChunkSpec",
     "DocumentIngestor",
+    "DocumentTools",
     "ExpandResult",
     "FixedChunker",
     "IngestResult",

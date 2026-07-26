@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from ..okf import BundleTools, ContextTools, OKFBundle, ThreadConfinedTools
 from ..tools import ToolRegistry
@@ -137,6 +137,7 @@ def build_tools(
     *,
     enable_writes: bool = False,
     enable_graph: bool = False,
+    document_index: str | None = None,
     tag: str | None = None,
     budget_tokens: int = 2000,
     embed: "EmbeddingFunction | None" = None,
@@ -173,6 +174,14 @@ def build_tools(
     same tools serve a non-OKF graph unchanged; here they simply widen what a
     client can do with the same registry. All read-only. ``max_rows`` caps
     ``graph_query`` output when the graph tier is on.
+
+    ``document_index`` adds the read-only passage tier
+    (:class:`~grafito.document.DocumentTools`: ``document_context``/search/expand/
+    toc) over the bundle's graph, retrieving from the named vector index of
+    ingested passages (e.g. one built by ``OKFBundle.enable_body_chunking``). Like
+    the graph tier it hangs on ``kb.db``; the embedder lives on the index, so no
+    separate embedder is needed here. It is built **inside this factory** so it
+    shares the bundle's owning thread — ``kb.db`` is thread-bound.
     """
     exclude = None if enable_writes else ["remember"]
 
@@ -190,12 +199,37 @@ def build_tools(
             from ..tools import CypherTools, GraphTools
 
             toolsets += [GraphTools(kb.db), CypherTools(kb.db, max_rows=max_rows)]
+        if document_index is not None:
+            toolsets.append(
+                _document_tools(kb.db, document_index, budget_tokens=budget_tokens)
+            )
         return ToolRegistry(toolsets)
 
     return ThreadConfinedTools(factory, name="grafito-mcp-bundle")
 
 
-def build_graph_tools(db_path: str, *, max_rows: int = 100) -> ThreadConfinedTools:
+def _document_tools(db: Any, index: str, *, budget_tokens: int) -> "ToolSet":
+    """A read-only :class:`~grafito.document.DocumentTools` over ``db``'s passages.
+
+    Shared by the bundle and db builders. The :class:`DocumentIngestor` here is
+    used for retrieval only — ``search``/``expand``/``toc`` read the passages the
+    named vector ``index`` holds, and that index carries its own embedding
+    function, so retrieval works with no embedder passed in. The chunker default
+    is irrelevant to reads; it only matters if a write tier is added later.
+    """
+    from ..document import DocumentIngestor, DocumentTools, MarkdownChunker
+
+    ingestor = DocumentIngestor(db, chunker=MarkdownChunker(), embed_index=index)
+    return DocumentTools(ingestor, default_budget_tokens=budget_tokens)
+
+
+def build_graph_tools(
+    db_path: str,
+    *,
+    max_rows: int = 100,
+    document_index: str | None = None,
+    budget_tokens: int = 2000,
+) -> ThreadConfinedTools:
     """A thread-confined graph toolset over the Grafito database at ``db_path``.
 
     The db-mode counterpart to :func:`build_tools`: no OKF, no bundle — just the
@@ -204,6 +238,11 @@ def build_graph_tools(db_path: str, *, max_rows: int = 100) -> ThreadConfinedToo
     This is what the OKF-independence of those toolsets buys: the same server
     fronts an arbitrary graph by loading these instead of the bundle tiers, with
     no OKF anywhere in the process.
+
+    ``document_index`` adds the read-only passage tier
+    (:class:`~grafito.document.DocumentTools`) over the same db, retrieving from
+    that named vector index of ingested passages. Built in the same factory, so it
+    shares the one confinement thread; the index carries its own embedder.
 
     The database is opened **inside** the confinement thread, for the same
     thread-affinity reason as the bundle path — the MCP server runs tool calls
@@ -214,7 +253,10 @@ def build_graph_tools(db_path: str, *, max_rows: int = 100) -> ThreadConfinedToo
         from .. import CypherTools, GrafitoDatabase, GraphTools
 
         db = GrafitoDatabase(db_path)
-        return ToolRegistry([GraphTools(db), CypherTools(db, max_rows=max_rows)])
+        toolsets: list["ToolSet"] = [GraphTools(db), CypherTools(db, max_rows=max_rows)]
+        if document_index is not None:
+            toolsets.append(_document_tools(db, document_index, budget_tokens=budget_tokens))
+        return ToolRegistry(toolsets)
 
     return ThreadConfinedTools(factory, name="grafito-mcp-graph")
 
@@ -274,6 +316,14 @@ def main(argv: list[str] | None = None) -> None:
         "a read-only Cypher escape hatch) over the underlying graph.",
     )
     parser.add_argument(
+        "--document-index",
+        default=None,
+        metavar="NAME",
+        help="Also expose the read-only passage tier (document_context/search/expand/"
+        "toc) retrieving from this vector index of ingested passages. Works with --db "
+        "or --bundle; the index carries its own embedder, so --embed is not needed.",
+    )
+    parser.add_argument(
         "--max-rows",
         type=int,
         default=100,
@@ -290,12 +340,15 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.db is not None:
         # The bundle-only flags have no meaning over a raw graph; reject them
-        # rather than silently ignore, so the client is not misled.
+        # rather than silently ignore, so the client is not misled. --budget-tokens
+        # is the exception: it also caps document_context, so it is allowed when the
+        # passage tier is on.
+        budget_misused = args.budget_tokens != 2000 and args.document_index is None
         misused = [
             flag
             for flag, used in (
                 ("--tag", args.tag is not None),
-                ("--budget-tokens", args.budget_tokens != 2000),
+                ("--budget-tokens", budget_misused),
                 ("--embed", args.embed is not None),
                 ("--embed-config", args.embed_config is not None),
                 ("--rerank", args.rerank is not None),
@@ -307,7 +360,12 @@ def main(argv: list[str] | None = None) -> None:
         ]
         if misused:
             parser.error(f"{', '.join(misused)} apply to --bundle, not --db")
-        tools = build_graph_tools(args.db, max_rows=args.max_rows)
+        tools = build_graph_tools(
+            args.db,
+            max_rows=args.max_rows,
+            document_index=args.document_index,
+            budget_tokens=args.budget_tokens,
+        )
     else:
         embed_config = json.loads(args.embed_config) if args.embed_config else None
         rerank_config = json.loads(args.rerank_config) if args.rerank_config else None
@@ -315,6 +373,7 @@ def main(argv: list[str] | None = None) -> None:
             args.bundle,
             enable_writes=args.enable_writes,
             enable_graph=args.enable_graph,
+            document_index=args.document_index,
             tag=args.tag,
             budget_tokens=args.budget_tokens,
             embed=resolve_embedder(args.embed, embed_config),
