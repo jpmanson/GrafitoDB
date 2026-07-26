@@ -3154,6 +3154,10 @@ expand/pack, and hybrid RRF while rendering the graph after each major step.</p>
 <td><code>global_seq</code> window; optional <code>include_ancestors=True</code> (section path)</td>
 </tr>
 <tr>
+<td>Reading chain</td>
+<td>By default each passage links to the next: <code>Chunk_i -[:NEXT_PASSAGE]-&gt; Chunk_{i+1}</code> (<code>write_next_passage=True</code>). Disable with <code>write_next_passage=False</code>. <code>expand</code> still uses <code>global_seq</code>, not these edges.</td>
+</tr>
+<tr>
 <td>ToC</td>
 <td><code>toc(document_key)</code> / <code>load_sections(document_key, node_keys=[…])</code></td>
 </tr>
