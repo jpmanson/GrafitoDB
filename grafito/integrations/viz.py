@@ -201,99 +201,22 @@ def to_pyvis(
 _PHYSICS_PRESETS = {
     "compact": {
         "physics": {
-            "enabled": True,
-            "solver": "barnesHut",
             "barnesHut": {
                 "gravitationalConstant": -8000,
                 "centralGravity": 0.4,
                 "springLength": 80,
                 "springConstant": 0.04,
-            },
+            }
         }
     },
-    # Default for demos / notebooks: keep nodes far enough that edge labels
-    # (HAS_CHUNK, NEXT_PASSAGE, …) rarely stack on top of each other.
     "spread": {
         "physics": {
-            "enabled": True,
-            "solver": "forceAtlas2Based",
-            "forceAtlas2Based": {
-                "gravitationalConstant": -120,
-                "centralGravity": 0.004,
-                "springLength": 220,
-                "springConstant": 0.05,
-                "damping": 0.5,
-                "avoidOverlap": 1,
-            },
-            "stabilization": {"enabled": True, "iterations": 250, "fit": True},
-            "minVelocity": 0.5,
-        },
-        "nodes": {
-            "font": {"size": 13, "face": "sans-serif", "color": "#222"},
-            "margin": 14,
-            "shape": "dot",
-            "size": 14,
-        },
-        "edges": {
-            # Light label halo + curved edges reduce text-on-text collisions.
-            "font": {
-                "size": 11,
-                "align": "middle",
-                "color": "#444",
-                "strokeWidth": 3,
-                "strokeColor": "#ffffff",
-            },
-            "smooth": {
-                "enabled": True,
-                "type": "dynamic",
-                "roundness": 0.45,
-            },
-            "length": 260,
-            "arrows": {"to": {"enabled": True, "scaleFactor": 0.7}},
-        },
-        "interaction": {"hover": True, "tooltipDelay": 120},
-        "layout": {"improvedLayout": True},
-    },
-    # Even more separation for dense subgraphs (many NEXT_PASSAGE / HAS_CHUNK).
-    "roomy": {
-        "physics": {
-            "enabled": True,
-            "solver": "repulsion",
             "repulsion": {
-                "nodeDistance": 360,
-                "centralGravity": 0.02,
-                "springLength": 320,
-                "springConstant": 0.015,
-                "damping": 0.12,
-            },
-            "stabilization": {"enabled": True, "iterations": 300, "fit": True},
-            "minVelocity": 0.4,
-        },
-        "nodes": {
-            "font": {"size": 13, "face": "sans-serif", "color": "#222"},
-            "margin": 16,
-            "shape": "dot",
-            "size": 16,
-        },
-        "edges": {
-            "font": {
-                "size": 11,
-                "align": "middle",
-                "color": "#444",
-                "strokeWidth": 3,
-                "strokeColor": "#ffffff",
-            },
-            "smooth": {
-                "enabled": True,
-                "type": "cubicBezier",
-                "forceDirection": "none",
-                "roundness": 0.5,
-            },
-            "length": 340,
-            "arrows": {"to": {"enabled": True, "scaleFactor": 0.7}},
-        },
-        "interaction": {"hover": True, "tooltipDelay": 120},
-        "layout": {"improvedLayout": True},
+                "nodeDistance": 200,
+                "springLength": 200,
+                "springConstant": 0.01,
+            }
+        }
     },
 }
 
