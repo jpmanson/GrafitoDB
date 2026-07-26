@@ -181,6 +181,13 @@ def to_pyvis(
             "or `uv pip install grafito[viz]`."
         ) from exc
     net = Network(notebook=notebook, directed=directed, **kwargs)
+    # PyVis's Node clobbers the whole per-node ``font`` dict with
+    # ``{"color": net.font_color}`` whenever a global font color is set, which
+    # would silently drop our per-node font size. Take over font handling:
+    # capture the global color, disable PyVis's injection, and merge the color
+    # into each node's font dict ourselves below.
+    global_font_color = net.font_color
+    net.font_color = False
     palette = palette or _DEFAULT_COLORS
     label_colors: dict[str, str] = {}
 
@@ -225,6 +232,8 @@ def to_pyvis(
             font_color = props.get(node_font_color_attr) or attrs.get(node_font_color_attr)
         if font_color is None:
             font_color = node_font_color
+        if font_color is None and global_font_color:
+            font_color = global_font_color
         node_kwargs: dict[str, Any] = {
             "label": _resolve_label(node_id, attrs, node_label, label_attr, label_fn),
             "title": f"{labels} {title}",
