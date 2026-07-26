@@ -59,6 +59,10 @@ class GrafitoDatabase:
             raise DatabaseError("default_top_k must be a positive integer")
         try:
             self.conn = sqlite3.connect(db_path)
+            # Kept so vector-index persistence can tell a durable, file-backed
+            # database (vectors must survive reopen) from an ephemeral one
+            # (":memory:" / "" — a private temp db that cannot be reopened).
+            self._db_path = db_path
             self.conn.row_factory = sqlite3.Row  # Access columns by name
             self.conn.execute("PRAGMA foreign_keys = ON")  # Enable CASCADE
             if sql_trace:
@@ -912,6 +916,20 @@ class GrafitoDatabase:
             raise DatabaseError(f"Vector index '{name}' already exists")
 
         options = options or {}
+        # The bruteforce backend has no native on-disk index (unlike faiss/annoy/
+        # hnswlib, which get an ``index_path`` sidecar below). Left alone its
+        # vectors live only in memory and are lost when the process exits, so a
+        # semantic_search over a reopened file database silently returns nothing.
+        # Persist them in the SQLite ``vector_entries`` table instead — co-located
+        # with the graph, atomic with it, and portable with the .db file. Only for
+        # a durable database (":memory:"/"" cannot be reopened, so it would be pure
+        # overhead), and only as a default: an explicit ``store_embeddings`` wins.
+        if (
+            backend == "bruteforce"
+            and "store_embeddings" not in options
+            and self._db_path not in (":memory:", "")
+        ):
+            options["store_embeddings"] = True
         if embedding_function is not None:
             self._embedding_functions.setdefault(embedding_function.name(), embedding_function)
             options["embedding_function"] = {
@@ -1359,10 +1377,23 @@ class GrafitoDatabase:
         options: dict[str, Any],
         backend: str,
     ) -> dict[str, Any]:
-        """Ensure vector index path is set and directory exists."""
+        """Ensure vector index path is set and directory exists.
+
+        The derived sidecar lives in ``.grafito/indexes`` **next to the database
+        file**, not under the current working directory, so it travels with the
+        ``.db`` when copied or moved and reopens regardless of where the process
+        runs. An explicit ``index_path`` always wins, and an already-created index
+        keeps the absolute path persisted in its options (this only derives one for
+        a new index). ``:memory:``/``""`` has no file to anchor to, so it falls back
+        to the working directory — unchanged from before.
+        """
         if options.get("index_path"):
             return options
-        base_dir = os.path.join(os.getcwd(), ".grafito", "indexes")
+        if self._db_path not in (":memory:", ""):
+            anchor = os.path.dirname(os.path.abspath(self._db_path))
+        else:
+            anchor = os.getcwd()
+        base_dir = os.path.join(anchor, ".grafito", "indexes")
         os.makedirs(base_dir, exist_ok=True)
         options = dict(options)
         suffix = "idx"
