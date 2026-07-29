@@ -10,6 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from ..importers.okf import (
+    generated_at,
+    generated_by,
+    is_stale,
+    normalize_verified,
+    trust_tier,
+    verified_at,
+)
 from ..models import Node
 
 if TYPE_CHECKING:
@@ -62,11 +70,24 @@ class Concept:
 
     @property
     def status(self) -> str | None:
+        """Lifecycle status: ``draft``, ``stable``, or ``deprecated`` (SPEC sec. 5.4).
+
+        ``None`` means the concept declares none, which the SPEC reads as
+        ``stable``.
+        """
         return self.node.properties.get("status")
 
     @property
     def is_superseded(self) -> bool:
-        return self.status == "superseded"
+        """Whether this concept is retracted, i.e. no longer current.
+
+        ``supersede()`` marks a retracted concept with the SPEC's own lifecycle
+        value, ``status="deprecated"`` (sec. 5.4) — so a concept a bundle author
+        deprecated by hand counts too, and is excluded from retrieval the same
+        way. ``"superseded"`` is accepted as well: it is what grafito wrote
+        before OKF v0.2 gave `status` a fixed vocabulary.
+        """
+        return self.status in ("deprecated", "superseded")
 
     @property
     def superseded_by(self) -> str | None:
@@ -79,6 +100,61 @@ class Concept:
         if isinstance(value, list):
             return list(value)
         return [value] if value else []
+
+    # --- trust and lifecycle (SPEC sec. 5.2-5.5) ---------------------------
+
+    @property
+    def generated_by(self) -> str | None:
+        """The actor that produced the current content (``generated.by``, sec. 5.2)."""
+        return generated_by(self.node.properties)
+
+    @property
+    def generated_at(self) -> str | None:
+        """When the content last meaningfully changed (``generated.at``, sec. 5.2).
+
+        Falls back to a legacy v0.1 ``timestamp`` when the concept carries no
+        ``generated`` block (sec. 13.1).
+        """
+        return generated_at(self.node.properties)
+
+    @property
+    def verified(self) -> list[dict]:
+        """Verification events, as ``[{"by", "at"}, ...]`` (sec. 5.2).
+
+        Always a list, even when the concept writes a single verifier as a bare
+        mapping — reading that as one element is required of consumers (sec. 11).
+        """
+        return normalize_verified(self.node.properties)
+
+    @property
+    def verified_at(self) -> str | None:
+        """When this was most recently confirmed — the latest verification (sec. 5.2)."""
+        return verified_at(self.node.properties)
+
+    @property
+    def trust_tier(self) -> str:
+        """``unverified``, ``machine-confirmed``, or ``human-reviewed`` (sec. 5.3).
+
+        Derived from ``verified`` at read time, never stored: OKF records the
+        signals, not a verdict. Advisory — not access control.
+        """
+        return trust_tier(self.node.properties)
+
+    @property
+    def stale_after(self) -> str | None:
+        """The date this concept's content goes stale (sec. 5.5), if it declares one."""
+        value = self.node.properties.get("stale_after")
+        return value if isinstance(value, str) and value.strip() else None
+
+    @property
+    def is_stale(self) -> bool:
+        """Whether ``today >= stale_after`` (sec. 5.5).
+
+        Distinct from :attr:`is_superseded`: stale means "re-check me", not
+        "this is wrong" — which is why retrieval keeps stale concepts by
+        default and drops retracted ones.
+        """
+        return is_stale(self.node.properties)
 
     # --- navigation --------------------------------------------------------
 
@@ -194,8 +270,10 @@ class ContextPack:
     ``omitted`` explains what retrieval reached but left out — each entry is
     ``{"concept_id", "title", "reason", "via"}`` where ``reason`` is
     ``"budget"`` (didn't fit the token budget), ``"superseded"`` (a retracted
-    claim dropped during graph expansion), or ``"reranked_out"`` (a reranker
-    with a ``top_n`` cut it). ``trace`` is a compact, deterministic step log of
+    claim dropped during graph expansion), ``"stale"`` (past its
+    ``stale_after``), ``"low_trust"`` (below the requested ``min_trust`` tier),
+    ``"filtered"`` (excluded by ``where``/``tag``), or ``"reranked_out"`` (a
+    reranker with a ``top_n`` cut it). ``trace`` is a compact, deterministic step log of
     how the pack was built, populated only when ``context(..., include_trace=True)``
     — otherwise ``None``. Together they make the pack auditable: an agent (or a
     human) can see not just what grounded the answer, but what didn't and why.

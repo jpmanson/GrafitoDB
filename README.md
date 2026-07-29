@@ -903,13 +903,17 @@ kb = OKFBundle.load("examples/okf/okf_knowledge_base",
 # Navigate concepts, links, and citations in OKF vocabulary.
 c = kb.concept("decisions/0003-vector-search")
 c.links()                                       # [Concept, ...] outgoing LINKS_TO
-c.cites()                                       # [{'url'|'concept', 'anchor'}, ...]
+c.cites()                                       # provenance: [{'url'|'concept', 'anchor'}, ...]
+c.trust_tier                                    # 'unverified' | 'machine-confirmed' | 'human-reviewed'
 
 # Retrieve by meaning (semantic / text / hybrid), results as a uniform Hit.
 kb.search("how do I make a query run faster", k=3)
 
 # Filter retrieval on frontmatter (any producer-defined key); several keys AND.
 kb.search("storage engines", where={"status": "approved", "owner": "data-team"})
+
+# ...or on OKF's own trust and freshness signals.
+kb.search("storage engines", min_trust="human-reviewed", include_stale=False)
 
 # Agent-ready context: retrieve, graph-expand, and pack into a token budget,
 # returning prompt-ready text plus the citations that back it. The optional

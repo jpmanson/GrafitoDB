@@ -32,8 +32,13 @@ A quick glossary before diving in — each term links to where it's covered in d
 - **Link** — a markdown link from one concept to another; becomes a typed
   relationship (`LINKS_TO` by default, or a custom type derived from headings
   via `typed_links`).
-- **Citation** — a link under a `# Citations` heading, to either another
-  concept or an external URL; becomes a `CITES` relationship.
+- **Source** — an entry of the `sources` frontmatter: a material the concept
+  derives from, named by a `resource` (an external URL, another concept, a
+  followable artifact, or a scope descriptor) plus optional credibility
+  signals. Becomes a `CITES` relationship. Called a **citation** throughout
+  this page, since that is the relationship type and the accessor name.
+  OKF v0.1 wrote the same thing as a list under a `# Citations` heading; both
+  forms are imported.
 - **Stub** — a placeholder concept created because something links to it
   before it exists (or it has no `type`); promoted in place once the real
   file shows up (see [How concepts map to the graph](#how-concepts-map-to-the-graph)).
@@ -56,11 +61,14 @@ pip install grafito
 |-----|-----------|
 | Concept (a `.md` file) | Node |
 | `type` (frontmatter, required) | Node label |
-| `title`, `description`, `resource`, `tags`, `timestamp`, extra keys | Node properties |
+| `title`, `description`, `resource`, `tags`, extra keys | Node properties |
+| `generated`, `verified`, `status`, `stale_after` | Node properties, read through trust/lifecycle accessors |
 | Concept ID (e.g. `tables/orders`) | Node `uri` (`okf:tables/orders`) |
 | Markdown body | `body` property (feeds full-text search) |
 | Markdown link `[x](/tables/y.md)` | Relationship (`LINKS_TO` by default) |
-| Link under `# Citations` | `CITES` relationship (to a concept or a `Reference` node) |
+| `sources` frontmatter entry | `CITES` relationship (to a concept or a `Reference` node), carrying the entry's `id` and credibility signals |
+| Link under a legacy `# Citations` heading | The same `CITES` relationship (OKF v0.1 form) |
+| `computation`, `executor.resource`, `attester.resource` | `HAS_COMPUTATION` / `EXECUTED_BY` / `ATTESTED_BY` relationship |
 | `index.md` / `log.md` | Skipped (reserved, derivable) |
 
 Concepts without a `type` and links to not-yet-written concepts fall back to the
@@ -175,6 +183,178 @@ links. Wikilinks participate in `typed_links` the same way markdown links do.
 Only the main body is scanned — a `[[Note]]` under `# Citations` is not
 picked up (citations resolve by URL or markdown link, not by title).
 
+### Provenance: the `sources` frontmatter
+
+OKF v0.2 keeps a concept's provenance in frontmatter (SPEC §5.1) instead of a
+`# Citations` list in the body. Each entry names a `resource` and may carry a
+stable `id` (the key a body footnote cites), a `title`, and the credibility
+signals `author`, `usage_count`, and `last_modified` — with `usage_window`
+written once as a sibling to frame every count:
+
+```yaml
+sources:
+  - id: rev-policy
+    resource: https://wiki.acme/finance/revenue-recognition
+    title: Revenue recognition policy
+    author: team:finance-fpa
+    last_modified: 2026-04-02
+  - id: exec-rev-dash
+    resource: dashboards/exec-revenue
+    usage_count: 5000
+usage_window: { from: 2026-06-01, to: 2026-06-30 }
+```
+
+Every entry becomes a `CITES` relationship, so provenance is graph-queryable
+however it was authored. What the target is depends on the `resource`:
+
+| `resource` | Becomes |
+|-----|-----|
+| An external URL | A `Reference` node (deduplicated across the bundle) |
+| A path to a concept (`/metrics/x.md`, `../x.md`) | An edge to that concept — a lineage edge you can recurse into |
+| A `.md` path with no file yet | A stub concept, like a broken markdown link |
+| Any other path (`references/attesters/x.py`) | A `Reference` node — source paths never create stub *concepts* for files that are not concepts |
+| A scope descriptor (`all queries in project X`) | A `Reference` node flagged `scope_descriptor` |
+
+A descriptor is told apart from a path by containing whitespace; the SPEC gives
+no other marker.
+
+The credibility signals live on the **edge**, not the `Reference` node, because
+they describe *this* concept's use of the source: two concepts can cite one
+dashboard over different usage windows. The shared `usage_window` is applied to
+each edge as its default, so a query never has to look up the sibling key:
+
+```python
+kb.db.execute(
+    "MATCH (c)-[r:CITES]->(t) WHERE r.usage_count > 1000 RETURN c.concept_id, t.title"
+)
+kb.concept("computations/revenue").cites()
+# [{'url': 'https://wiki.acme/...', 'anchor': 'Revenue recognition policy',
+#   'id': 'rev-policy', 'author': 'team:finance-fpa', ...}, ...]
+```
+
+The import summary reports `sources` (edges from frontmatter) alongside
+`citations` (every citation edge, whatever form it was authored in).
+
+A legacy `# Citations` body list is still imported — v0.1 bundles keep working
+(SPEC §13.1) — and each edge records which form it came from in its `via`
+property, so `save()` writes it back the way it was authored instead of
+emitting both forms and doubling the edges on the next import.
+
+### Trust, freshness, and lifecycle
+
+OKF v0.2 makes four questions answerable from frontmatter (SPEC §5.2–5.5):
+who wrote this, who confirmed it, is it the current version, and is it still
+true.
+
+```yaml
+status: stable                                              # draft | stable | deprecated
+generated: { by: reference_agent/gemini-2.5-pro, at: 2026-06-20T22:53:05Z }
+verified:
+  - { by: human:ahormati, at: 2026-06-25T09:00:00Z }
+  - { by: process:finance-nightly, at: 2026-06-26T02:00:00Z }
+stale_after: 2026-09-23
+```
+
+`generated` and `verified` stay distinct because whoever *wrote* a concept need
+not be whoever *confirmed* it, and content can be re-confirmed without being
+regenerated. Read them through `Concept`:
+
+```python
+c = kb.concept("computations/revenue")
+c.generated_by     # 'reference_agent/gemini-2.5-pro'
+c.generated_at     # '2026-06-20T22:53:05Z' — falls back to a v0.1 `timestamp`
+c.verified         # [{'by': 'human:ahormati', 'at': ...}, ...] — always a list
+c.verified_at      # the most recent check
+c.trust_tier       # 'unverified' | 'machine-confirmed' | 'human-reviewed'
+c.stale_after      # '2026-09-23'
+c.is_stale         # today >= stale_after
+```
+
+Two details the SPEC is strict about:
+
+- **`verified` is always a list here**, even when the concept writes a single
+  verifier as a bare mapping without the list dash. Reading that as one element
+  is required of consumers (§11), so the accessor normalizes it — while `save()`
+  writes it back in the form it was authored.
+- **The trust tier is derived, never stored.** `human-reviewed` when any
+  verifier is a `human:` actor (§7), `machine-confirmed` when there are only
+  non-human ones, `unverified` with no `verified` key. OKF stores the signals,
+  not a verdict, so a tier can never go stale against the list it came from.
+
+To record a check, use `verify()` — the writer counterpart, symmetric with
+`supersede()`:
+
+```python
+kb.verify("computations/revenue", by="human:jp")       # `at` defaults to now (UTC)
+kb.verify("computations/revenue", by="process:nightly")
+```
+
+Events accumulate rather than overwrite, so a human sign-off and a nightly
+process are two independent checks.
+
+#### Filtering retrieval by trust and freshness
+
+`search()` and `context()` both take `min_trust` and `include_stale`:
+
+```python
+kb.search(q, min_trust="human-reviewed")       # only concepts a person confirmed
+kb.search(q, include_stale=False)              # drop anything past its stale_after
+kb.context(q, min_trust="human-reviewed")      # also governs graph expansion
+```
+
+Like `where`/`tag`, these govern **graph-expanded neighbours** in `context()`,
+not just the seeds — a pack assembled under `min_trust="human-reviewed"` cannot
+pick up an unreviewed concept through a link. Anything dropped is recorded in
+`pack.omitted` with reason `"low_trust"` or `"stale"`.
+
+Note the asymmetry with `include_superseded`, which defaults to *excluding*:
+retraction is the author asserting a claim is wrong, while staleness only says
+"re-check me". Hiding stale knowledge by default would quietly empty a bundle
+whose author set conservative dates, so `include_stale` defaults to `True`.
+
+### Attested computations
+
+An `Attested Computation` concept (SPEC §10) carries not just what a value
+*means* but the sanctioned way to compute it, plus the means to confirm a run
+produced it that way. Three of its fields name paths pointing outside the
+concept, and grafito turns each into an edge:
+
+| Frontmatter | Relationship |
+|-----|-----|
+| `computation` | `HAS_COMPUTATION` |
+| `executor.resource` | `EXECUTED_BY` |
+| `attester.resource` | `ATTESTED_BY` |
+
+```python
+kb.db.execute("""
+    MATCH (c)-[:ATTESTED_BY]->(a)
+    RETURN a.resource AS attester, count(c) AS guards ORDER BY guards DESC
+""")
+```
+
+That makes "what runs this" and "what checks it" traversable instead of merely
+readable — you can ask which attester guards the most computations, or let
+`context()` pull an executor's skill document in alongside the computation it
+runs. **grafito never executes any of it**: §10.5 puts running and attesting
+on the consumer, and the format only records the contract.
+
+Targets resolve exactly like a `sources` path: a concept the bundle has, a
+stub for a `.md` document not written yet, or a `Reference` for anything else —
+an attester is usually a `.py` file, which is followable but is not a concept.
+A value that is not a path at all (an inline computation written as prose)
+creates no edge and stays an ordinary property.
+
+One resolution detail worth knowing: a plain relative path is tried against the
+citing concept *and* against the bundle root. The SPEC writes
+`references/skills/run-on-bq.md` from a concept inside `computations/` while
+placing that tree at the root (§6.3), so only the second reading finds it.
+
+`validate_okf_bundle` warns about a contract a consumer could not honour: an
+Attested Computation with no `runtime`, or with neither a `computation` path nor
+a `# Computation` body section; a malformed `executor`/`attester`; a parameter
+with no `name`. All warnings — §10 is a SHOULD, not one of the hard conformance
+rules.
+
 ### Incremental import
 
 Re-importing a bundle normally reparses and re-embeds every file. For a large
@@ -199,7 +379,7 @@ its last import:
   by the trust model (`OKFBundle.supersede`/`conflicts_with` —
   `SUPERSEDES`/`CONFLICTS_WITH`) are left untouched.
 - **New** files are created as usual. A link that previously created a stub
-  (SPEC §5.3) is promoted in place when the target file is later added,
+  (SPEC §6.1) is promoted in place when the target file is later added,
   rather than creating a duplicate node.
 - Pass `prune=True` (requires `incremental=True`) to also delete nodes whose
   concept file was removed from the bundle since the last import — mirrors
@@ -215,8 +395,8 @@ nodes are reused, not duplicated).
 ## Validating a bundle
 
 `validate_okf_bundle` is the linter counterpart to the importer's permissive
-consumption: it checks a bundle against the OKF v0.1 conformance rules
-(SPEC §9) without importing anything and without stopping at the first bad
+consumption: it checks a bundle against the OKF v0.2 conformance rules
+(SPEC §11) without importing anything and without stopping at the first bad
 file:
 
 ```python
@@ -227,7 +407,8 @@ report["conformant"]   # True when there are no errors
 report["errors"]       # [{'path', 'error'}]  — missing frontmatter block,
                        # unparseable YAML, missing/empty required `type`
 report["warnings"]     # [{'path', 'warning'}] — broken intra-bundle links,
-                       # frontmatter in a non-root index.md
+                       # malformed `sources` entries, unreadable trust or
+                       # lifecycle fields, frontmatter in a non-root index.md
 ```
 
 Errors are conformance failures; warnings are soft guidance a consumer must
@@ -363,6 +544,7 @@ typed relationships round-trip through markdown when re-imported with
 |----------|---------|-------------|
 | `uri_prefix` | `"okf:"` | Prefix used to recover concept IDs from node URIs. Should match the import value. |
 | `write_index` | `True` | Generate per-directory `index.md` files. |
+| `okf_version` | `None` | Declare the format version as `okf_version` frontmatter in the root `index.md` — the only index file allowed to carry frontmatter (SPEC §12). `OKFBundle.save()` defaults to whatever the bundle declared when it was loaded, so a declaration survives the round-trip; pass `None` there to drop it. |
 | `write_viz` | `False` | Also emit a self-contained `viz.html` at the bundle root. |
 | `write_log` | `True` | Regenerate per-scope `log.md` files from the graph's `LogEntry` nodes (imported history plus `log_entry`/autolog additions). Scopes without entries are left alone — an existing `log.md` is never blanked. |
 | `prune` | `False` | Delete concept `.md` files that no longer correspond to a node (directories left empty are removed). `log.md` and non-markdown files are never touched. `OKFBundle.save()` prunes by default so removals round-trip. |
@@ -406,12 +588,15 @@ c = kb.concept("decisions/0003-vector-search")
 c.title                                       # 'Add optional vector search'
 c.links()                                     # [Concept, ...] any outgoing link type
 c.links(type="JOINS_WITH")                    # restrict to one type (typed_links bundles)
-c.cites()                                     # [{'url'|'concept', 'anchor'}, ...]
+c.cites()                                     # [{'url'|'concept', 'anchor', 'id'?, signals...}, ...]
+c.trust_tier                                  # 'unverified' | 'machine-confirmed' | 'human-reviewed'
+c.is_stale                                    # today >= stale_after
 
 kb.search("how do I make a query run faster", k=3)        # semantic / text / hybrid
 kb.search("make it faster", layer="decisions")            # scoped to a layer
 kb.search("vector similarity", mode="hybrid")             # RRF fusion of FTS + vector
-kb.search("storage", where={"status": "approved"})        # filter on frontmatter
+kb.search("storage", where={"owner": "data-team"})        # filter on frontmatter
+kb.search("storage", min_trust="human-reviewed")          # filter on trust tier
 # hybrid degrades to text-only when the bundle was loaded without embed=
 
 kb.db.execute("MATCH (n) RETURN count(n)")    # escape hatch: full graph power
@@ -421,18 +606,20 @@ kb.save("out/bundle", write_viz=True)         # round-trip back to markdown
 ### Filtering on frontmatter: `where=` and `tag=`
 
 OKF keeps every producer-defined frontmatter key as a node property, so
-`status`, `owner`, `confidentiality` or `timestamp` are all queryable. `search()`
+`status`, `owner` or `confidentiality` are all queryable. `search()`
 and `context()` accept `where=` to filter retrieval on them — without dropping
-to Cypher and losing ranking, graph expansion, and budgeting:
+to Cypher and losing ranking, graph expansion, and budgeting. Nested keys work
+too, via a dotted path: `where={"generated.at": PropertyFilter.gte(...)}`
+filters on the trust family without any special support.
 
 ```python
 from grafito.okf import PropertyFilter, PropertyFilterGroup
 
-kb.search(q, where={"status": "approved"})
-kb.search(q, where={"status": "approved", "owner": "data-team"})   # AND
-kb.search(q, where={"timestamp": PropertyFilter.gte("2026-01-01")})
-kb.search(q, where=PropertyFilterGroup.or_({"status": "approved"},
-                                            {"status": "ratified"}))
+kb.search(q, where={"owner": "data-team"})
+kb.search(q, where={"owner": "data-team", "confidentiality": "public"})   # AND
+kb.search(q, where={"generated.at": PropertyFilter.gte("2026-01-01")})   # nested key
+kb.search(q, where=PropertyFilterGroup.or_({"status": "draft"},
+                                            {"status": "stable"}))
 ```
 
 `where=` speaks the same dialect as `match_nodes`, so there is nothing new to
@@ -514,6 +701,9 @@ left out, so nothing is dropped silently. Each entry has a `reason`:
 - `"budget"` — a candidate that didn't fit the token budget;
 - `"superseded"` — a retracted claim reached via graph expansion (see
   [Trust model](#trust-model-supersede-and-conflicts_with));
+- `"stale"` — past its `stale_after`, with `include_stale=False`;
+- `"low_trust"` — below the requested `min_trust` tier (see
+  [Trust, freshness, and lifecycle](#trust-freshness-and-lifecycle));
 - `"filtered"` — a graph-expanded neighbour excluded by `where`/`tag` (see
   [Filtering on frontmatter](#filtering-on-frontmatter-where-and-tag));
 - `"reranked_out"` — a candidate a reranker's `top_n` discarded.
@@ -622,7 +812,7 @@ kb.conflicts_with("glossary/latency", "glossary/throughput",
                    note="one source defines these interchangeably")
 ```
 
-`supersede(old, new)` sets `status="superseded"` / `superseded_by` on `old`,
+`supersede(old, new)` sets `status="deprecated"` / `superseded_by` on `old`,
 appends to `supersedes` on `new`, and links `new -[:SUPERSEDES]-> old` (typed,
 so it round-trips with `typed_links=True`). It does **not** delete or rewrite
 `old` — the retracted claim stays inspectable via `kb.concept(old_id)`, `git
@@ -632,10 +822,17 @@ strong enough evidence to supersede it outright: it links both concepts via
 `CONFLICTS_WITH` (both directions — a conflict has no natural direction)
 without changing either.
 
-`search()` and `context()` exclude `status="superseded"` concepts by default
+`deprecated` is OKF's own lifecycle value for "kept for links and history, no
+longer current" (SPEC sec. 5.4), so retraction stays inside the spec's
+vocabulary; *which* concept replaced it is the producer-defined `superseded_by`
+key, which lifecycle alone cannot express.
+
+`search()` and `context()` exclude `status="deprecated"` concepts by default
 (`include_superseded=True` opts back in), so retrieval never hands an agent a
 retracted claim as if it were current truth — while `concepts()`/`concept()`
-still surface them for provenance and history browsing.
+still surface them for provenance and history browsing. This applies to any
+deprecated concept, including one the bundle's author deprecated by hand rather
+than through `supersede()`.
 
 ```python
 kb.concept("decisions/0001-use-bruteforce").is_superseded   # True
@@ -690,7 +887,7 @@ kb.reject("decisions/0004-use-hnswlib", note="duplicate of 0003")
 ### Changelog: `log_entry()` and autolog
 
 An agent that writes memory should also leave a history. `log_entry()` appends
-a changelog entry (a `LogEntry` node, SPEC §7) that `save()` serializes to the
+a changelog entry (a `LogEntry` node, SPEC §9) that `save()` serializes to the
 scope's `log.md` — and `autolog=True` at load time does it automatically for
 every `add_concept` / `update_concept` / `remove_concept`:
 
@@ -713,10 +910,16 @@ already has a `log.md` so new entries extend the history instead of replacing
 it on `save()`.
 
 Round-trip note: `save()` writes each concept's stored `body` verbatim. For a
-concept created **without** a body, `link`/`cite` edges are synthesized into
-`# Links` / `# Citations` sections on export (so they round-trip). For a concept
-**with** a body, include the links/citations in that body if you want them in the
-markdown — the edges remain queryable in the graph regardless.
+concept created **without** a body, `link` edges are synthesized into a
+`# Links` section on export (so they round-trip); for a concept **with** a
+body, include the links in that body if you want them in the markdown — the
+edges remain queryable in the graph regardless.
+
+Citations are different: because v0.2 keeps provenance in frontmatter rather
+than the body, `cite()` edges are always written into the concept's `sources`
+block, body or no body. An authored entry naming the same resource wins (it is
+round-tripped verbatim, so re-exporting an imported bundle is byte-stable);
+edges no entry covers are appended.
 
 ### Persistent reuse across sessions
 

@@ -3186,9 +3186,9 @@ class GrafitoDatabase:
         A bundle is a directory tree of markdown files with YAML frontmatter.
         Each concept becomes a node (label from ``type``, frontmatter as
         properties, body as the ``body`` property), and intra-bundle markdown
-        links become relationships. Links under a ``# Citations`` heading become
-        ``CITES`` relationships to concepts or to auto-created ``Reference``
-        nodes (external URLs).
+        links become relationships. The ``sources`` frontmatter (SPEC sec. 5.1)
+        — and a legacy ``# Citations`` body list — become ``CITES``
+        relationships to concepts or to auto-created ``Reference`` nodes.
 
         Pass ``embed=<EmbeddingFunction>`` to also embed each concept into a
         vector index (``embed_index``) for semantic search; query it later with
@@ -3247,6 +3247,7 @@ class GrafitoDatabase:
         write_viz: bool = False,
         write_log: bool = True,
         prune: bool = False,
+        okf_version: str | None = None,
     ) -> dict:
         """Export this database to an Open Knowledge Format (OKF) bundle.
 
@@ -3255,7 +3256,8 @@ class GrafitoDatabase:
         files, per-scope ``log.md`` files regenerated from ``LogEntry`` nodes
         (``write_log``), and an optional self-contained ``viz.html``.
         ``prune=True`` deletes concept ``.md`` files that no longer correspond
-        to a node. Returns a summary dict with
+        to a node. ``okf_version`` declares the format version in the root
+        ``index.md`` (SPEC sec. 12). Returns a summary dict with
         concept/skipped/pruned/logs/viz counts.
         """
         from .integrations.okf import export_bundle
@@ -3268,6 +3270,7 @@ class GrafitoDatabase:
             write_viz=write_viz,
             write_log=write_log,
             prune=prune,
+            okf_version=okf_version,
         )
 
     def _split_cypher_statements(self, script: str) -> list[str]:

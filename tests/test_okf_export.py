@@ -124,6 +124,150 @@ def test_programmatic_node_synthesizes_links_section(db, tmp_path):
     assert "[see B](/b.md)" in body
 
 
+# --- Provenance: the `sources` frontmatter (OKF v0.2 sec. 5.1) ----------------
+
+
+def test_sources_frontmatter_round_trips_verbatim(db, tmp_path):
+    source = tmp_path / "in"
+    source.mkdir()
+    (source / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nsources:\n"
+        "  - id: policy\n    resource: https://wiki.acme/policy\n    title: Policy\n"
+        "    author: team:finance\n    usage_count: 5000\n"
+        "usage_window: {from: 2026-06-01, to: 2026-06-30}\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    db.import_okf_bundle(str(source), configure_fts=False)
+    out = tmp_path / "out"
+    db.export_okf_bundle(str(out))
+
+    fm, body = _read(out / "doc.md")
+    assert fm["sources"] == [
+        {
+            "id": "policy",
+            "resource": "https://wiki.acme/policy",
+            "title": "Policy",
+            "author": "team:finance",
+            "usage_count": 5000,
+        }
+    ]
+    # The shared window stays a sibling of `sources`, not repeated per entry.
+    assert fm["usage_window"] == {"from": "2026-06-01", "to": "2026-06-30"}
+    assert "# Citations" not in body
+    # Provenance is emitted last, after the producer-defined keys.
+    assert list(fm)[-2:] == ["sources", "usage_window"]
+
+
+def test_citation_edge_added_to_the_graph_reaches_frontmatter(db, tmp_path):
+    doc = db.create_node(labels=["Doc"], properties={"title": "Doc"}, uri="okf:doc")
+    ref = db.create_node(
+        labels=["Reference"],
+        properties={"title": "Spec", "url": "https://example.com/spec", "okf_auto": True},
+        uri="https://example.com/spec",
+    )
+    db.create_relationship(
+        doc.id, ref.id, "CITES", properties={"anchor": "Spec", "source_id": "spec"}
+    )
+    db.export_okf_bundle(str(tmp_path))
+
+    fm, body = _read(tmp_path / "doc.md")
+    assert fm["sources"] == [
+        {"id": "spec", "resource": "https://example.com/spec", "title": "Spec"}
+    ]
+    assert "# Citations" not in body
+
+
+def test_legacy_citations_stay_in_the_body(db, tmp_path):
+    source = tmp_path / "in"
+    source.mkdir()
+    (source / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\n---\nx\n\n# Citations\n- https://example.com/s\n",
+        encoding="utf-8",
+    )
+    db.import_okf_bundle(str(source), configure_fts=False)
+    out = tmp_path / "out"
+    db.export_okf_bundle(str(out))
+
+    fm, body = _read(out / "doc.md")
+    # A v0.1 citation list is not lifted into frontmatter: the body already
+    # carries it, and doing both would double the edges on re-import.
+    assert "sources" not in fm
+    assert "# Citations" in body
+
+    db2 = GrafitoDatabase(":memory:")
+    try:
+        summary = db2.import_okf_bundle(str(out), configure_fts=False)
+        assert summary["citations"] == 1
+    finally:
+        db2.close()
+
+
+def test_source_naming_a_concept_uses_the_bundle_relative_form(db, tmp_path):
+    a = db.create_node(labels=["Doc"], properties={"title": "A"}, uri="okf:notes/a")
+    b = db.create_node(labels=["Doc"], properties={"title": "B"}, uri="okf:notes/b")
+    db.create_relationship(a.id, b.id, "CITES", properties={"anchor": "B"})
+    db.export_okf_bundle(str(tmp_path))
+    fm, _ = _read(tmp_path / "notes" / "a.md")
+    assert fm["sources"] == [{"resource": "/notes/b.md", "title": "B"}]
+
+
+def test_authored_entry_wins_over_an_equivalent_edge(db, tmp_path):
+    source = tmp_path / "in"
+    (source / "notes").mkdir(parents=True)
+    (source / "notes" / "a.md").write_text(
+        "---\ntype: Doc\ntitle: A\nsources:\n  - resource: ../notes/b.md\n    title: Authored\n"
+        "---\n\nx\n",
+        encoding="utf-8",
+    )
+    (source / "notes" / "b.md").write_text("---\ntype: Doc\ntitle: B\n---\ny\n", encoding="utf-8")
+    db.import_okf_bundle(str(source), configure_fts=False)
+    out = tmp_path / "out"
+    db.export_okf_bundle(str(out))
+
+    fm, _ = _read(out / "notes" / "a.md")
+    # The edge resolves to the same concept as the authored entry, written a
+    # different way — it must not be appended as a second source.
+    assert fm["sources"] == [{"resource": "../notes/b.md", "title": "Authored"}]
+
+
+def test_trust_and_lifecycle_lead_the_producer_defined_keys(db, tmp_path):
+    source = tmp_path / "in"
+    source.mkdir()
+    (source / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nowner: data-team\nstatus: stable\n"
+        "generated: { by: agent/x, at: 2026-06-28T14:00:00Z }\n"
+        "verified: { by: human:jp, at: 2026-06-25T09:00:00Z }\n"
+        "stale_after: 2026-12-31\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    db.import_okf_bundle(str(source), configure_fts=False)
+    out = tmp_path / "out"
+    db.export_okf_bundle(str(out))
+
+    fm, _ = _read(out / "doc.md")
+    # The trust and lifecycle families sit where the SPEC's examples put them:
+    # after the recommended keys, before anything producer-defined.
+    assert list(fm) == ["type", "title", "status", "generated", "verified", "stale_after", "owner"]
+    # A single verifier stays the bare mapping it was authored as (sec. 5.2).
+    assert fm["verified"] == {"by": "human:jp", "at": "2026-06-25T09:00:00Z"}
+
+
+def test_okf_version_is_declared_in_the_root_index_only(db, tmp_path):
+    db.create_node(labels=["Doc"], properties={"title": "A"}, uri="okf:notes/a")
+    db.export_okf_bundle(str(tmp_path), okf_version="0.2")
+
+    root = (tmp_path / "index.md").read_text(encoding="utf-8")
+    assert root.startswith('---\nokf_version: \'0.2\'\n---\n')
+    # Only the root index may carry frontmatter (SPEC sec. 12).
+    assert not (tmp_path / "notes" / "index.md").read_text(encoding="utf-8").startswith("---")
+
+
+def test_no_version_declared_writes_no_frontmatter(db, tmp_path):
+    db.create_node(labels=["Doc"], properties={"title": "A"}, uri="okf:a")
+    db.export_okf_bundle(str(tmp_path))
+    assert not (tmp_path / "index.md").read_text(encoding="utf-8").startswith("---")
+
+
 # --- Pruning orphaned concept files ------------------------------------------
 
 
