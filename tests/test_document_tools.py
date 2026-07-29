@@ -6,6 +6,7 @@ retrieval tier serves an arbitrary graph, the same way GraphTools does.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 
@@ -14,6 +15,16 @@ import pytest
 from grafito import GrafitoDatabase
 from grafito.document import DocumentIngestor, DocumentTools, MarkdownChunker
 from grafito.embedding_functions.base import EmbeddingFunction
+
+
+def _bucket(token: str, dim: int) -> int:
+    """Stable token bucket.
+
+    Python's built-in ``hash()`` is randomized per process (PYTHONHASHSEED), so
+    using it here would make the toy embedding — and therefore every ranking
+    assertion below — differ from run to run.
+    """
+    return int.from_bytes(hashlib.md5(token.encode("utf-8")).digest()[:8], "little") % dim
 
 
 class ToyEmbedder(EmbeddingFunction):
@@ -25,7 +36,7 @@ class ToyEmbedder(EmbeddingFunction):
         for text in input:
             vec = [0.0] * self._dim
             for i, tok in enumerate(re.findall(r"[a-z0-9]+", text.lower())):
-                vec[hash(tok) % self._dim] += 1.0 + (i % 3) * 0.01
+                vec[_bucket(tok, self._dim)] += 1.0 + (i % 3) * 0.01
             norm = sum(x * x for x in vec) ** 0.5 or 1.0
             out.append([x / norm for x in vec])
         return out
