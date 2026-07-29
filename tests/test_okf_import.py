@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 
 import pytest
@@ -7,11 +8,18 @@ import pytest
 from grafito import GrafitoDatabase
 from grafito.embedding_functions import EmbeddingFunction
 from grafito.importers.okf import (
+    classify_source,
     extract_citations,
     extract_links,
+    generated_at,
+    is_stale,
+    normalize_sources,
+    normalize_verified,
     parse_frontmatter,
     parse_log_entries,
     split_citations,
+    trust_tier,
+    verified_at,
 )
 
 pytest.importorskip("yaml")
@@ -247,6 +255,375 @@ def test_citations_can_be_disabled(db, tmp_path):
     assert summary["references"] == 0
 
 
+# --- Provenance: the `sources` frontmatter (OKF v0.2 sec. 5.1) ----------------
+
+
+SOURCES_DOC = """---
+type: Doc
+title: Doc
+sources:
+  - id: policy
+    resource: https://wiki.acme/policy
+    title: Revenue policy
+    author: team:finance
+    last_modified: 2026-04-02
+  - id: dash
+    resource: dashboards/exec-revenue
+    title: Executive dashboard
+    usage_count: 5000
+  - id: sibling
+    resource: /other.md
+    title: The other concept
+  - id: everything
+    resource: all queries in BigQuery project acme
+usage_window: { from: 2026-06-01, to: 2026-06-30 }
+---
+
+Body text.
+"""
+
+
+@pytest.fixture
+def sources_bundle(tmp_path) -> Path:
+    (tmp_path / "doc.md").write_text(SOURCES_DOC, encoding="utf-8")
+    (tmp_path / "other.md").write_text("---\ntype: Doc\ntitle: Other\n---\ny\n", encoding="utf-8")
+    return tmp_path
+
+
+def test_normalize_sources_applies_shared_usage_window():
+    entries = normalize_sources(
+        {
+            "sources": [
+                {"resource": "https://a", "usage_count": 1},
+                {"resource": "https://b", "usage_window": {"from": "2026-01-01"}},
+            ],
+            "usage_window": {"from": "2026-06-01", "to": "2026-06-30"},
+        }
+    )
+    assert entries[0]["usage_window"] == {"from": "2026-06-01", "to": "2026-06-30"}
+    # An entry's own window overrides the shared sibling.
+    assert entries[1]["usage_window"] == {"from": "2026-01-01"}
+
+
+def test_normalize_sources_is_permissive():
+    # A lone entry may be written as a bare mapping; malformed entries (not a
+    # mapping, or no `resource`) are dropped without costing the good ones.
+    assert normalize_sources({"sources": {"resource": "https://a"}}) == [{"resource": "https://a"}]
+    assert normalize_sources({"sources": [{"title": "no resource"}, "junk"]}) == []
+    assert normalize_sources({}) == []
+    assert normalize_sources({"sources": "not a list"}) == []
+
+
+def test_classify_source_tells_scope_descriptors_from_paths():
+    assert classify_source("https://a/b", "doc") == ("external", "https://a/b")
+    assert classify_source("/tables/orders.md", "doc") == ("concept", "tables/orders")
+    assert classify_source("../other.md", "a/doc") == ("concept", "other")
+    # A population descriptor is not followable: whitespace is the only marker.
+    assert classify_source("all queries in project X", "doc") == (
+        "scope",
+        "all queries in project X",
+    )
+
+
+def test_sources_create_citation_edges(db, sources_bundle):
+    summary = db.import_okf_bundle(str(sources_bundle), configure_fts=False)
+    assert summary["sources"] == 4
+    assert summary["citations"] == 4  # every citation edge, whatever its form
+    # An intra-bundle source resolves to the concept itself, not a Reference.
+    concepts = db.execute(
+        "MATCH (a {title: 'Doc'})-[:CITES]->(t) WHERE t.concept_id = 'other' RETURN t"
+    )
+    assert len(concepts) == 1
+    # A URL, a followable artifact, and a scope descriptor all become References.
+    refs = db.execute("MATCH (a {title: 'Doc'})-[:CITES]->(r:Reference) RETURN r.resource AS res")
+    assert {row["res"] for row in refs} == {
+        "https://wiki.acme/policy",
+        "dashboards/exec-revenue",
+        "all queries in BigQuery project acme",
+    }
+
+
+def test_source_paths_do_not_create_stub_concepts(db, tmp_path):
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nsources:\n"
+        "  - resource: references/attesters/revenue.py\n"
+        "  - resource: /not-written-yet.md\n---\nx\n",
+        encoding="utf-8",
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    # A `.md` path is a concept that does not exist yet, so it gets a stub; a
+    # path to something that is not a concept becomes a Reference instead.
+    assert summary["stubs"] == 1
+    assert summary["references"] == 1
+    stub = db.execute("MATCH (n) WHERE n.stub = true RETURN n.concept_id AS cid")
+    assert stub[0]["cid"] == "not-written-yet"
+
+
+def test_source_signals_land_on_the_edge(db, sources_bundle):
+    db.import_okf_bundle(str(sources_bundle), configure_fts=False)
+    rows = db.execute(
+        "MATCH (a {title: 'Doc'})-[r:CITES]->(t) WHERE r.source_id = 'dash' RETURN r"
+    )
+    edge = rows[0]["r"]["properties"]
+    assert edge["anchor"] == "Executive dashboard"
+    assert edge["usage_count"] == 5000
+    # The shared sibling window frames every entry's count (sec. 5.1).
+    assert edge["usage_window"] == {"from": "2026-06-01", "to": "2026-06-30"}
+    assert edge["via"] == "sources"
+
+
+def test_sources_respect_the_citations_switch(db, sources_bundle):
+    summary = db.import_okf_bundle(str(sources_bundle), citations=False, configure_fts=False)
+    assert summary["sources"] == 0
+    assert summary["citations"] == 0
+    # The frontmatter itself is still kept as a property.
+    doc = _node_by_uri(db, "okf:doc")
+    assert len(doc.properties["sources"]) == 4
+
+
+def test_legacy_citations_and_sources_coexist(db, tmp_path):
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nsources:\n  - resource: https://a/new\n---\n"
+        "x\n\n# Citations\n- https://a/old\n",
+        encoding="utf-8",
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    assert summary["citations"] == 2 and summary["sources"] == 1
+    rows = db.execute("MATCH (a {title: 'Doc'})-[r:CITES]->(t) RETURN r.via AS via, t.url AS url")
+    assert {(row["via"], row["url"]) for row in rows} == {
+        ("sources", "https://a/new"),
+        ("citations", "https://a/old"),
+    }
+
+
+# --- Trust and lifecycle (OKF v0.2 sec. 5.2-5.5) ------------------------------
+
+
+def test_verified_bare_mapping_reads_as_one_element_list():
+    # A consumer MUST treat a bare mapping as a one-element list (sec. 11).
+    bare = normalize_verified({"verified": {"by": "human:jp", "at": "2026-06-25T09:00:00Z"}})
+    assert bare == [{"by": "human:jp", "at": "2026-06-25T09:00:00Z"}]
+    listed = normalize_verified({"verified": [{"by": "human:jp"}, {"by": "process:nightly"}]})
+    assert listed == [{"by": "human:jp"}, {"by": "process:nightly"}]
+    # `by` is required within an event; `at` is not.
+    assert normalize_verified({"verified": [{"at": "2026-06-25"}, "junk"]}) == []
+    assert normalize_verified({}) == []
+
+
+def test_trust_tier_keys_off_the_human_actor_prefix():
+    assert trust_tier({}) == "unverified"
+    assert trust_tier({"verified": [{"by": "process:finance-nightly"}]}) == "machine-confirmed"
+    assert trust_tier({"verified": [{"by": "agent/gemini-2.5-pro"}]}) == "machine-confirmed"
+    # One human among several verifiers lifts the whole concept (sec. 5.3).
+    assert (
+        trust_tier({"verified": [{"by": "process:nightly"}, {"by": "human:ahormati"}]})
+        == "human-reviewed"
+    )
+
+
+def test_verified_at_is_the_most_recent_check():
+    frontmatter = {
+        "verified": [
+            {"by": "human:jp", "at": "2026-06-25T09:00:00Z"},
+            {"by": "process:nightly", "at": "2026-06-26T02:00:00Z"},
+        ]
+    }
+    assert verified_at(frontmatter) == "2026-06-26T02:00:00Z"
+    assert verified_at({"verified": [{"by": "human:jp"}]}) is None
+
+
+def test_generated_at_falls_back_to_legacy_timestamp():
+    assert generated_at({"generated": {"by": "agent/x", "at": "2026-06-28T14:00:00Z"}}) == (
+        "2026-06-28T14:00:00Z"
+    )
+    # v0.1 documents (sec. 13.1): `timestamp` still answers "when did this change".
+    assert generated_at({"timestamp": "2026-05-28T00:00:00Z"}) == "2026-05-28T00:00:00Z"
+    # `generated` without an `at` is not a reason to ignore a usable timestamp.
+    assert generated_at({"generated": {"by": "agent/x"}, "timestamp": "2026-05-28"}) == "2026-05-28"
+    assert generated_at({}) is None
+
+
+def test_is_stale_compares_against_an_absolute_date():
+    today = datetime.date(2026, 9, 23)
+    assert is_stale({"stale_after": "2026-09-23"}, today=today) is True  # stale *on* the day
+    assert is_stale({"stale_after": "2026-09-24"}, today=today) is False
+    assert is_stale({"stale_after": datetime.date(2026, 1, 1)}, today=today) is True
+    # Staleness is asserted by the producer, never inferred from silence.
+    assert is_stale({}, today=today) is False
+    assert is_stale({"stale_after": "not a date"}, today=today) is False
+
+
+def test_trust_fields_survive_the_graph_round_trip(db, tmp_path):
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nstatus: stable\n"
+        "generated: { by: agent/x, at: 2026-06-28T14:00:00Z }\n"
+        "verified: { by: human:jp, at: 2026-06-25T09:00:00Z }\n"
+        "stale_after: 2026-12-31\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    props = _node_by_uri(db, "okf:doc").properties
+    # YAML parses these to date/datetime objects; grafito normalizes them to ISO
+    # text on the way into the node, so the helpers must read either form.
+    assert trust_tier(props) == "human-reviewed"
+    assert generated_at(props) == "2026-06-28T14:00:00Z"
+    assert is_stale(props, today=datetime.date(2027, 1, 1)) is True
+
+
+def test_validate_warns_about_unreadable_trust_fields(tmp_path):
+    from grafito.okf import validate_okf_bundle
+
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\nstatus: approved\ngenerated: { at: 2026-06-28T14:00:00Z }\n"
+        "verified:\n  - { at: 2026-06-25T09:00:00Z }\nstale_after: soon\n---\nx\n",
+        encoding="utf-8",
+    )
+    report = validate_okf_bundle(str(tmp_path))
+    assert report["conformant"] is True  # optional families never block (sec. 11)
+    warnings = [w["warning"] for w in report["warnings"]]
+    assert "'status' value 'approved' is not one of ['draft', 'stable', 'deprecated']" in warnings
+    assert "'generated' is missing the required field: by" in warnings
+    assert "verified[0] is missing the required field: by" in warnings
+    assert "'stale_after' value 'soon' is not a YYYY-MM-DD date" in warnings
+
+
+# --- Attested computations (OKF v0.2 sec. 10) ---------------------------------
+
+
+COMPUTATION_DOC = """---
+type: Attested Computation
+title: Revenue for fiscal year
+runtime: bigquery
+parameters:
+  - { name: year, type: integer, required: true }
+executor:
+  resource: references/skills/run-on-bq.md
+  receipt: [job_id, executed_sql, result]
+attester:
+  resource: references/attesters/revenue.py
+---
+
+# Computation
+
+    SELECT SUM(amount) AS revenue WHERE fiscal_year = @year
+"""
+
+
+@pytest.fixture
+def computation_bundle(tmp_path) -> Path:
+    (tmp_path / "computations").mkdir()
+    (tmp_path / "computations" / "revenue.md").write_text(COMPUTATION_DOC, encoding="utf-8")
+    (tmp_path / "references" / "skills").mkdir(parents=True)
+    (tmp_path / "references" / "skills" / "run-on-bq.md").write_text(
+        "---\ntype: Skill\ntitle: Run on BigQuery\n---\nRun it.\n", encoding="utf-8"
+    )
+    return tmp_path
+
+
+def test_computation_paths_only_returns_real_paths():
+    from grafito.importers.okf import computation_paths
+
+    assert computation_paths(
+        {
+            "computation": "references/computations/revenue.sql",
+            "executor": {"resource": "references/skills/run.md", "receipt": ["job_id"]},
+            "attester": {"resource": "references/attesters/revenue.py"},
+        }
+    ) == [
+        ("computation", "references/computations/revenue.sql"),
+        ("executor", "references/skills/run.md"),
+        ("attester", "references/attesters/revenue.py"),
+    ]
+    # An executor with no resource, and a type with none of the fields.
+    assert computation_paths({"executor": {"receipt": ["job_id"]}}) == []
+    assert computation_paths({"type": "Metric"}) == []
+
+
+def test_computation_fields_become_edges(db, computation_bundle):
+    summary = db.import_okf_bundle(str(computation_bundle), configure_fts=False)
+    assert summary["computations"] == 2  # executor + attester
+    rows = db.execute(
+        "MATCH (c {title: 'Revenue for fiscal year'})-[r]->(t) "
+        "WHERE type(r) <> 'CITES' RETURN type(r) AS rel, coalesce(t.title, t.resource) AS dst"
+    )
+    assert {(row["rel"], row["dst"]) for row in rows} == {
+        ("EXECUTED_BY", "Run on BigQuery"),
+        ("ATTESTED_BY", "references/attesters/revenue.py"),
+    }
+
+
+def test_executor_path_resolves_from_the_bundle_root(db, computation_bundle):
+    # `references/skills/run-on-bq.md` is written from `computations/revenue.md`
+    # but lives at the bundle root — the convention the SPEC's own example uses
+    # (sec. 6.3). Reading it only relative to the citing concept would strand it
+    # on a stub at `computations/references/skills/run-on-bq`.
+    summary = db.import_okf_bundle(str(computation_bundle), configure_fts=False)
+    assert summary["stubs"] == 0
+    rows = db.execute(
+        "MATCH (c {title: 'Revenue for fiscal year'})-[:EXECUTED_BY]->(t) "
+        "RETURN t.concept_id AS cid, t.stub AS stub"
+    )
+    assert rows == [{"cid": "references/skills/run-on-bq", "stub": None}]
+
+
+def test_non_concept_computation_paths_become_references(db, computation_bundle):
+    db.import_okf_bundle(str(computation_bundle), configure_fts=False)
+    # A `.py` attester is followable but is not a concept: Reference, not stub.
+    refs = db.execute("MATCH (r:Reference) RETURN r.resource AS res")
+    assert [row["res"] for row in refs] == ["references/attesters/revenue.py"]
+
+
+def test_inline_computation_creates_no_edge(db, tmp_path):
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Attested Computation\ntitle: Inline\nruntime: python\n"
+        "computation: sum the amounts booked to the year\n---\n\n# Computation\n\n    x = 1\n",
+        encoding="utf-8",
+    )
+    summary = db.import_okf_bundle(str(tmp_path), configure_fts=False)
+    # `computation` here is prose, not a path (sec. 10.3): it stays a property.
+    assert summary["computations"] == 0
+    assert summary["references"] == 0
+    assert _node_by_uri(db, "okf:doc").properties["computation"].startswith("sum the")
+
+
+def test_validate_warns_about_an_unusable_computation_contract(tmp_path):
+    from grafito.okf import validate_okf_bundle
+
+    (tmp_path / "bad.md").write_text(
+        "---\ntype: Attested Computation\ntitle: Bad\n"
+        "parameters:\n  - { type: integer }\nexecutor: references/skills/run.md\n---\n\nNo fence.\n",
+        encoding="utf-8",
+    )
+    report = validate_okf_bundle(str(tmp_path))
+    assert report["conformant"] is True  # sec. 10 is a SHOULD, not a hard rule
+    warnings = [w["warning"] for w in report["warnings"]]
+    assert (
+        "missing the required field: runtime (required for type 'Attested Computation')" in warnings
+    )
+    assert (
+        "no computation: expected a 'computation' path or a '# Computation' body section"
+        in warnings
+    )
+    assert "parameters[0] is missing the required field: name" in warnings
+    assert "'executor' is not a mapping" in warnings
+
+
+def test_computation_edges_do_not_duplicate_on_round_trip(db, computation_bundle, tmp_path):
+    db.import_okf_bundle(str(computation_bundle), configure_fts=False)
+    out = tmp_path / "out"
+    db.export_okf_bundle(str(out))
+
+    db2 = GrafitoDatabase(":memory:")
+    try:
+        summary = db2.import_okf_bundle(str(out), configure_fts=False)
+        # The fields are re-read from frontmatter, never also written into the
+        # body — so exactly the same two edges come back.
+        assert summary["computations"] == 2
+        assert db2.get_relationship_count() == db.get_relationship_count()
+    finally:
+        db2.close()
+
+
 # --- Narrative (non-tabular) knowledge-base example bundle -------------------
 
 
@@ -328,6 +705,21 @@ def test_validate_reports_errors_and_warnings(tmp_path):
     warnings = {w["path"]: w["warning"] for w in report["warnings"]}
     assert "broken link to unknown concept: nowhere" in warnings["ok.md"]
     assert "root index.md" in warnings["sub/index.md"]
+
+
+def test_validate_warns_about_malformed_sources(tmp_path):
+    from grafito.okf import validate_okf_bundle
+
+    (tmp_path / "doc.md").write_text(
+        "---\ntype: Doc\nsources:\n  - title: no resource here\n  - resource: https://ok\n---\nx\n",
+        encoding="utf-8",
+    )
+    report = validate_okf_bundle(str(tmp_path))
+    # Optional families never make a bundle non-conformant (sec. 11), but an
+    # entry naming no resource is dropped on import, so it is worth reporting.
+    assert report["conformant"] is True
+    warnings = [w["warning"] for w in report["warnings"] if w["path"] == "doc.md"]
+    assert warnings == ["sources[0] is missing the required field: resource"]
 
 
 def test_validate_missing_bundle_raises(tmp_path):

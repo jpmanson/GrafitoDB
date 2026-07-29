@@ -1,5 +1,6 @@
 """Phase 3: hybrid RRF, semantic chunker, tree_select, Cypher string vector search."""
 
+import hashlib
 import re
 
 import pytest
@@ -16,6 +17,11 @@ from grafito.document.ingest import MANAGED_BY
 from grafito.embedding_functions.base import EmbeddingFunction
 
 
+def _bucket(token: str, dim: int) -> int:
+    """Stable token bucket: built-in ``hash()`` is randomized per process."""
+    return int.from_bytes(hashlib.md5(token.encode("utf-8")).digest()[:8], "little") % dim
+
+
 class ToyEmbedder(EmbeddingFunction):
     def __init__(self, dim: int = 16) -> None:
         self._dim = dim
@@ -25,7 +31,7 @@ class ToyEmbedder(EmbeddingFunction):
         for text in input:
             vec = [0.0] * self._dim
             for i, tok in enumerate(re.findall(r"[a-z0-9]+", text.lower())):
-                vec[hash(tok) % self._dim] += 1.0
+                vec[_bucket(tok, self._dim)] += 1.0
             norm = sum(x * x for x in vec) ** 0.5 or 1.0
             out.append([x / norm for x in vec])
         return out

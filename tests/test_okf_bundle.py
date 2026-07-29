@@ -345,6 +345,72 @@ def test_cite_deduplicates_reference(kb):
     assert len(kb.references()) == before + 1
 
 
+def test_cite_records_source_id_and_credibility_signals(kb):
+    kb.add_concept("notes/x", type="Note", title="X")
+    kb.cite(
+        "notes/x",
+        "https://wiki.acme/policy",
+        anchor="Revenue policy",
+        source_id="rev-policy",
+        author="team:finance",
+        usage_count=5000,
+        usage_window={"from": "2026-06-01", "to": "2026-06-30"},
+    )
+    assert kb.concept("notes/x").cites() == [
+        {
+            "url": "https://wiki.acme/policy",
+            "anchor": "Revenue policy",
+            "id": "rev-policy",
+            "author": "team:finance",
+            "usage_count": 5000,
+            "usage_window": {"from": "2026-06-01", "to": "2026-06-30"},
+        }
+    ]
+
+
+def test_cite_rejects_unknown_signals(kb):
+    kb.add_concept("notes/y", type="Note", title="Y")
+    with pytest.raises(ValueError, match="Unknown source signal"):
+        kb.cite("notes/y", "https://example.com", credibility=0.9)
+
+
+def test_cite_round_trips_through_sources_frontmatter(kb, tmp_path):
+    kb.add_concept("notes/z", type="Note", title="Z", body="Some body.")
+    kb.cite("notes/z", "https://example.com/spec", anchor="Spec", source_id="spec")
+    kb.save(str(tmp_path))
+
+    # A citation added through the graph lands in frontmatter, not the body.
+    text = (tmp_path / "notes" / "z.md").read_text(encoding="utf-8")
+    assert "sources:" in text.split("---")[1]
+    assert "# Citations" not in text
+
+    reloaded = OKFBundle.load(str(tmp_path), configure_fts=False)
+    try:
+        assert reloaded.concept("notes/z").cites() == [
+            {"url": "https://example.com/spec", "anchor": "Spec", "id": "spec"}
+        ]
+    finally:
+        reloaded.db.close()
+
+
+def test_sources_frontmatter_is_reachable_as_citations(kb, tmp_path):
+    bundle = tmp_path / "b"
+    bundle.mkdir()
+    (bundle / "doc.md").write_text(
+        "---\ntype: Doc\ntitle: Doc\nsources:\n  - id: policy\n"
+        "    resource: https://wiki.acme/policy\n    title: Policy\n---\n\nx\n",
+        encoding="utf-8",
+    )
+    loaded = OKFBundle.load(str(bundle), configure_fts=False)
+    try:
+        assert loaded.concept("doc").cites() == [
+            {"url": "https://wiki.acme/policy", "anchor": "Policy", "id": "policy"}
+        ]
+        assert loaded.references() == [{"url": "https://wiki.acme/policy", "title": "Policy"}]
+    finally:
+        loaded.db.close()
+
+
 def test_remove_concept(kb):
     assert kb.remove_concept("glossary/cypher") is True
     assert kb.concept("glossary/cypher") is None
@@ -733,7 +799,9 @@ def test_supersede_marks_old_and_links_new(kb):
 
     reloaded_old = kb.concept("notes/old")
     assert reloaded_old.is_superseded is True
-    assert reloaded_old.status == "superseded"
+    # Retraction maps onto the SPEC's own lifecycle vocabulary (sec. 5.4); which
+    # concept replaced it stays in the producer-defined `superseded_by`.
+    assert reloaded_old.status == "deprecated"
     assert reloaded_old.superseded_by == "notes/new"
     assert {c.id for c in kb.concept("notes/new").links(type="SUPERSEDES")} == {"notes/old"}
 
@@ -745,6 +813,200 @@ def test_supersede_appends_to_existing_supersedes_list(kb):
     kb.supersede(a, new)
     kb.supersede(b, new)
     assert set(kb.concept("notes/consolidated").supersedes) == {"notes/a-old", "notes/b-old"}
+
+
+def test_author_deprecated_concept_is_treated_as_retracted(kb, tmp_path):
+    # `status: deprecated` is the SPEC's own "no longer current" value (sec.
+    # 5.4), so a concept the bundle's author deprecated by hand is excluded
+    # from retrieval exactly like one retracted through supersede().
+    bundle = tmp_path / "b"
+    bundle.mkdir()
+    (bundle / "old.md").write_text(
+        "---\ntype: Doc\ntitle: Old\nstatus: deprecated\n---\n\nkrypton lattice notes\n",
+        encoding="utf-8",
+    )
+    (bundle / "new.md").write_text(
+        "---\ntype: Doc\ntitle: New\n---\n\nkrypton lattice notes\n", encoding="utf-8"
+    )
+    loaded = OKFBundle.load(str(bundle))
+    try:
+        assert loaded.concept("old").is_superseded is True
+        assert _ids(loaded.search("krypton lattice", mode="text", k=10)) == ["new"]
+        assert set(_ids(loaded.search("krypton lattice", mode="text", k=10,
+                                      include_superseded=True))) == {"new", "old"}
+    finally:
+        loaded.db.close()
+
+
+def test_supersede_round_trips_through_markdown(kb, tmp_path):
+    old = kb.add_concept("notes/old3", type="Note", title="Old", body="stale")
+    kb.add_concept("notes/new3", type="Note", title="New", body="fresh")
+    kb.supersede(old, "notes/new3")
+    kb.save(str(tmp_path))
+
+    reloaded = OKFBundle.load(str(tmp_path), configure_fts=False)
+    try:
+        retracted = reloaded.concept("notes/old3")
+        assert retracted.status == "deprecated"
+        assert retracted.superseded_by == "notes/new3"
+        assert retracted.is_superseded is True
+    finally:
+        reloaded.db.close()
+
+
+# --- Trust and lifecycle (OKF v0.2 sec. 5.2-5.5) ------------------------------
+
+
+@pytest.fixture
+def trust_kb(tmp_path):
+    """A bundle whose concepts sit in deliberately different trust states."""
+    for name, extra in [
+        ("reviewed", "verified: { by: human:ahormati, at: 2026-06-25T09:00:00Z }"),
+        ("machine", "verified: { by: process:nightly, at: 2026-06-26T02:00:00Z }"),
+        ("raw", ""),
+        ("expired", "stale_after: 2020-01-01"),
+    ]:
+        (tmp_path / f"{name}.md").write_text(
+            f"---\ntype: Doc\ntitle: {name}\n"
+            f"generated: {{ by: agent/x, at: 2026-06-28T14:00:00Z }}\n"
+            f"{extra}\n---\n\nquantum flux capacitor notes\n",
+            encoding="utf-8",
+        )
+    bundle = OKFBundle.load(str(tmp_path))
+    yield bundle
+    bundle.db.close()
+
+
+def test_concept_exposes_trust_and_lifecycle(trust_kb):
+    reviewed = trust_kb.concept("reviewed")
+    assert reviewed.generated_by == "agent/x"
+    assert reviewed.generated_at == "2026-06-28T14:00:00Z"
+    assert reviewed.verified == [{"by": "human:ahormati", "at": "2026-06-25T09:00:00Z"}]
+    assert reviewed.verified_at == "2026-06-25T09:00:00Z"
+    assert reviewed.trust_tier == "human-reviewed"
+
+    assert trust_kb.concept("machine").trust_tier == "machine-confirmed"
+    assert trust_kb.concept("raw").trust_tier == "unverified"
+    assert trust_kb.concept("raw").verified == []
+
+
+def test_is_stale_is_independent_of_retraction(trust_kb):
+    expired = trust_kb.concept("expired")
+    assert expired.is_stale is True
+    assert expired.stale_after == "2020-01-01"
+    # Stale means "re-check me", not "this is wrong" — nothing was retracted.
+    assert expired.is_superseded is False
+    assert trust_kb.concept("raw").is_stale is False
+
+
+def test_search_keeps_stale_concepts_by_default(trust_kb):
+    q = "quantum flux capacitor"
+    assert "expired" in _ids(trust_kb.search(q, mode="text", k=10))
+    assert "expired" not in _ids(trust_kb.search(q, mode="text", k=10, include_stale=False))
+
+
+def test_search_min_trust_filters_by_tier(trust_kb):
+    q = "quantum flux capacitor"
+    assert set(_ids(trust_kb.search(q, mode="text", k=10, min_trust="human-reviewed"))) == {
+        "reviewed"
+    }
+    assert set(_ids(trust_kb.search(q, mode="text", k=10, min_trust="machine-confirmed"))) == {
+        "reviewed",
+        "machine",
+    }
+    # The lowest tier is a floor everything clears, not a filter for "unverified".
+    assert len(trust_kb.search(q, mode="text", k=10, min_trust="unverified")) == 4
+
+
+def test_search_unknown_trust_tier_raises(trust_kb):
+    with pytest.raises(ValueError, match="Unknown trust tier"):
+        trust_kb.search("x", min_trust="trustworthy")
+
+
+def test_context_trust_filters_govern_graph_expansion(kb):
+    # A reviewed seed linking to an unreviewed neighbour: the link must not
+    # smuggle the neighbour past the trust floor.
+    kb.add_concept(
+        "notes/seed-t", type="Note", title="Seed", body="tungsten alloy overview",
+        verified={"by": "human:jp", "at": "2026-06-25T09:00:00Z"},
+    )
+    kb.add_concept("notes/nbr-t", type="Note", title="Neighbour", body="tungsten alloy detail")
+    kb.link("notes/seed-t", "notes/nbr-t")
+
+    pack = kb.context("tungsten alloy", mode="text", k=5, min_trust="human-reviewed")
+    assert [c.id for c in pack.concepts] == ["notes/seed-t"]
+    low_trust = [o for o in pack.omitted if o["reason"] == "low_trust"]
+    assert [o["concept_id"] for o in low_trust] == ["notes/nbr-t"]
+    assert low_trust[0]["via"] == "LINKS_TO"
+
+
+def test_verify_appends_events_and_lifts_the_tier(kb):
+    kb.add_concept("notes/v", type="Note", title="V", body="x")
+    assert kb.concept("notes/v").trust_tier == "unverified"
+
+    kb.verify("notes/v", by="process:nightly", at="2026-06-26T02:00:00Z")
+    assert kb.concept("notes/v").trust_tier == "machine-confirmed"
+
+    # Independent checks accumulate rather than overwrite (sec. 5.2).
+    updated = kb.verify("notes/v", by="human:jp", at="2026-06-27T10:00:00Z")
+    assert updated.verified == [
+        {"by": "process:nightly", "at": "2026-06-26T02:00:00Z"},
+        {"by": "human:jp", "at": "2026-06-27T10:00:00Z"},
+    ]
+    assert updated.trust_tier == "human-reviewed"
+    assert updated.verified_at == "2026-06-27T10:00:00Z"
+
+
+def test_verify_defaults_at_to_now_and_requires_an_actor(kb):
+    kb.add_concept("notes/v2", type="Note", title="V2", body="x")
+    stamped = kb.verify("notes/v2", by="human:jp")
+    assert stamped.verified_at is not None and stamped.verified_at.endswith("+00:00")
+    with pytest.raises(ValueError, match="non-empty `by` actor"):
+        kb.verify("notes/v2", by="  ")
+
+
+def test_verify_round_trips_through_markdown(kb, tmp_path):
+    kb.add_concept("notes/v3", type="Note", title="V3", body="x")
+    kb.verify("notes/v3", by="human:jp", at="2026-06-27T10:00:00Z")
+    kb.save(str(tmp_path))
+
+    reloaded = OKFBundle.load(str(tmp_path), configure_fts=False)
+    try:
+        assert reloaded.concept("notes/v3").trust_tier == "human-reviewed"
+        assert reloaded.concept("notes/v3").verified == [
+            {"by": "human:jp", "at": "2026-06-27T10:00:00Z"}
+        ]
+    finally:
+        reloaded.db.close()
+
+
+def test_okf_version_survives_a_save_round_trip(tmp_path):
+    source = tmp_path / "in"
+    source.mkdir()
+    (source / "index.md").write_text('---\nokf_version: "0.2"\n---\n\n# Index\n', encoding="utf-8")
+    (source / "doc.md").write_text("---\ntype: Doc\ntitle: Doc\n---\n\nx\n", encoding="utf-8")
+
+    bundle = OKFBundle.load(str(source), configure_fts=False)
+    try:
+        assert bundle.okf_version == "0.2"
+        out = tmp_path / "out"
+        bundle.save(str(out))
+    finally:
+        bundle.db.close()
+
+    reloaded = OKFBundle.load(str(out), configure_fts=False)
+    try:
+        assert reloaded.okf_version == "0.2"
+    finally:
+        reloaded.db.close()
+
+
+def test_save_can_set_or_drop_the_version(kb, tmp_path):
+    assert kb.okf_version is None  # the example bundle declares none
+    kb.save(str(tmp_path), okf_version="0.2")
+    assert "okf_version" in (tmp_path / "index.md").read_text(encoding="utf-8")
+    kb.save(str(tmp_path), okf_version=None)
+    assert "okf_version" not in (tmp_path / "index.md").read_text(encoding="utf-8")
 
 
 def test_supersede_self_raises(kb):
@@ -1314,8 +1576,8 @@ def test_search_where_interacts_with_include_superseded(meta_kb):
     meta_kb.supersede("decisions/a", "decisions/c", note="test")
     q = "storage query performance"
     # The default superseded exclusion is itself a status filter, so this is empty.
-    assert meta_kb.search(q, where={"status": "superseded"}) == []
-    hits = meta_kb.search(q, where={"status": "superseded"}, include_superseded=True)
+    assert meta_kb.search(q, where={"status": "deprecated"}) == []
+    hits = meta_kb.search(q, where={"status": "deprecated"}, include_superseded=True)
     assert _ids(hits) == ["decisions/a"]
 
 

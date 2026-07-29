@@ -17,7 +17,11 @@ from typing import TYPE_CHECKING, Any, Callable, Iterator
 from ..importers.okf import (
     DEFAULT_EMBED_FIELDS,
     REFERENCE_LABEL,
+    SOURCE_SIGNALS,
+    TRUST_TIERS,
+    VIA_SOURCES,
     concept_document,
+    normalize_verified,
 )
 from ..models import Node
 from .concept import Concept, ContextPack, Hit, Proposal
@@ -29,6 +33,12 @@ if TYPE_CHECKING:
     from .rerank import Reranker
 
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _utc_now() -> str:
+    """Now as an ISO 8601 UTC timestamp, the form OKF trust events use (sec. 5.2)."""
+    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
+
 _RRF_K = 60  # reciprocal-rank-fusion constant for hybrid search
 
 # Sentinel distinguishing "not passed" from an explicit None in update_concept.
@@ -232,6 +242,7 @@ class OKFBundle:
         write_viz: bool = False,
         write_log: bool = True,
         prune: bool = True,
+        okf_version: Any = _UNSET,
     ) -> dict:
         """Export the graph back to an OKF bundle (defaults to the load path).
 
@@ -244,6 +255,11 @@ class OKFBundle:
         ``write_log`` regenerates per-scope ``log.md`` from the graph's
         ``LogEntry`` nodes (imported history plus :meth:`log_entry` /
         ``autolog`` additions); scopes without entries are left alone.
+
+        ``okf_version`` declares the format version in the root ``index.md``
+        (SPEC sec. 12). It defaults to whatever the bundle declared when it was
+        loaded — so a declaration survives the round-trip instead of being
+        dropped — and passing ``None`` removes it.
         """
         target = str(path) if path is not None else self._source_path
         if target is None:
@@ -255,6 +271,7 @@ class OKFBundle:
             write_viz=write_viz,
             write_log=write_log,
             prune=prune,
+            okf_version=self._okf_version if okf_version is _UNSET else okf_version,
         )
 
     # --- graph escape hatch ------------------------------------------------
@@ -446,6 +463,8 @@ class OKFBundle:
         tag: str | None = None,
         where: "dict | PropertyFilterGroup | None" = None,
         include_superseded: bool = False,
+        include_stale: bool = True,
+        min_trust: str | None = None,
     ) -> list[Hit]:
         """Search concepts by text or meaning, with a unified result shape.
 
@@ -470,18 +489,33 @@ class OKFBundle:
         list: ``where={"tags": "draft"}`` would compare against the *whole* list
         and never match, while ``tag="draft"`` tests membership.
 
-        Concepts marked ``status="superseded"`` (see :meth:`supersede`) are
-        excluded by default, so retrieval never surfaces retracted claims as
-        current truth; pass ``include_superseded=True`` to see them anyway. That
-        exclusion is itself a ``status`` filter, so ``where={"status":
-        "superseded"}`` returns nothing unless you also pass
-        ``include_superseded=True``.
+        Concepts marked ``status="deprecated"`` — by :meth:`supersede`, or by
+        the bundle's author (SPEC sec. 5.4) — are excluded by default, so
+        retrieval never surfaces retracted claims as current truth; pass
+        ``include_superseded=True`` to see them anyway. That exclusion is itself
+        a ``status`` filter, so ``where={"status": "deprecated"}`` returns
+        nothing unless you also pass ``include_superseded=True``.
+
+        ``include_stale`` (default ``True``) keeps concepts past their
+        ``stale_after`` date (SPEC sec. 5.5); pass ``False`` to drop them. The
+        default is the opposite of ``include_superseded`` on purpose: retraction
+        is the author asserting a claim is *wrong*, while staleness only says
+        "re-check me", so hiding stale knowledge by default would quietly empty
+        a bundle whose author set conservative dates.
+
+        ``min_trust`` keeps only concepts at or above a trust tier (sec. 5.3):
+        ``"unverified"`` (no floor), ``"machine-confirmed"``, or
+        ``"human-reviewed"``. Tiers are derived from ``verified``, so this is a
+        real filter on who confirmed the content, not on a stored score.
         """
         mode = self._resolve_mode(mode)
+        min_trust_rank = self._trust_rank(min_trust)
 
-        # Post-filters (layer, superseded, tag, and `where` in text mode) need
-        # over-fetch to keep k results.
-        filtered = layer or tag or where or not include_superseded
+        # Post-filters (layer, trust, lifecycle, tag, and `where` in text mode)
+        # need over-fetch to keep k results.
+        filtered = (
+            layer or tag or where or not include_superseded or not include_stale or min_trust_rank
+        )
         fetch = k * 4 if filtered else k
 
         # `where` is pushed into the vector search natively; `tag` needs json_each,
@@ -504,7 +538,24 @@ class OKFBundle:
             hits = [h for h in hits if h.concept.id.startswith(prefix)]
         if not include_superseded:
             hits = [h for h in hits if not h.concept.is_superseded]
+        if not include_stale:
+            hits = [h for h in hits if not h.concept.is_stale]
+        if min_trust_rank:
+            hits = [
+                h for h in hits if TRUST_TIERS.index(h.concept.trust_tier) >= min_trust_rank
+            ]
         return hits[:k]
+
+    @staticmethod
+    def _trust_rank(min_trust: str | None) -> int:
+        """Validate a ``min_trust`` tier name into its rank (0 = no floor)."""
+        if min_trust is None:
+            return 0
+        if min_trust not in TRUST_TIERS:
+            raise ValueError(
+                f"Unknown trust tier: {min_trust!r} (expected one of {list(TRUST_TIERS)})"
+            )
+        return TRUST_TIERS.index(min_trust)
 
     def context(
         self,
@@ -520,6 +571,8 @@ class OKFBundle:
         expand_hops: int = 1,
         include_citations: bool = True,
         include_superseded: bool = False,
+        include_stale: bool = True,
+        min_trust: str | None = None,
         token_counter: Callable[[str], int] | None = None,
         rerank: "Reranker | None" = None,
         include_trace: bool = False,
@@ -555,7 +608,10 @@ class OKFBundle:
         neighbours: superseded concepts pulled in via ``SUPERSEDES`` or a stale
         ``LINKS_TO`` edge are dropped unless requested, so a retracted claim
         doesn't leak into the pack through expansion even when the seed search
-        excluded it.
+        excluded it. ``include_stale=False`` and ``min_trust`` (SPEC sec. 5.5
+        and 5.3, see :meth:`search`) govern expansion the same way — a prompt
+        assembled under ``min_trust="human-reviewed"`` cannot pick up an
+        unreviewed concept through a link.
 
         ``budget_tokens`` is measured with ``token_counter`` (default: a ~4
         chars/token heuristic — pass your model's tokenizer for exact budgeting).
@@ -563,14 +619,17 @@ class OKFBundle:
 
         The pack is auditable: ``pack.omitted`` lists what retrieval reached but
         left out — concepts dropped for ``"budget"`` (didn't fit), ``"superseded"``
-        (a retracted claim reached via expansion), ``"filtered"`` (a neighbour the
-        ``where``/``tag`` filter excluded), or ``"reranked_out"`` (cut by a
-        reranker's ``top_n``) — each as ``{"concept_id", "title", "reason", "via"}``.
+        (a retracted claim reached via expansion), ``"stale"`` (past its
+        ``stale_after``), ``"low_trust"`` (below ``min_trust``), ``"filtered"``
+        (a neighbour the ``where``/``tag`` filter excluded), or ``"reranked_out"``
+        (cut by a reranker's ``top_n``) — each as
+        ``{"concept_id", "title", "reason", "via"}``.
         ``include_trace=True`` additionally fills ``pack.trace`` with a compact,
         deterministic step log (search -> expand -> rerank -> pack) so an agent can
         explain *why* the context is what it is; it stays ``None`` otherwise.
         """
         count = token_counter or self._estimate_tokens
+        min_trust_rank = self._trust_rank(min_trust)
         hits = self.search(
             query,
             k=k,
@@ -580,6 +639,8 @@ class OKFBundle:
             tag=tag,
             where=where,
             include_superseded=include_superseded,
+            include_stale=include_stale,
+            min_trust=min_trust,
         )
 
         # The same metadata filter the seeds passed, applied to expanded neighbours
@@ -608,6 +669,12 @@ class OKFBundle:
                     seen.add(nbr.node.id)
                     if not include_superseded and nbr.is_superseded:
                         omitted.append(self._omission(nbr, "superseded", rel_type))
+                        continue
+                    if not include_stale and nbr.is_stale:
+                        omitted.append(self._omission(nbr, "stale", rel_type))
+                        continue
+                    if min_trust_rank and TRUST_TIERS.index(nbr.trust_tier) < min_trust_rank:
+                        omitted.append(self._omission(nbr, "low_trust", rel_type))
                         continue
                     if allowed_ids is not None and nbr.node.id not in allowed_ids:
                         omitted.append(self._omission(nbr, "filtered", rel_type))
@@ -713,7 +780,7 @@ class OKFBundle:
         scope: str = "",
         concepts: "list[Concept | str] | None" = None,
     ) -> dict:
-        """Append a changelog entry (a ``LogEntry`` node, SPEC sec. 7).
+        """Append a changelog entry (a ``LogEntry`` node, SPEC sec. 9).
 
         ``save()`` serializes entries back to the scope's ``log.md``; entries
         mentioning ``concepts`` are linked via ``MENTIONS`` so ``log(cid)``
@@ -873,20 +940,45 @@ class OKFBundle:
         )
 
     def cite(
-        self, src: "Concept | str", target: "Concept | str", *, anchor: str | None = None
+        self,
+        src: "Concept | str",
+        target: "Concept | str",
+        *,
+        anchor: str | None = None,
+        source_id: str | None = None,
+        **signals: Any,
     ) -> None:
-        """Create a ``CITES`` edge from ``src`` to a URL or another concept.
+        """Record that ``src`` derives from a URL or another concept (SPEC sec. 5.1).
 
-        A URL target resolves to a deduplicated ``Reference`` node.
+        A URL target resolves to a deduplicated ``Reference`` node. ``anchor``
+        is the source's human-readable ``title``; ``source_id`` is the stable
+        key the body cites in a footnote (``[^rev-policy]``). ``signals`` takes
+        the optional credibility signals — ``author``, ``usage_count``,
+        ``last_modified``, ``usage_window`` — which live on the edge because
+        they describe *this* concept's use of the source.
+
+        ``save()`` writes the citation into the concept's ``sources``
+        frontmatter, unless an authored entry already names the same resource,
+        in which case the authored form is left untouched.
         """
+        unknown = set(signals) - set(SOURCE_SIGNALS)
+        if unknown:
+            raise ValueError(
+                f"Unknown source signal(s): {sorted(unknown)}"
+                f" (expected any of {list(SOURCE_SIGNALS)})"
+            )
         source = self._resolve(src)
         if isinstance(target, str) and target.startswith(("http://", "https://")):
             target_id = self._reference_node(target, anchor).id
         else:
             target_id = self._resolve(target).node.id
-        self._db.create_relationship(
-            source.node.id, target_id, "CITES", {"anchor": anchor} if anchor else {}
-        )
+        properties: dict[str, Any] = {"via": VIA_SOURCES}
+        if anchor:
+            properties["anchor"] = anchor
+        if source_id:
+            properties["source_id"] = source_id
+        properties.update({k: v for k, v in signals.items() if v is not None})
+        self._db.create_relationship(source.node.id, target_id, "CITES", properties)
 
     def remove_concept(self, concept_id: str) -> bool:
         """Delete a concept (and its relationships/embedding). Returns success."""
@@ -912,8 +1004,11 @@ class OKFBundle:
 
         Per **append-only-on-meaning**: a claim is never rewritten in place to
         change its meaning — a correction creates a new concept and links the
-        old one to it. Sets ``status="superseded"``/``superseded_by`` on
-        ``old`` and appends to ``supersedes`` on ``new``, and links
+        old one to it. Sets ``status="deprecated"`` on ``old`` — the SPEC's
+        lifecycle value for "kept for links and history, no longer current"
+        (sec. 5.4) — plus ``superseded_by``, a producer-defined key (sec. 4.1)
+        naming *which* concept replaced it, which lifecycle alone cannot say.
+        Appends to ``supersedes`` on ``new``, and links
         ``new -[:SUPERSEDES]-> old`` so the relationship is graph-queryable
         and, with ``typed_links=True``, round-trips through markdown.
         Superseded concepts are excluded from :meth:`search`/:meth:`context`
@@ -929,7 +1024,7 @@ class OKFBundle:
         new_node = self._db.get_node(new_c.node.id)
 
         old_props = dict(old_node.properties)
-        old_props["status"] = "superseded"
+        old_props["status"] = "deprecated"
         old_props["superseded_by"] = new_c.id
         self._db.replace_node_properties(old_c.node.id, old_props)
 
@@ -962,6 +1057,48 @@ class OKFBundle:
             self.log_entry(text, kind="Supersede", concepts=[old_c, new_c])
 
         return Concept(self, self._db.get_node(new_c.node.id))
+
+    def verify(
+        self, concept: "Concept | str", *, by: str, at: str | None = None
+    ) -> Concept:
+        """Record that ``by`` confirmed this concept's content (SPEC sec. 5.2).
+
+        Appends a ``{by, at}`` event to ``verified``, so independent checks
+        accumulate rather than overwrite — a human sign-off and a nightly
+        process are two events, and the concept's trust tier (sec. 5.3) is
+        derived from the highest actor among them.
+
+        ``by`` follows the actor convention (sec. 7): ``human:<id>`` for a
+        person, ``process:<id>`` for an automated process, ``<producer>/<version>``
+        for an agent. The ``human:`` prefix is what lifts a concept to the
+        ``human-reviewed`` tier, so it must be used for hand-confirmed content.
+        ``at`` defaults to now (UTC, ISO 8601).
+
+        Verification is deliberately separate from :meth:`update_concept`: who
+        *wrote* a concept need not be who *confirmed* it, and content can be
+        re-confirmed without being regenerated.
+        """
+        if not isinstance(by, str) or not by.strip():
+            raise ValueError("verify() needs a non-empty `by` actor (SPEC sec. 7)")
+        target = self._resolve(concept)
+        # Re-fetch: a caller-held Concept may predate an earlier verify().
+        node = self._db.get_node(target.node.id)
+        props = dict(node.properties)
+
+        event = {"by": by.strip(), "at": at or _utc_now()}
+        events = normalize_verified(props)
+        events.append(event)
+        props["verified"] = events
+        self._db.replace_node_properties(node.id, props)
+
+        updated = Concept(self, self._db.get_node(node.id))
+        if self.autolog:
+            self.log_entry(
+                f"[{updated.title or target.id}](/{target.id}.md) verified by {event['by']}.",
+                kind="Verification",
+                concepts=[updated],
+            )
+        return updated
 
     def conflicts_with(
         self, a: "Concept | str", b: "Concept | str", *, note: str | None = None
@@ -1402,7 +1539,12 @@ class OKFBundle:
                 return node
         return self._db.create_node(
             labels=[REFERENCE_LABEL],
-            properties={"title": anchor or url, "url": url, "okf_auto": True},
+            properties={
+                "title": anchor or url,
+                "url": url,
+                "resource": url,  # the v0.2 field name (sec. 5.1); `url` kept for compat
+                "okf_auto": True,
+            },
             uri=url,
         )
 
@@ -1524,18 +1666,28 @@ class OKFBundle:
 
     def _citations_of(self, concept_id: str) -> list[dict]:
         rows = self.execute(
-            "MATCH (a)-[r:CITES]->(t) WHERE a.concept_id = $cid "
-            "RETURN t, r.anchor AS anchor",
+            "MATCH (a)-[r:CITES]->(t) WHERE a.concept_id = $cid RETURN t, r",
             cid=concept_id,
         )
         cites: list[dict] = []
         for row in rows:
             target = self._node_from_row(row["t"])
-            anchor = row.get("anchor")
+            edge = row["r"].get("properties", {}) if isinstance(row.get("r"), dict) else {}
             if target.properties.get("okf_auto"):
-                cites.append({"url": target.properties.get("url"), "anchor": anchor})
+                cite = {"url": target.properties.get("url"), "anchor": edge.get("anchor")}
             else:
-                cites.append({"concept": target.properties.get("concept_id"), "anchor": anchor})
+                cite = {
+                    "concept": target.properties.get("concept_id"),
+                    "anchor": edge.get("anchor"),
+                }
+            # The `sources` extras (sec. 5.1) only when the edge carries them,
+            # so a plain citation keeps its two-key shape.
+            if edge.get("source_id"):
+                cite["id"] = edge["source_id"]
+            for signal in SOURCE_SIGNALS:
+                if edge.get(signal) is not None:
+                    cite[signal] = edge[signal]
+            cites.append(cite)
         return cites
 
     def _resolve_mode(self, mode: str) -> str:

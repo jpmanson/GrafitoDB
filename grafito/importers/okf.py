@@ -12,8 +12,11 @@ This importer maps an OKF bundle onto the Property Graph Model:
 - markdown body -> ``body`` property (feeds full-text search)
 - concept ID -> node ``uri`` (``<uri_prefix><concept-id>``)
 - markdown links -> relationships (default type ``LINKS_TO``)
-- links under a ``# Citations`` heading -> ``CITES`` relationships, to concepts
-  (intra-bundle) or to auto-created ``Reference`` nodes (external URLs)
+- ``sources`` frontmatter -> ``CITES`` relationships, to concepts (intra-bundle)
+  or to auto-created ``Reference`` nodes (external URLs, followable artifacts,
+  and scope descriptors), carrying the entry's credibility signals
+- links under a legacy ``# Citations`` heading -> the same ``CITES``
+  relationships (OKF v0.1 form, still consumed per SPEC sec. 13.1)
 
 See https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf for
 the format specification.
@@ -21,6 +24,7 @@ the format specification.
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import re
 from contextlib import nullcontext
@@ -36,11 +40,11 @@ if TYPE_CHECKING:
 # Reserved filenames that are not concept documents (SPEC sec. 3.1).
 RESERVED_FILENAMES = {"index.md", "log.md"}
 
-# Default label for concepts lacking a `type` (permissive consumption, sec. 9)
-# and for stub nodes created from links to not-yet-written concepts (sec. 5.3).
+# Default label for concepts lacking a `type` (permissive consumption, sec. 11)
+# and for stub nodes created from links to not-yet-written concepts (sec. 6.1).
 DEFAULT_LABEL = "Concept"
 
-# Label for auto-created nodes representing external citation sources (sec. 8).
+# Label for auto-created nodes representing sources outside the bundle (sec. 5.1).
 REFERENCE_LABEL = "Reference"
 
 # Relationship types added by OKFBundle's trust model (supersede/conflicts_with),
@@ -56,7 +60,8 @@ _BARE_URL_RE = re.compile(r"https?://[^\s<>\]\)]+")
 # Schemes treated as external citations/resources rather than intra-bundle links.
 _EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "ftp://", "//")
 
-# `# Citations` section heading (any level), SPEC sec. 8.
+# Legacy `# Citations` section heading (any level). Superseded by the `sources`
+# frontmatter in v0.2 (SPEC sec. 13.1), still parsed for v0.1 documents.
 _CITATIONS_HEADING_RE = re.compile(r"^(#{1,6})\s+Citations\s*$", re.IGNORECASE | re.MULTILINE)
 _HEADING_RE = re.compile(r"^(#{1,6})\s+", re.MULTILINE)
 
@@ -75,7 +80,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 
     Returns an empty dict when no frontmatter block is present. Raises
     ``yaml.YAMLError`` when a block is present but is not valid YAML — callers
-    that want permissive consumption (SPEC sec. 9) catch it and fall back to
+    that want permissive consumption (SPEC sec. 11) catch it and fall back to
     treating the whole file as body (see ``import_bundle``).
     """
     if not text.startswith("---"):
@@ -119,7 +124,7 @@ def classify_target(target: str, source_id: str) -> tuple[str, str] | None:
     if not path:
         return None
     if path.startswith("/"):
-        # Bundle-relative (absolute) link (SPEC sec. 5.1).
+        # Bundle-relative (absolute) link (SPEC sec. 6.1).
         concept_id = path.lstrip("/")
     else:
         # Relative link, resolved against the source concept's directory.
@@ -216,7 +221,7 @@ def extract_typed_wikilinks(
     """Return [(anchor, target_concept_id, heading), ...] for Obsidian wikilinks.
 
     Unlike markdown links (path-resolved, always kept — an unknown target
-    becomes a stub per SPEC sec. 5.3), a wikilink is only kept when it
+    becomes a stub per SPEC sec. 6.1), a wikilink is only kept when it
     resolves unambiguously via :func:`resolve_wikilink`: to an existing
     concept, or verbatim as a not-yet-written concept ID (matching Obsidian's
     own "red link" convention) when nothing matches its basename at all. An
@@ -300,19 +305,277 @@ def extract_citations(citations_block: str, source_id: str) -> list[tuple[str, s
     return cites
 
 
+# --- Provenance: the `sources` frontmatter (SPEC sec. 5.1) --------------------
+#
+# v0.2 moves provenance out of the body and into frontmatter. `sources` is a
+# list of entries, each naming a `resource` plus optional per-source credibility
+# signals; `usage_window` is written once as a sibling of `sources` and frames
+# every entry's `usage_count`. The importer turns each entry into the same
+# `CITES` edge the legacy `# Citations` list produced, so provenance is
+# graph-queryable however it was authored.
+
+# Optional per-source credibility signals carried on the edge (sec. 5.1).
+SOURCE_SIGNALS = ("author", "usage_count", "last_modified", "usage_window")
+
+# Values of the `via` property on a CITES edge: which form the provenance was
+# authored in. The exporter reads it to write each edge back the same way,
+# instead of emitting a v0.1 citation list and a v0.2 `sources` block for the
+# same fact (which would double the edges on the next import).
+VIA_SOURCES = "sources"  # frontmatter `sources` (v0.2), or a programmatic cite()
+VIA_CITATIONS = "citations"  # legacy body `# Citations` list (v0.1)
+
+
+def normalize_sources(frontmatter: dict) -> list[dict]:
+    """Return the ``sources`` frontmatter as a list of normalized entries.
+
+    Applies the shared ``usage_window`` sibling as each entry's default window,
+    tolerates a lone entry written as a bare mapping, and drops anything that is
+    not a mapping carrying a non-empty ``resource`` (REQUIRED within an entry).
+    Permissive consumption (sec. 11): one malformed entry never costs the others.
+    """
+    raw = frontmatter.get("sources")
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    shared_window = frontmatter.get("usage_window")
+    entries: list[dict] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        resource = item.get("resource")
+        if not isinstance(resource, str) or not resource.strip():
+            continue
+        entry: dict = {"resource": resource.strip()}
+        for key in ("id", "title", *SOURCE_SIGNALS):
+            value = item.get(key)
+            if value is not None:
+                entry[key] = value
+        if "usage_window" not in entry and shared_window is not None:
+            entry["usage_window"] = shared_window
+        entries.append(entry)
+    return entries
+
+
+def classify_source(resource: str, source_id: str) -> tuple[str, str]:
+    """Classify a ``sources[].resource`` for edge resolution (sec. 5.1).
+
+    Returns ``("external", url)``, ``("concept", concept_id)`` for a path into
+    the bundle, or ``("scope", descriptor)`` for a population or scope
+    descriptor a consumer cannot follow (``all queries in BigQuery project X``).
+    A descriptor is told apart from a path by containing whitespace — paths and
+    URLs never do, and the SPEC gives no other marker.
+    """
+    resource = resource.strip()
+    if not resource:
+        return "scope", resource
+    if resource.startswith(_EXTERNAL_PREFIXES):
+        return "external", resource
+    if any(char.isspace() for char in resource):
+        return "scope", resource
+    classified = classify_target(resource, source_id)
+    return classified if classified is not None else ("scope", resource)
+
+
+# --- Trust and lifecycle: `generated`, `verified`, `status`, `stale_after` ----
+#
+# These families (SPEC sec. 5.2-5.5) answer "who wrote this", "who confirmed
+# it", "is it current", and "is it still true". They are read, never computed
+# and stored: a trust tier derived at read time cannot go stale against the
+# `verified` list it came from, and OKF deliberately stores the signals rather
+# than a verdict. Every helper here takes raw frontmatter — the same dict shape
+# whether it came from YAML (where dates parse to `date`/`datetime`) or from a
+# node's properties (where grafito has already normalized them to ISO text).
+
+# Lifecycle vocabulary (sec. 5.4). An absent `status` reads as `stable`.
+LIFECYCLE_STATUSES = ("draft", "stable", "deprecated")
+DEFAULT_STATUS = "stable"
+
+# Trust tiers, lowest to highest (sec. 5.3).
+TRUST_TIERS = ("unverified", "machine-confirmed", "human-reviewed")
+
+# The actor prefix trust classification keys off (sec. 7).
+HUMAN_ACTOR_PREFIX = "human:"
+
+
+def _iso_text(value: Any) -> str | None:
+    """ISO text for a date-ish frontmatter value, or ``None`` when unusable."""
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return value.isoformat()
+    return None
+
+
+def _as_date(value: Any) -> "datetime.date | None":
+    """A calendar date from a `date`, `datetime`, or ISO string; else ``None``."""
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value.strip()[:10])
+        except ValueError:
+            return None
+    return None
+
+
+def normalize_event(value: Any) -> dict | None:
+    """One ``{by, at}`` trust event (sec. 5.2), or ``None`` if it names no actor.
+
+    ``by`` is REQUIRED within the mapping; ``at`` is optional, so an event that
+    records only who confirmed something is still an event.
+    """
+    if not isinstance(value, dict):
+        return None
+    by = value.get("by")
+    if not isinstance(by, str) or not by.strip():
+        return None
+    event = {"by": by.strip()}
+    at = _iso_text(value.get("at"))
+    if at:
+        event["at"] = at
+    return event
+
+
+def normalize_verified(frontmatter: dict) -> list[dict]:
+    """``verified`` as a list of ``{by, at}`` events (sec. 5.2).
+
+    A single verifier may be written as a bare mapping without the list dash;
+    consumers MUST read that as a one-element list (sec. 11). Multiple entries
+    capture independent checks, for example a human sign-off plus a nightly
+    process.
+    """
+    raw = frontmatter.get("verified")
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    return [event for event in (normalize_event(item) for item in raw) if event is not None]
+
+
+def trust_tier(frontmatter: dict) -> str:
+    """The concept's trust tier, derived from ``verified`` (sec. 5.3).
+
+    ``unverified`` with no ``verified`` key, ``human-reviewed`` when any
+    verifier is a ``human:`` actor, ``machine-confirmed`` otherwise. Advisory
+    only: a concept with no trust frontmatter is still consumable (sec. 11).
+    """
+    events = normalize_verified(frontmatter)
+    if not events:
+        return "unverified"
+    if any(event["by"].startswith(HUMAN_ACTOR_PREFIX) for event in events):
+        return "human-reviewed"
+    return "machine-confirmed"
+
+
+def verified_at(frontmatter: dict) -> str | None:
+    """When the concept was most recently confirmed — the latest ``at`` (sec. 5.2)."""
+    stamps = [event["at"] for event in normalize_verified(frontmatter) if "at" in event]
+    return max(stamps) if stamps else None
+
+
+def generated_at(frontmatter: dict) -> str | None:
+    """When the content last meaningfully changed (sec. 5.2).
+
+    Falls back to a legacy v0.1 ``timestamp`` when ``generated`` is absent —
+    the fallback v0.2 explicitly allows for v0.1 documents (sec. 13.1).
+    """
+    generated = frontmatter.get("generated")
+    if isinstance(generated, dict):
+        at = _iso_text(generated.get("at"))
+        if at:
+            return at
+    return _iso_text(frontmatter.get("timestamp"))
+
+
+def generated_by(frontmatter: dict) -> str | None:
+    """The actor that produced the current content (sec. 5.2), or ``None``."""
+    generated = frontmatter.get("generated")
+    if not isinstance(generated, dict):
+        return None
+    by = generated.get("by")
+    return by.strip() if isinstance(by, str) and by.strip() else None
+
+
+def is_stale(frontmatter: dict, *, today: "datetime.date | None" = None) -> bool:
+    """Whether ``today >= stale_after`` (sec. 5.5).
+
+    ``False`` when the concept declares no ``stale_after``, or declares one that
+    is not a readable date — staleness is an assertion the producer makes, never
+    something a consumer infers from silence.
+    """
+    deadline = _as_date(frontmatter.get("stale_after"))
+    if deadline is None:
+        return False
+    return (today or datetime.date.today()) >= deadline
+
+
+# --- Attested computations: the computation family (SPEC sec. 10) ------------
+#
+# An Attested Computation concept carries a sanctioned way to compute a value
+# plus the means to confirm a run produced it that way. Three of its fields name
+# paths (sec. 6.2) pointing outside the concept: the computation file, the
+# executor's run instructions, and the attester's code. Materializing them as
+# edges makes "what runs this" and "what checks it" traversable, the same way
+# `sources` makes provenance traversable — grafito never executes any of it.
+
+# The concept type these fields belong to (sec. 10.1).
+COMPUTATION_TYPE = "Attested Computation"
+
+# Path-valued computation field -> the relationship it produces. `computation`
+# holds the path itself; `executor`/`attester` are mappings whose `resource`
+# key holds it (sec. 10.2).
+COMPUTATION_REL_TYPES = {
+    "computation": "HAS_COMPUTATION",
+    "executor": "EXECUTED_BY",
+    "attester": "ATTESTED_BY",
+}
+
+# `# Computation` body fence heading (sec. 4.2), the inline alternative to a
+# `computation` path.
+_COMPUTATION_HEADING_RE = re.compile(r"^#{1,6}\s+Computation\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def computation_paths(frontmatter: dict) -> list[tuple[str, str]]:
+    """Return ``[(field, path), ...]`` for the computation family (sec. 10.2).
+
+    Driven by field presence rather than ``type``: ``type`` is free-form, and a
+    concept declaring an ``attester`` is making the same assertion whatever it
+    calls itself. Values that name nothing followable are skipped, so a
+    ``computation`` holding inline text, or an ``executor`` mapping with no
+    ``resource``, simply stays an ordinary property.
+    """
+    paths: list[tuple[str, str]] = []
+    for field in COMPUTATION_REL_TYPES:
+        value = frontmatter.get(field)
+        candidate = value if field == "computation" else (
+            value.get("resource") if isinstance(value, dict) else None
+        )
+        if isinstance(candidate, str) and candidate.strip():
+            paths.append((field, candidate.strip()))
+    return paths
+
+
+def has_inline_computation(body: str) -> bool:
+    """Whether the body carries a ``# Computation`` section (sec. 10.3)."""
+    return bool(_COMPUTATION_HEADING_RE.search(body or ""))
+
+
 def _concept_id_for(path: Path, root: Path) -> str:
     rel = path.relative_to(root).as_posix()
     return rel[: -len(".md")] if rel.endswith(".md") else rel
 
 
-# Log entry: a list bullet under a `## YYYY-MM-DD` date heading (SPEC sec. 7).
+# Log entry: a list bullet under a `## YYYY-MM-DD` date heading (SPEC sec. 9).
 _LOG_DATE_RE = re.compile(r"^#{1,6}\s+(\d{4}-\d{2}-\d{2})\s*$")
 _LOG_BULLET_RE = re.compile(r"^\s*[-*]\s+(.*\S)\s*$")
 _LOG_KIND_RE = re.compile(r"^\*\*([^*]+)\*\*:?\s*(.*)$")
 
 
 def parse_log_entries(text: str) -> list[tuple[str, str | None, str]]:
-    """Parse a ``log.md`` into ``[(date, kind, text), ...]`` (SPEC sec. 7).
+    """Parse a ``log.md`` into ``[(date, kind, text), ...]`` (SPEC sec. 9).
 
     ``kind`` is the leading bold word (``Update``/``Creation``/...) when present.
     """
@@ -395,8 +658,13 @@ def import_bundle(
             nothing becomes a stub keyed by the literal link text (Obsidian's
             own "red link" — not-yet-written note — convention). Off by
             default.
-        citations: Parse the ``# Citations`` section into ``citation_type``
-            relationships (to concepts or auto-created ``Reference`` nodes).
+        citations: Import provenance as ``citation_type`` relationships (to
+            concepts or auto-created ``Reference`` nodes) — from the ``sources``
+            frontmatter (SPEC v0.2 sec. 5.1) and from a legacy ``# Citations``
+            body section (v0.1, sec. 13.1). Each edge records which form it came
+            from in its ``via`` property, and a ``sources`` edge also carries the
+            entry's ``source_id`` and credibility signals (``author``,
+            ``usage_count``, ``last_modified``, ``usage_window``).
         citation_type: Relationship type created for citations.
         configure_fts: Configure full-text search over title/description/body
             (best-effort; skipped if SQLite lacks FTS5).
@@ -447,7 +715,10 @@ def import_bundle(
 
     Returns:
         Summary dict with ``nodes`` (created or updated this run),
-        ``relationships``, ``citations``, ``references`` (new ``Reference``
+        ``relationships``, ``citations`` (every citation edge), ``sources``
+        (how many of those came from the ``sources`` frontmatter rather than a
+        legacy body list), ``computations`` (edges from the computation family,
+        sec. 10.2), ``references`` (new ``Reference``
         nodes created this run), ``stubs``, ``skipped``, ``embedded``,
         ``directories``, ``log_entries``, ``malformed`` (concept IDs whose
         frontmatter was not valid YAML and was treated as body text),
@@ -467,6 +738,10 @@ def import_bundle(
     pending_links: list[tuple[str, str, str, str]] = []
     # (source_id, anchor, kind, value)
     pending_citations: list[tuple[str, str, str, str]] = []
+    # (source_id, normalized `sources` entry)
+    pending_sources: list[tuple[str, dict]] = []
+    # (source_id, computation field, path)
+    pending_computations: list[tuple[str, str, str]] = []
     embed_docs: list[tuple[int, str]] = []  # (node_id, document) for real concepts
     wikilink_bodies: list[tuple[str, str]] = []  # (concept_id, main_body), only if wikilinks
     nodes = 0
@@ -608,6 +883,11 @@ def import_bundle(
                 pending_links.append((concept_id, anchor, target_id, rel_type))
             for anchor, kind, value in extract_citations(citations_block, concept_id):
                 pending_citations.append((concept_id, anchor, kind, value))
+            if citations:
+                for entry in normalize_sources(frontmatter):
+                    pending_sources.append((concept_id, entry))
+            for field, computation_path in computation_paths(frontmatter):
+                pending_computations.append((concept_id, field, computation_path))
             if wikilinks:
                 wikilink_bodies.append((concept_id, main_body))
 
@@ -635,7 +915,7 @@ def import_bundle(
                     rel_type = (rel_type_from_heading(heading) if typed_links else None) or link_type
                     pending_links.append((concept_id, anchor, target_id, rel_type))
 
-        # Second pass: resolve links, creating stubs for missing targets (sec. 5.3).
+        # Second pass: resolve links, creating stubs for missing targets (sec. 6.1).
         relationships = 0
         stubs = 0
 
@@ -662,33 +942,105 @@ def import_bundle(
         if stride:
             report("links", relationships, end=True)
 
-        # Citations: link to concepts (intra-bundle) or to Reference nodes (external).
+        # Citations: link to concepts (intra-bundle) or to Reference nodes
+        # (external URLs, followable artifacts, scope descriptors).
         # `reference_nodes` is pre-seeded with existing Reference nodes in
-        # incremental mode, so only genuinely new URLs create a node here.
+        # incremental mode, so only genuinely new resources create a node here.
         citation_count = 0
         new_references = 0
-        for source_id, anchor, kind, value in pending_citations:
+
+        def resolve_reference(resource: str, title: str | None, *, scope: bool = False) -> int:
+            nonlocal new_references
+            if resource not in reference_nodes:
+                properties: dict[str, Any] = {
+                    "title": title or resource,
+                    "url": resource,
+                    "resource": resource,
+                    "okf_auto": True,
+                }
+                if scope:
+                    # A population descriptor, not an artifact to follow (sec. 5.1).
+                    properties["scope_descriptor"] = True
+                ref = db.create_node(labels=[REFERENCE_LABEL], properties=properties, uri=resource)
+                reference_nodes[resource] = ref.id
+                new_references += 1
+            return reference_nodes[resource]
+
+        def resolve_path_field(raw: str, source_id: str, title: str | None = None) -> int:
+            """Resolve a path-valued field (sec. 6.2) to the node it names.
+
+            A path is a concept when the bundle has one, or when it is
+            explicitly a ``.md`` document not written yet (sec. 6.1). Anything
+            else followable — an attester's ``.py``, a dashboard path — becomes
+            a ``Reference``, so these fields never litter the graph with stub
+            *concepts* for files that are not concepts.
+
+            A plain relative path is tried twice: once relative to the citing
+            concept, then once from the bundle root. The SPEC writes executors
+            and attesters as ``references/skills/run-on-bq.md`` from a concept
+            inside ``computations/``, while placing that tree at the root
+            (sec. 6.3) — only the second reading finds it, and a path that
+            resolves under neither reading is unaffected by trying both.
+            """
+            kind, value = classify_source(raw, source_id)
             if kind == "concept":
-                target = resolve_concept(value)
-            else:
-                if value not in reference_nodes:
-                    ref = db.create_node(
-                        labels=[REFERENCE_LABEL],
-                        properties={"title": anchor or value, "url": value, "okf_auto": True},
-                        uri=value,
-                    )
-                    reference_nodes[value] = ref.id
-                    new_references += 1
-                target = reference_nodes[value]
+                if value in concept_to_node:
+                    return concept_to_node[value]
+                if not raw.startswith(("/", ".")):
+                    rooted = raw[: -len(".md")] if raw.endswith(".md") else raw
+                    if rooted in concept_to_node:
+                        return concept_to_node[rooted]
+                if raw.endswith(".md"):
+                    return resolve_concept(value)
+            return resolve_reference(raw, title, scope=kind == "scope")
+
+        for source_id, anchor, kind, value in pending_citations:
+            target = resolve_concept(value) if kind == "concept" else resolve_reference(value, anchor)
+            edge_props = {"via": VIA_CITATIONS}
+            if anchor:
+                edge_props["anchor"] = anchor
+            db.create_relationship(concept_to_node[source_id], target, citation_type, edge_props)
+            citation_count += 1
+
+        # Frontmatter provenance (sec. 5.1): the same `citation_type` edges, but
+        # tagged `via=VIA_SOURCES` so the exporter writes them back to
+        # frontmatter, and carrying the entry's id, title, and credibility
+        # signals — a source's authority, adoption, and recency are per *edge*,
+        # since two concepts can cite one resource over different usage windows.
+        source_edges = 0
+        for source_id, entry in pending_sources:
+            resource = entry["resource"]
+            target = resolve_path_field(resource, source_id, entry.get("title"))
+            edge_props = {"via": VIA_SOURCES}
+            if entry.get("title"):
+                edge_props["anchor"] = entry["title"]
+            if entry.get("id"):
+                edge_props["source_id"] = entry["id"]
+            for signal in SOURCE_SIGNALS:
+                if signal in entry:
+                    edge_props[signal] = entry[signal]
+            db.create_relationship(concept_to_node[source_id], target, citation_type, edge_props)
+            citation_count += 1
+            source_edges += 1
+        if stride:
+            report("citations", citation_count, end=True)
+
+        # The computation family (sec. 10.2): the paths naming what runs a
+        # computation and what checks it become edges, resolved exactly like a
+        # source path — a known concept, a `.md` document not written yet, or a
+        # Reference for anything else (an attester is usually a `.py` file).
+        computation_edges = 0
+        for source_id, field, computation_path in pending_computations:
+            if classify_source(computation_path, source_id)[0] == "scope":
+                continue  # not a path at all: inline content, left as a property
+            target = resolve_path_field(computation_path, source_id)
             db.create_relationship(
                 concept_to_node[source_id],
                 target,
-                citation_type,
-                properties={"anchor": anchor} if anchor else {},
+                COMPUTATION_REL_TYPES[field],
+                {"via": field},
             )
-            citation_count += 1
-        if stride:
-            report("citations", citation_count, end=True)
+            computation_edges += 1
 
         # Optional: synthesize a directory tree (Directory nodes + CONTAINS edges).
         directories = 0
@@ -778,6 +1130,8 @@ def import_bundle(
         "nodes": nodes,
         "relationships": relationships,
         "citations": citation_count,
+        "sources": source_edges,
+        "computations": computation_edges,
         "references": new_references,
         "stubs": stubs,
         "skipped": skipped,
@@ -797,8 +1151,117 @@ def import_bundle(
 _BROKEN_LINK_WARNING = "broken link to unknown concept: "
 
 
+def _source_issues(frontmatter: dict) -> list[str]:
+    """Soft problems in a concept's ``sources`` block (SPEC sec. 5.1).
+
+    Never an error: the family is optional and a consumer must not reject a
+    concept over it (sec. 11). But an entry with no ``resource`` names nothing
+    followable, so it is silently dropped on import — worth reporting.
+    """
+    raw = frontmatter.get("sources")
+    if raw is None:
+        return []
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return ["'sources' is not a list of entries"]
+    issues: list[str] = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            issues.append(f"sources[{index}] is not a mapping")
+        elif not isinstance(item.get("resource"), str) or not item["resource"].strip():
+            issues.append(f"sources[{index}] is missing the required field: resource")
+    return issues
+
+
+def _trust_issues(frontmatter: dict) -> list[str]:
+    """Soft problems in the trust and lifecycle families (SPEC sec. 5.2-5.5).
+
+    All warnings, never errors: these families are optional and a consumer must
+    not reject a concept over them (sec. 11). What is worth reporting is a field
+    that is *present but unreadable*, since it silently stops carrying the
+    meaning its author intended — an event with no actor cannot set a trust
+    tier, a `stale_after` that is not a date can never make a concept stale, and
+    a `status` outside the vocabulary is not the lifecycle signal it looks like.
+    """
+    issues: list[str] = []
+
+    status = frontmatter.get("status")
+    if status is not None and status not in LIFECYCLE_STATUSES:
+        issues.append(
+            f"'status' value {status!r} is not one of {list(LIFECYCLE_STATUSES)}"
+        )
+
+    generated = frontmatter.get("generated")
+    if generated is not None:
+        if not isinstance(generated, dict):
+            issues.append("'generated' is not a mapping")
+        elif normalize_event(generated) is None:
+            issues.append("'generated' is missing the required field: by")
+
+    verified = frontmatter.get("verified")
+    if verified is not None:
+        raw = [verified] if isinstance(verified, dict) else verified
+        if not isinstance(raw, list):
+            issues.append("'verified' is not a list of events")
+        else:
+            for index, item in enumerate(raw):
+                if normalize_event(item) is None:
+                    issues.append(f"verified[{index}] is missing the required field: by")
+
+    stale_after = frontmatter.get("stale_after")
+    if stale_after is not None and _as_date(stale_after) is None:
+        issues.append(f"'stale_after' value {stale_after!r} is not a YYYY-MM-DD date")
+
+    return issues
+
+
+def _computation_issues(frontmatter: dict, body: str) -> list[str]:
+    """Soft problems in the computation family (SPEC sec. 10.2-10.3).
+
+    Warnings, not errors: conformance (sec. 11) asks only for a parseable
+    frontmatter with a ``type``, and says a producer SHOULD follow sec. 10 when
+    the family is present. What is reported is a contract a consumer could not
+    honour — an Attested Computation with no ``runtime`` cannot be interpreted,
+    and one with neither an inline fence nor a ``computation`` path has nothing
+    to run.
+    """
+    issues: list[str] = []
+
+    for field in ("executor", "attester"):
+        value = frontmatter.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, dict):
+            issues.append(f"{field!r} is not a mapping")
+        elif not isinstance(value.get("resource"), str) or not value["resource"].strip():
+            issues.append(f"{field!r} is missing the required field: resource")
+
+    parameters = frontmatter.get("parameters")
+    if parameters is not None:
+        if not isinstance(parameters, list):
+            issues.append("'parameters' is not a list")
+        else:
+            for index, item in enumerate(parameters):
+                if not isinstance(item, dict) or not item.get("name"):
+                    issues.append(f"parameters[{index}] is missing the required field: name")
+
+    if frontmatter.get("type") == COMPUTATION_TYPE:
+        runtime = frontmatter.get("runtime")
+        if not isinstance(runtime, str) or not runtime.strip():
+            issues.append(
+                f"missing the required field: runtime (required for type {COMPUTATION_TYPE!r})"
+            )
+        if not frontmatter.get("computation") and not has_inline_computation(body):
+            issues.append(
+                "no computation: expected a 'computation' path or a '# Computation' body section"
+            )
+
+    return issues
+
+
 def validate_bundle(root: str | Path) -> dict:
-    """Validate a bundle against the OKF v0.1 conformance rules (SPEC sec. 9).
+    """Validate a bundle against the OKF v0.2 conformance rules (SPEC sec. 11).
 
     Reports problems without importing anything and without aborting on the
     first bad file — the linter counterpart to the importer's permissive
@@ -813,9 +1276,17 @@ def validate_bundle(root: str | Path) -> dict:
     Warnings (soft guidance a consumer must tolerate):
 
     - intra-bundle links whose target concept does not exist (not-yet-written
-      knowledge, SPEC sec. 5.3);
+      knowledge, SPEC sec. 6.1);
+    - a ``sources`` entry that is malformed or carries no ``resource``
+      (sec. 5.1) — dropped on import;
+    - a trust or lifecycle field that is present but unreadable: a ``status``
+      outside the vocabulary, a ``generated``/``verified`` event with no
+      ``by`` actor, or a ``stale_after`` that is not a date (sec. 5.2-5.5);
+    - a computation contract a consumer could not honour: an Attested
+      Computation with no ``runtime`` or no computation at all, a malformed
+      ``executor``/``attester``, or a parameter with no ``name`` (sec. 10.2);
     - frontmatter in a non-root ``index.md`` (only the root index may carry
-      frontmatter, SPEC sec. 11).
+      frontmatter, and only ``okf_version``, SPEC sec. 12).
 
     Returns:
         ``{"conformant": bool, "files": int, "errors": [{"path", "error"}],
@@ -859,6 +1330,14 @@ def validate_bundle(root: str | Path) -> dict:
             concept_type = frontmatter.get("type")
             if not isinstance(concept_type, str) or not concept_type.strip():
                 errors.append({"path": rel, "error": "missing or empty required field: type"})
+
+        issues = (
+            _source_issues(frontmatter)
+            + _trust_issues(frontmatter)
+            + _computation_issues(frontmatter, body)
+        )
+        for issue in issues:
+            warnings.append({"path": rel, "warning": issue})
 
         for _anchor, target_id in extract_links(body, concept_id):
             pending_links.append((rel, target_id))
