@@ -15,12 +15,17 @@ from .ast_nodes import (
 from .exceptions import CypherExecutionError
 from ..models import Path, Point
 
+#: Threshold SIMILAR() applies when the caller gives none. Calibrated for
+#: cosine similarity; inner-product indexes on unnormalised vectors should pass
+#: min_score explicitly, and l2 indexes are required to (see _default_min_score).
+DEFAULT_SIMILAR_MIN_SCORE = 0.5
+
 
 class ExpressionEvaluator:
     """Evaluates WHERE clause expressions against a variable context."""
 
     def __init__(self, context: dict[str, Any], pattern_matcher=None, parameters: dict[str, Any] | None = None,
-                 node_resolver=None):
+                 node_resolver=None, vector_scorer=None, vector_metric=None):
         """Initialize evaluator with variable context.
 
         Args:
@@ -28,11 +33,16 @@ class ExpressionEvaluator:
             pattern_matcher: Optional matcher for pattern comprehensions
             parameters: Optional query parameters, resolving $name references
             node_resolver: Optional callable(node_id) -> Node, for startNode/endNode
+            vector_scorer: Optional callable(node, query, index) -> float | None,
+                for SIMILAR()/VECTOR_SCORE()
+            vector_metric: Optional callable(index) -> str, naming the index metric
         """
         self.context = context
         self.pattern_matcher = pattern_matcher
         self.parameters = parameters or {}
         self.node_resolver = node_resolver
+        self.vector_scorer = vector_scorer
+        self.vector_metric = vector_metric
 
     def evaluate(self, expr: Expression) -> Any:
         """Evaluate an expression and return the result.
@@ -586,6 +596,9 @@ class ExpressionEvaluator:
 
         if name in {'levenshtein', 'jaccard'}:
             return self._evaluate_text_similarity_function(name, args)
+
+        if name in {'similar', 'vector_score'}:
+            return self._evaluate_vector_function(name, args)
 
         if name == 'point':
             if len(args) != 1:
@@ -1141,6 +1154,89 @@ class ExpressionEvaluator:
         if name == 'snake_case':
             return self._to_snake_case(value)
         raise CypherExecutionError(f"Unknown text function: {name}")
+
+    def _evaluate_vector_function(self, name: str, args: list[Any]) -> Any:
+        """Evaluate SIMILAR() / VECTOR_SCORE() against a node's stored embedding.
+
+        Both take ``(node, query)`` plus an optional third argument: a map of
+        options (``index``, ``min_score``) or, for ``SIMILAR()`` only, a bare
+        number used as ``min_score``. ``VECTOR_SCORE()`` returns the raw score;
+        ``SIMILAR()`` compares it against ``min_score``.
+
+        These are *predicates*, not seeks: they score the node they are given
+        and never consult the ANN index for neighbours. Filtering a bare
+        ``MATCH (n)`` with them scans every node — seed the pattern with
+        ``CALL db.vector.search(...)`` and use these to constrain the far end.
+        """
+        if not 2 <= len(args) <= 3:
+            raise CypherExecutionError(f"{name}() expects 2 or 3 arguments")
+        node, query = args[0], args[1]
+
+        index = "default"
+        min_score = None
+        if len(args) == 3:
+            options = args[2]
+            if isinstance(options, dict):
+                unknown = set(options) - {"index", "min_score"}
+                if unknown:
+                    raise CypherExecutionError(
+                        f"{name}() got unknown options: {', '.join(sorted(unknown))}"
+                    )
+                index = options.get("index", index)
+                if not isinstance(index, str):
+                    raise CypherExecutionError(f"{name}() index option must be a string")
+                min_score = options.get("min_score")
+            elif isinstance(options, (int, float)) and not isinstance(options, bool):
+                if name == 'vector_score':
+                    raise CypherExecutionError(
+                        "vector_score() third argument must be an options map"
+                    )
+                min_score = options
+            else:
+                raise CypherExecutionError(
+                    f"{name}() third argument must be an options map"
+                    + ("" if name == 'vector_score' else " or a number")
+                )
+            if min_score is not None and (
+                isinstance(min_score, bool) or not isinstance(min_score, (int, float))
+            ):
+                raise CypherExecutionError(f"{name}() min_score must be a number")
+
+        # NULL in, NULL out — an unmatched optional node is unknown, not dissimilar.
+        if node is None or query is None:
+            return None
+        if not hasattr(node, 'id'):
+            raise CypherExecutionError(f"{name}() expects a node as first argument")
+        if not isinstance(query, (str, list)):
+            raise CypherExecutionError(
+                f"{name}() query must be a string or a list of floats"
+            )
+        if self.vector_scorer is None:
+            raise CypherExecutionError(f"{name}() is not available in this context")
+
+        score = self.vector_scorer(node, query, index)
+        if name == 'vector_score':
+            return score
+        if score is None:
+            # No embedding for this node: not similar, rather than unknown, so
+            # that WHERE SIMILAR(...) drops it instead of propagating NULL.
+            return False
+        if min_score is None:
+            min_score = self._default_min_score(name, index)
+        return score >= min_score
+
+    def _default_min_score(self, name: str, index: str) -> float:
+        """Pick a default SIMILAR() threshold, refusing where none is meaningful."""
+        metric = self.vector_metric(index) if self.vector_metric else "cosine"
+        if metric == "l2":
+            # l2 scores are negated squared distances (<= 0), so any positive
+            # default would silently match nothing. Make the caller choose.
+            raise CypherExecutionError(
+                f"{name}() requires an explicit min_score on the '{index}' index "
+                "because its 'l2' metric produces negative scores "
+                f"(e.g. {name}(n, \"query\", -0.5))"
+            )
+        return DEFAULT_SIMILAR_MIN_SCORE
 
     def _evaluate_text_similarity_function(self, name: str, args: list[Any]) -> Any:
         """Evaluate text similarity functions."""

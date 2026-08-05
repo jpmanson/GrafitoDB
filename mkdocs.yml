@@ -105,10 +105,19 @@ nav:
       - Overview: search/overview.md
       - Full-Text Search (FTS5): search/fulltext.md
       - Semantic/Vector Search: search/vector.md
+      - Bulk Document Ingest: search/bulk-ingest.md
       - Document Chunking: search/document-chunking.md
       - ANN Backends: search/ann-backends.md
       - Hybrid Workflows: search/hybrid.md
       - Examples: search/examples.md
+
+  - GraphRAG:
+      - Overview: graphrag/overview.md
+
+  - Graph Analysis:
+      - Graph Algorithms: analysis/graph-algorithms.md
+      - Search Results as Subgraphs: analysis/subgraphs.md
+      - Materialised Semantic Graph: analysis/semantic-graph.md
 
   - Integrations:
       - NetworkX: integrations/networkx.md

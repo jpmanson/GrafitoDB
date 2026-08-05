@@ -533,10 +533,14 @@ class SubqueryClause(ASTNode):
 
 @dataclass
 class ProcedureCallClause(ASTNode):
-    """CALL procedure clause (e.g., CALL db.vector.search(...))."""
+    """CALL procedure clause (e.g., CALL db.vector.search(...)).
+
+    ``yield_items`` holds ``(output_name, alias)`` pairs; without an ``AS``
+    clause the alias repeats the output name.
+    """
     name: str
     arguments: list[Expression] = field(default_factory=list)
-    yield_items: list[str] = field(default_factory=list)
+    yield_items: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass

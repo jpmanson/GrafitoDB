@@ -573,6 +573,59 @@ db.create_node(labels=["Person"], properties={"name": "Alice"})
 graph = db.to_networkx()
 ```
 
+Graph analysis — centrality and community detection, scoped to the edges that
+matter:
+
+```python
+# Brokers: weakly connected but structurally critical
+for hit in db.centrality("betweenness", rel_types=["CITES"], directed=False, limit=5):
+    print(hit["node"].properties["title"], hit["score"])
+
+for community in db.communities("louvain", rel_types=["CITES"], seed=42):
+    print(community.id, community.size)
+```
+
+Search results as subgraphs — the hits *and how they connect*, ready to
+visualise or rank:
+
+```python
+sub = db.semantic_subgraph("autonomous agents", k=30, expand=1)
+print(len(sub), len(sub.relationships))
+print(sub.hops)    # {node_id: distance from nearest hit}
+
+# Rank within the result rather than across the whole database
+db.centrality("pagerank", graph=sub.to_networkx(), limit=10)
+```
+
+For how these fit together into a retrieval pipeline — ingest, retrieve, expand,
+rerank, pack, serve — see the [GraphRAG overview](docs/graphrag/overview.md).
+
+Materialised semantic graph — the vector index as navigable relationships, which
+is what makes similarity clusterable:
+
+```python
+db.create_semantic_graph(index="default", rel_type="SEMANTIC_SIMILAR", k=15, min_score=0.1)
+
+db.communities("louvain", rel_types=["SEMANTIC_SIMILAR"], weight_property="score")
+db.refresh_semantic_graph(k=15, min_score=0.1)   # link newly added nodes only
+```
+
+These edges are a cache: they go stale and they swamp unqualified traversals.
+For most questions `db.vector.search`/`SIMILAR()` answer the same thing without
+storing anything — see [the docs](docs/analysis/semantic-graph.md).
+
+Bulk ingest from row-shaped data (HuggingFace datasets, DataFrames, JSONL) —
+nodes, relationships, and batched embeddings in one call:
+
+```python
+rows = [
+    {"id": "1", "text": "Graph databases store nodes", "links": ["2"]},
+    {"id": "2", "text": "Vector search finds neighbours", "links": []},
+]
+report = db.index_documents(rows, label="Doc", relationships_key="links")
+print(report)  # IndexReport(2 created, 0 updated, 1 relationships, 2 embedded)
+```
+
 NetworkX import example:
 
 ```python
@@ -686,6 +739,30 @@ results = db.execute("""
     RETURN node.name AS name, score
 """)
 ```
+
+Deep graph search — `YIELD ... AS` binds the results as pattern variables, so
+both ends of a path can be seeded semantically, and `SIMILAR()` scores a node
+you already matched:
+
+```python
+results = db.execute("""
+    CALL db.vector.search('papers_vec', 'chatgpt', 10) YIELD node AS a
+    CALL db.vector.search('papers_vec', 'anthropic', 10) YIELD node AS b
+    MATCH p=(a)-[:CITES*1..3]->(b)
+    RETURN a.title, b.title, length(p) AS hops
+""")
+
+results = db.execute("""
+    CALL db.vector.search('papers_vec', 'transformers', 20) YIELD node AS a
+    MATCH (a)-[:CITES]->(b)
+    WHERE SIMILAR(b, 'attention mechanism', 0.7)
+    RETURN a.title, b.title, VECTOR_SCORE(b, 'attention mechanism') AS score
+""")
+```
+
+`SIMILAR()`/`VECTOR_SCORE()` are predicates, not index seeks — seed the pattern
+with `db.vector.search` and use them to constrain the far end. See
+[Vector search in Cypher](docs/cypher/vector-search.md).
 
 APOC-style loaders (HTML/XML):
 

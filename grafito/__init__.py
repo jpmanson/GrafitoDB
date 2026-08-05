@@ -28,7 +28,10 @@ from .filters import (
     LabelFilter,
     SortOrder,
 )
+from .algorithms import Community
+from .ingest_report import IndexReport, SemanticGraphReport
 from .models import Node, Relationship, Point
+from .subgraph import Subgraph
 from .tools import CypherTools, GraphTools, ToolRegistry, ToolSet
 
 def _resolve_version() -> str:
@@ -73,4 +76,8 @@ __all__ = [
     'CypherTools',
     'ToolSet',
     'ToolRegistry',
+    'Community',
+    'Subgraph',
+    'IndexReport',
+    'SemanticGraphReport',
 ]

@@ -5,7 +5,8 @@ import os
 import re
 import sqlite3
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Callable
 
 from .exceptions import (
     DatabaseError,
@@ -22,6 +23,11 @@ from .indexers import Indexer
 from .embedding_functions import create_embedding_function, EmbeddingFunction
 from .query import PathFinder
 from .schema import initialize_schema
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from .algorithms import Community
+    from .ingest_report import IndexReport, SemanticGraphReport
+    from .subgraph import Subgraph
 
 
 class GrafitoDatabase:
@@ -176,6 +182,1040 @@ class GrafitoDatabase:
             )
 
         return graph
+
+    def to_analysis_graph(
+        self,
+        *,
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        directed: bool = True,
+        weight_property: str | None = None,
+    ):
+        """Export a filtered NetworkX graph for analysis.
+
+        Unlike :meth:`to_networkx`, which mirrors the whole database, this
+        selects the subgraph an analysis should actually run over. That
+        distinction matters as soon as a database mixes edge kinds: derived or
+        bulk-generated edges (similarity links, containment) will dominate any
+        centrality or community result unless they are excluded, and the
+        exclusion has to happen before the algorithm runs, not after.
+
+        Args:
+            rel_types: Keep only these relationship types.
+            exclude_rel_types: Drop these relationship types.
+            labels: Keep only nodes carrying at least one of these labels.
+                Relationships with an endpoint outside the selection are dropped.
+            directed: Whether to build a directed graph.
+            weight_property: Relationship property to promote to the ``weight``
+                edge attribute, for weighted algorithms. Edges missing it get
+                weight 1.0.
+
+        Returns:
+            A NetworkX ``MultiDiGraph`` or ``MultiGraph``.
+        """
+        try:
+            import networkx as nx
+        except ImportError as exc:
+            raise DatabaseError(
+                "networkx is not installed. Install with `pip install networkx`."
+            ) from exc
+
+        if rel_types and exclude_rel_types:
+            overlap = set(rel_types) & set(exclude_rel_types)
+            if overlap:
+                raise DatabaseError(
+                    "rel_types and exclude_rel_types overlap on: "
+                    + ", ".join(sorted(overlap))
+                )
+
+        graph = nx.MultiDiGraph() if directed else nx.MultiGraph()
+
+        node_sql = "SELECT id, properties, uri FROM nodes"
+        node_params: list[Any] = []
+        if labels:
+            placeholders = ", ".join("?" for _ in labels)
+            node_sql += f"""
+                WHERE id IN (
+                    SELECT nl.node_id FROM node_labels nl
+                    JOIN labels l ON l.id = nl.label_id
+                    WHERE l.name IN ({placeholders})
+                )
+            """
+            node_params.extend(labels)
+        node_sql += " ORDER BY id"
+
+        selected: set[int] = set()
+        for row in self.conn.execute(node_sql, node_params).fetchall():
+            node_id = int(row["id"])
+            selected.add(node_id)
+            graph.add_node(
+                node_id,
+                labels=self._get_node_labels(node_id),
+                properties=orjson.loads(row["properties"]),
+                uri=row["uri"],
+            )
+
+        rel_sql = """
+            SELECT id, source_node_id, target_node_id, type, properties, uri
+            FROM relationships
+        """
+        conditions: list[str] = []
+        rel_params: list[Any] = []
+        if rel_types:
+            conditions.append(f"type IN ({', '.join('?' for _ in rel_types)})")
+            rel_params.extend(rel_types)
+        if exclude_rel_types:
+            conditions.append(
+                f"type NOT IN ({', '.join('?' for _ in exclude_rel_types)})"
+            )
+            rel_params.extend(exclude_rel_types)
+        if conditions:
+            rel_sql += " WHERE " + " AND ".join(conditions)
+        rel_sql += " ORDER BY id"
+
+        for row in self.conn.execute(rel_sql, rel_params).fetchall():
+            source_id = int(row["source_node_id"])
+            target_id = int(row["target_node_id"])
+            if source_id not in selected or target_id not in selected:
+                continue
+            properties = orjson.loads(row["properties"])
+            attrs: dict[str, Any] = {
+                "id": int(row["id"]),
+                "type": row["type"],
+                "properties": properties,
+                "uri": row["uri"],
+            }
+            if weight_property is not None:
+                raw = properties.get(weight_property)
+                try:
+                    attrs["weight"] = 1.0 if raw is None else float(raw)
+                except (TypeError, ValueError):
+                    raise DatabaseError(
+                        f"Relationship {row['id']} has a non-numeric "
+                        f"'{weight_property}' property: {raw!r}"
+                    ) from None
+            graph.add_edge(source_id, target_id, key=int(row["id"]), **attrs)
+
+        return graph
+
+    def centrality(
+        self,
+        kind: str = "pagerank",
+        *,
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        directed: bool = True,
+        weight_property: str | None = None,
+        limit: int | None = None,
+        graph: Any | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Rank nodes by a centrality measure.
+
+        Supported ``kind`` values: ``pagerank``, ``degree``, ``in_degree``,
+        ``out_degree``, ``betweenness``, ``closeness``, ``harmonic``,
+        ``eigenvector``.
+
+        ``betweenness`` is O(V·E) — on graphs beyond a few thousand nodes, pass
+        NetworkX's ``k`` sampling parameter through ``**kwargs``, or prefer
+        ``pagerank``.
+
+        Args:
+            kind: The centrality measure.
+            rel_types, exclude_rel_types, labels, directed, weight_property:
+                Passed to :meth:`to_analysis_graph` to scope the analysis.
+            limit: Return only the top N nodes. ``None`` returns all of them,
+                which materialises one :class:`~grafito.models.Node` per node in
+                the graph.
+            graph: Analyse this pre-built NetworkX graph instead of exporting
+                one, e.g. a subgraph from :meth:`semantic_subgraph`.
+            **kwargs: Passed to the underlying NetworkX function.
+
+        Returns:
+            ``[{"node": Node, "score": float}, ...]``, highest score first.
+        """
+        from .algorithms import compute_centrality
+
+        if graph is None:
+            graph = self.to_analysis_graph(
+                rel_types=rel_types,
+                exclude_rel_types=exclude_rel_types,
+                labels=labels,
+                directed=directed,
+                weight_property=weight_property,
+            )
+        scores = compute_centrality(
+            graph,
+            kind,
+            weight="weight" if weight_property else None,
+            **kwargs,
+        )
+        ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+        if limit is not None:
+            ranked = ranked[:limit]
+
+        results = []
+        for node_id, score in ranked:
+            node = self.get_node(node_id)
+            if node is not None:
+                results.append({"node": node, "score": float(score)})
+        return results
+
+    def communities(
+        self,
+        algorithm: str = "louvain",
+        *,
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        weight_property: str | None = None,
+        resolution: float = 1.0,
+        seed: int | None = None,
+        min_size: int = 1,
+        graph: Any | None = None,
+        **kwargs: Any,
+    ) -> list["Community"]:
+        """Partition the graph into communities, largest first.
+
+        Supported ``algorithm`` values: ``louvain``, ``greedy``, ``lpa``
+        (``label_propagation``).
+
+        Direction is dropped — modularity is defined on undirected graphs — and
+        parallel edges collapse into one weighted edge.
+
+        ``louvain`` and ``lpa`` are randomised: pass ``seed`` for a reproducible
+        partition. Community ``id`` values are positions in the returned list,
+        so they are not stable across runs or across edits to the graph.
+
+        Args:
+            algorithm: The detection algorithm.
+            rel_types, exclude_rel_types, labels, weight_property:
+                Passed to :meth:`to_analysis_graph` to scope the analysis.
+            resolution: Higher values produce more, smaller communities
+                (``louvain`` and ``greedy`` only).
+            seed: Seed for the randomised algorithms.
+            min_size: Drop communities smaller than this. Singletons are noise
+                in most datasets; raise it to skip them.
+            graph: Analyse this pre-built NetworkX graph instead of exporting one.
+            **kwargs: Passed to the underlying NetworkX function.
+
+        Returns:
+            A list of :class:`~grafito.algorithms.Community`.
+        """
+        from .algorithms import Community, detect_communities
+
+        if graph is None:
+            graph = self.to_analysis_graph(
+                rel_types=rel_types,
+                exclude_rel_types=exclude_rel_types,
+                labels=labels,
+                directed=False,
+                weight_property=weight_property,
+            )
+        groups = detect_communities(
+            graph,
+            algorithm,
+            weight="weight" if weight_property else None,
+            resolution=resolution,
+            seed=seed,
+            **kwargs,
+        )
+
+        result: list[Community] = []
+        for group in groups:
+            if len(group) < min_size:
+                continue
+            nodes = [node for node in (self.get_node(nid) for nid in sorted(group)) if node]
+            if not nodes:
+                continue
+            result.append(Community(id=len(result), nodes=nodes, size=len(nodes)))
+        return result
+
+    def subgraph(
+        self,
+        seeds: "list[int] | list[Node] | list[dict[str, Any]]",
+        *,
+        expand: int = 0,
+        direction: str = "both",
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        max_nodes: int | None = None,
+        include_edges: bool = True,
+    ) -> "Subgraph":
+        """Build the induced subgraph around a set of seed nodes.
+
+        Expansion is breadth-first: every node within ``expand`` hops of a seed
+        is pulled in, and — when ``include_edges`` — *all* relationships between
+        the selected nodes are returned, not only the ones traversed. That is
+        what makes the result a graph rather than a tree: two seeds that link to
+        each other directly show that link even if neither was reached from the
+        other.
+
+        Args:
+            seeds: Node ids, :class:`~grafito.models.Node` objects, or search
+                hits (``{"node": Node, "score": float}``). Scores, when present,
+                are carried onto the result.
+            expand: Hops of neighbourhood to include. ``0`` keeps only the seeds
+                and the edges among them.
+            direction: ``"both"`` (default), ``"out"``, or ``"in"`` — which way
+                expansion follows relationships.
+            rel_types: Traverse and return only these relationship types.
+            exclude_rel_types: Never traverse or return these types. Use this to
+                keep derived edges (similarity links) out of an expansion that
+                would otherwise reach the whole database in one hop.
+            labels: Only expand into nodes carrying one of these labels. Seeds
+                are kept regardless.
+            max_nodes: Stop expanding once the subgraph reaches this many nodes.
+                Guards against a dense hub turning ``expand=2`` into a full
+                table scan; the truncation is visible as missing hops.
+            include_edges: Fetch the relationships. ``False`` returns nodes only.
+
+        Returns:
+            A :class:`~grafito.subgraph.Subgraph`.
+        """
+        from .subgraph import Subgraph
+
+        if direction not in {"both", "out", "in"}:
+            raise DatabaseError("direction must be 'both', 'out', or 'in'")
+        if expand < 0:
+            raise DatabaseError("expand must be >= 0")
+        if max_nodes is not None and max_nodes <= 0:
+            raise DatabaseError("max_nodes must be a positive integer")
+        if rel_types and exclude_rel_types:
+            overlap = set(rel_types) & set(exclude_rel_types)
+            if overlap:
+                raise DatabaseError(
+                    "rel_types and exclude_rel_types overlap on: "
+                    + ", ".join(sorted(overlap))
+                )
+
+        hits: list[dict[str, Any]] = []
+        scores: dict[int, float] = {}
+        seed_ids: list[int] = []
+        for seed in seeds:
+            if isinstance(seed, dict):
+                node = seed.get("node") or seed.get("entity")
+                score = seed.get("score")
+            else:
+                node, score = seed, None
+            node_id = node.id if hasattr(node, "id") else int(node)
+            if node_id in scores or node_id in seed_ids:
+                continue
+            resolved = node if hasattr(node, "id") else self.get_node(node_id)
+            if resolved is None:
+                continue
+            seed_ids.append(node_id)
+            hits.append({"node": resolved, "score": score})
+            if score is not None:
+                scores[node_id] = float(score)
+
+        hops: dict[int, int] = {node_id: 0 for node_id in seed_ids}
+        selected: list[int] = list(seed_ids)
+
+        allowed_labels: set[int] | None = None
+        if labels:
+            placeholders = ", ".join("?" for _ in labels)
+            rows = self.conn.execute(
+                f"""
+                SELECT nl.node_id FROM node_labels nl
+                JOIN labels l ON l.id = nl.label_id
+                WHERE l.name IN ({placeholders})
+                """,
+                labels,
+            ).fetchall()
+            allowed_labels = {int(row["node_id"]) for row in rows}
+
+        frontier = list(seed_ids)
+        for hop in range(1, expand + 1):
+            if not frontier or (max_nodes is not None and len(selected) >= max_nodes):
+                break
+            neighbours = self._expand_frontier(
+                frontier, direction, rel_types, exclude_rel_types
+            )
+            next_frontier: list[int] = []
+            for node_id in neighbours:
+                if node_id in hops:
+                    continue
+                if allowed_labels is not None and node_id not in allowed_labels:
+                    continue
+                if max_nodes is not None and len(selected) >= max_nodes:
+                    break
+                hops[node_id] = hop
+                selected.append(node_id)
+                next_frontier.append(node_id)
+            frontier = next_frontier
+
+        nodes = [node for node in (self.get_node(nid) for nid in selected) if node]
+        present = {node.id for node in nodes}
+
+        relationships: list[Relationship] = []
+        if include_edges and present:
+            relationships = self._relationships_within(
+                present, rel_types, exclude_rel_types
+            )
+
+        return Subgraph(
+            nodes=nodes,
+            relationships=relationships,
+            seeds=hits,
+            scores=scores,
+            hops={nid: hop for nid, hop in hops.items() if nid in present},
+        )
+
+    def _expand_frontier(
+        self,
+        frontier: list[int],
+        direction: str,
+        rel_types: list[str] | None,
+        exclude_rel_types: list[str] | None,
+    ) -> list[int]:
+        """One breadth-first step: the neighbours of ``frontier``, in id order."""
+        conditions: list[str] = []
+        params: list[Any] = []
+        placeholders = ", ".join("?" for _ in frontier)
+        if direction == "out":
+            conditions.append(f"source_node_id IN ({placeholders})")
+            params.extend(frontier)
+        elif direction == "in":
+            conditions.append(f"target_node_id IN ({placeholders})")
+            params.extend(frontier)
+        else:
+            conditions.append(
+                f"(source_node_id IN ({placeholders}) OR target_node_id IN ({placeholders}))"
+            )
+            params.extend(frontier)
+            params.extend(frontier)
+        if rel_types:
+            conditions.append(f"type IN ({', '.join('?' for _ in rel_types)})")
+            params.extend(rel_types)
+        if exclude_rel_types:
+            conditions.append(f"type NOT IN ({', '.join('?' for _ in exclude_rel_types)})")
+            params.extend(exclude_rel_types)
+
+        rows = self.conn.execute(
+            "SELECT source_node_id, target_node_id FROM relationships "
+            f"WHERE {' AND '.join(conditions)} ORDER BY id",
+            params,
+        ).fetchall()
+
+        frontier_set = set(frontier)
+        seen: dict[int, None] = {}
+        for row in rows:
+            source_id = int(row["source_node_id"])
+            target_id = int(row["target_node_id"])
+            if direction in {"both", "out"} and source_id in frontier_set:
+                seen.setdefault(target_id)
+            if direction in {"both", "in"} and target_id in frontier_set:
+                seen.setdefault(source_id)
+        return list(seen)
+
+    def _relationships_within(
+        self,
+        node_ids: set[int],
+        rel_types: list[str] | None,
+        exclude_rel_types: list[str] | None,
+    ) -> list[Relationship]:
+        """Every relationship with both endpoints inside ``node_ids``."""
+        ids = list(node_ids)
+        placeholders = ", ".join("?" for _ in ids)
+        conditions = [
+            f"source_node_id IN ({placeholders})",
+            f"target_node_id IN ({placeholders})",
+        ]
+        params: list[Any] = ids + ids
+        if rel_types:
+            conditions.append(f"type IN ({', '.join('?' for _ in rel_types)})")
+            params.extend(rel_types)
+        if exclude_rel_types:
+            conditions.append(f"type NOT IN ({', '.join('?' for _ in exclude_rel_types)})")
+            params.extend(exclude_rel_types)
+
+        rows = self.conn.execute(
+            """
+            SELECT id, source_node_id, target_node_id, type, properties, uri
+            FROM relationships
+            """
+            f" WHERE {' AND '.join(conditions)} ORDER BY id",
+            params,
+        ).fetchall()
+        return [
+            Relationship(
+                id=int(row["id"]),
+                source_id=int(row["source_node_id"]),
+                target_id=int(row["target_node_id"]),
+                type=row["type"],
+                properties=orjson.loads(row["properties"]),
+                uri=row["uri"],
+            )
+            for row in rows
+        ]
+
+    def semantic_subgraph(
+        self,
+        query: list[float] | str,
+        k: int | None = None,
+        index: str = "default",
+        *,
+        expand: int = 1,
+        direction: str = "both",
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        max_nodes: int | None = None,
+        include_edges: bool = True,
+        filter_labels: list[str] | LabelFilter | None = None,
+        filter_props: dict[str, Any] | PropertyFilterGroup | None = None,
+        **search_kwargs: Any,
+    ) -> "Subgraph":
+        """Search semantically, then return the hits *and how they connect*.
+
+        The graph counterpart of :meth:`semantic_search`: same retrieval, but
+        the result carries the relationships among the hits and their
+        neighbourhood, ready for visualisation or graph analysis.
+
+        Args:
+            query: Query string (embedded via the index) or a vector.
+            k: Number of seed hits.
+            index: Vector index to search.
+            expand: Hops of neighbourhood around the hits. ``0`` returns just
+                the hits and the edges between them.
+            filter_labels, filter_props: Constrain *retrieval*, as in
+                :meth:`semantic_search`.
+            labels, rel_types, exclude_rel_types, direction, max_nodes,
+                include_edges: Constrain *expansion*, as in :meth:`subgraph`.
+            **search_kwargs: Forwarded to :meth:`semantic_search` (``rerank``,
+                ``reranker``, ``exact``, ``candidate_multiplier``).
+
+        Returns:
+            A :class:`~grafito.subgraph.Subgraph`.
+        """
+        hits = self.semantic_search(
+            query,
+            k=k,
+            index=index,
+            filter_labels=filter_labels,
+            filter_props=filter_props,
+            **search_kwargs,
+        )
+        return self.subgraph(
+            hits,
+            expand=expand,
+            direction=direction,
+            rel_types=rel_types,
+            exclude_rel_types=exclude_rel_types,
+            labels=labels,
+            max_nodes=max_nodes,
+            include_edges=include_edges,
+        )
+
+    def text_subgraph(
+        self,
+        query: str,
+        k: int | None = None,
+        *,
+        expand: int = 1,
+        direction: str = "both",
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        max_nodes: int | None = None,
+        include_edges: bool = True,
+        search_labels: list[str] | None = None,
+    ) -> "Subgraph":
+        """Full-text search (FTS5/BM25), returned as an induced subgraph.
+
+        The lexical counterpart of :meth:`semantic_subgraph`. Relationship hits
+        from :meth:`text_search` are ignored — only matching nodes seed the
+        subgraph.
+
+        Args:
+            query: FTS5 query string.
+            k: Number of seed hits.
+            search_labels: Restrict the text search to these labels.
+            expand, direction, rel_types, exclude_rel_types, labels, max_nodes,
+                include_edges: As in :meth:`subgraph`.
+
+        Returns:
+            A :class:`~grafito.subgraph.Subgraph`.
+        """
+        hits = self.text_search(query, k=k, labels=search_labels)
+        seeds = [
+            {"node": hit["entity"], "score": hit["score"]}
+            for hit in hits
+            if hit.get("entity_type") == "node"
+        ]
+        return self.subgraph(
+            seeds,
+            expand=expand,
+            direction=direction,
+            rel_types=rel_types,
+            exclude_rel_types=exclude_rel_types,
+            labels=labels,
+            max_nodes=max_nodes,
+            include_edges=include_edges,
+        )
+
+    def index_documents(
+        self,
+        rows: "Iterable[dict[str, Any]]",
+        *,
+        label: str = "Document",
+        id_key: str | None = "id",
+        text_key: str = "text",
+        index: str | None = "default",
+        relationships_key: str | None = None,
+        default_rel_type: str = "RELATED_TO",
+        copy_attributes: bool = True,
+        properties: list[str] | None = None,
+        batch_size: int = 256,
+        upsert: bool = True,
+    ) -> "IndexReport":
+        """Ingest a collection of documents as nodes, edges, and embeddings.
+
+        This is the migration path from row-shaped data — a HuggingFace dataset,
+        a DataFrame's ``to_dict("records")``, a JSONL file — into the graph. It
+        does in one call what would otherwise be a loop of
+        :meth:`create_node` / :meth:`create_relationship` /
+        :meth:`upsert_embeddings_batch`, and it embeds in batches rather than
+        one text at a time.
+
+        Nodes are created first and relationships afterwards, in a second pass,
+        so a row may reference a document that appears later in ``rows``.
+
+        ``relationships_key`` accepts either form per row::
+
+            {"id": "1", "text": "...", "links": ["2", "3"]}
+            {"id": "1", "text": "...", "links": [{"id": "2", "type": "CITES"}]}
+
+        The mapping form also takes ``properties``. Targets are resolved against
+        ``id_key`` values; a reference to an id not present in ``rows`` (and not
+        already in the database) is skipped and counted in
+        :attr:`IndexReport.unresolved`.
+
+        Args:
+            rows: Iterable of dicts. Consumed once.
+            label: Label applied to every created node.
+            id_key: Key holding each row's external id. ``None`` means the rows
+                have no identity: nodes are always created and relationships
+                cannot be resolved.
+            text_key: Key holding the text to embed. Rows missing it are stored
+                but not embedded.
+            index: Vector index to write embeddings to. ``None`` skips embedding
+                entirely.
+            relationships_key: Key holding this row's outgoing relationships.
+            default_rel_type: Type used for bare-id references.
+            copy_attributes: Copy every other key in the row onto the node's
+                properties. When ``False``, only ``id_key``/``text_key`` (and
+                anything in ``properties``) are kept.
+            properties: Explicit allowlist of keys to copy. Overrides
+                ``copy_attributes``.
+            batch_size: Rows embedded per call to the embedding function.
+            upsert: When an ``id_key`` value already exists under ``label``,
+                update that node instead of creating a duplicate.
+
+        Returns:
+            An :class:`~grafito.ingest_report.IndexReport`.
+
+        Note:
+            This populates the vector index only. For hybrid search, also call
+            :meth:`create_text_index` for ``label``/``text_key``; FTS5 indexes
+            existing rows when created.
+        """
+        from .ingest_report import IndexReport
+
+        if batch_size <= 0:
+            raise DatabaseError("batch_size must be a positive integer")
+        embedder = None
+        if index is not None:
+            embedder = self._get_embedding_function(index)
+
+        report = IndexReport()
+        pending_relationships: list[tuple[int, Any, str, dict]] = []
+        existing: dict[Any, int] = {}
+        if id_key and upsert:
+            existing = self._external_id_map(label, id_key)
+
+        pending_ids: list[int] = []
+        pending_texts: list[str] = []
+
+        def flush() -> None:
+            if not pending_ids:
+                return
+            if embedder is not None:
+                vectors = embedder(pending_texts)
+                self.upsert_embeddings_batch(pending_ids, vectors, index=index)
+                report.embedded += len(pending_ids)
+            pending_ids.clear()
+            pending_texts.clear()
+
+        for row in rows:
+            if not isinstance(row, dict):
+                raise DatabaseError("index_documents expects an iterable of dicts")
+            external_id = row.get(id_key) if id_key else None
+            props = self._select_document_properties(
+                row,
+                id_key=id_key,
+                text_key=text_key,
+                relationships_key=relationships_key,
+                copy_attributes=copy_attributes,
+                allowlist=properties,
+            )
+
+            node_id = existing.get(external_id) if external_id is not None else None
+            if node_id is not None:
+                self.update_node_properties(node_id, props)
+                report.nodes_updated += 1
+            else:
+                node = self.create_node(labels=[label], properties=props)
+                node_id = node.id
+                report.nodes_created += 1
+                if external_id is not None:
+                    existing[external_id] = node_id
+            if external_id is not None:
+                report.ids[external_id] = node_id
+
+            text = row.get(text_key)
+            if index is not None and isinstance(text, str) and text.strip():
+                if embedder is None:
+                    raise DatabaseError(
+                        f"Vector index '{index}' has no embedding function; "
+                        "pass index=None to skip embedding"
+                    )
+                pending_ids.append(node_id)
+                pending_texts.append(text)
+                if len(pending_ids) >= batch_size:
+                    flush()
+
+            if relationships_key:
+                for spec in row.get(relationships_key) or []:
+                    if isinstance(spec, dict):
+                        target = spec.get("id")
+                        rel_type = spec.get("type") or default_rel_type
+                        rel_props = spec.get("properties") or {}
+                    else:
+                        target, rel_type, rel_props = spec, default_rel_type, {}
+                    if target is None:
+                        continue
+                    pending_relationships.append((node_id, target, rel_type, rel_props))
+
+        flush()
+
+        for source_id, target_ref, rel_type, rel_props in pending_relationships:
+            target_id = existing.get(target_ref)
+            if target_id is None and id_key:
+                matches = self.match_nodes(labels=[label], properties={id_key: target_ref})
+                target_id = matches[0].id if matches else None
+            if target_id is None:
+                report.unresolved.append(target_ref)
+                continue
+            self.create_relationship(source_id, target_id, rel_type, rel_props)
+            report.relationships_created += 1
+
+        return report
+
+    #: Marks relationships produced by create_semantic_graph, so that a rebuild
+    #: can replace exactly those and leave hand-made edges of the same type alone.
+    SEMANTIC_GRAPH_MARKER = "create_semantic_graph"
+
+    def create_semantic_graph(
+        self,
+        index: str = "default",
+        *,
+        rel_type: str = "SEMANTIC_SIMILAR",
+        k: int = 15,
+        min_score: float = 0.0,
+        approximate: bool = False,
+        labels: list[str] | None = None,
+        undirected: bool = True,
+        replace: bool = True,
+        max_edges: int | None = None,
+    ) -> "SemanticGraphReport":
+        """Materialise each node's nearest neighbours as relationships.
+
+        Turns the vector index into a navigable graph: every indexed node gets
+        edges to its ``k`` closest neighbours, so similarity becomes traversable
+        with Cypher and analysable with :meth:`communities` — which is the one
+        thing the ANN index alone cannot give you, since community detection
+        needs edges to exist.
+
+        For everything else, prefer querying the index directly. ``CALL
+        db.vector.search`` and ``SIMILAR()`` answer the same questions without
+        storing anything, and they never go stale.
+
+        Args:
+            index: Vector index to read neighbours from.
+            rel_type: Relationship type to create.
+            k: Neighbours per node.
+            min_score: Skip neighbours scoring below this. The single most
+                effective control on how many edges you end up with.
+            approximate: Only process nodes that have no ``rel_type`` edge yet.
+                This is the incremental mode — see :meth:`refresh_semantic_graph`.
+            labels: Only link nodes carrying one of these labels.
+            undirected: Emit one edge per pair rather than one per direction.
+                Halves the edge count; query it with an undirected pattern,
+                ``MATCH (a)-[:SEMANTIC_SIMILAR]-(b)``.
+            replace: Delete previously generated edges of this type first.
+                Only edges carrying this method's marker are removed, so
+                hand-made relationships of the same type survive.
+            max_edges: Stop once this many edges have been created.
+
+        Returns:
+            A :class:`~grafito.ingest_report.SemanticGraphReport`.
+
+        Warning:
+            This writes ``k`` edges per node into the same table as your domain
+            relationships. At 100k nodes and ``k=15`` that is ~750k rows with
+            ``undirected=True``. They will dominate any unqualified traversal
+            (``MATCH (a)-[]->(b)``) and any centrality or community result that
+            does not exclude them — pass ``exclude_rel_types=[rel_type]`` to
+            :meth:`centrality` and :meth:`communities`. They also go stale: the
+            edges reflect the embeddings as of the build, and nothing updates
+            them when vectors change. Re-run, or use
+            :meth:`refresh_semantic_graph` for new nodes.
+        """
+        from datetime import datetime, timezone
+
+        from .ingest_report import SemanticGraphReport
+
+        if k <= 0:
+            raise DatabaseError("k must be a positive integer")
+        if max_edges is not None and max_edges <= 0:
+            raise DatabaseError("max_edges must be a positive integer")
+        if not rel_type or not isinstance(rel_type, str):
+            raise DatabaseError("rel_type must be a non-empty string")
+
+        vec_index = self._get_vector_index(index)
+        report = SemanticGraphReport()
+
+        if replace:
+            report.edges_removed = self._delete_generated_relationships(rel_type)
+
+        linked: set[int] = set()
+        if approximate:
+            rows = self.conn.execute(
+                "SELECT DISTINCT source_node_id AS id FROM relationships WHERE type = ? "
+                "UNION SELECT DISTINCT target_node_id AS id FROM relationships WHERE type = ?",
+                (rel_type, rel_type),
+            ).fetchall()
+            linked = {int(row["id"]) for row in rows}
+
+        candidates = self._indexed_node_ids(index, labels)
+        candidate_set = set(candidates)
+        generated_at = datetime.now(timezone.utc).isoformat()
+        seen_pairs: set[tuple[int, int]] = set()
+        pending: list[tuple[int, int, str, str, None]] = []
+
+        for node_id in candidates:
+            if approximate and node_id in linked:
+                report.nodes_skipped += 1
+                continue
+            vector = vec_index.get_vector(node_id)
+            if vector is None:
+                vector = self._collect_vectors(index, [node_id]).get(node_id)
+            if vector is None:  # pragma: no cover - candidates come from vectors
+                continue
+            report.nodes_processed += 1
+
+            # k+1 because the node itself is its own nearest neighbour.
+            for neighbour_id, score in vec_index.search(vector, k + 1):
+                neighbour_id = int(neighbour_id)
+                if neighbour_id == node_id or score < min_score:
+                    continue
+                if labels and neighbour_id not in candidate_set:
+                    continue
+                if undirected:
+                    pair = (min(node_id, neighbour_id), max(node_id, neighbour_id))
+                    if pair in seen_pairs:
+                        continue
+                    seen_pairs.add(pair)
+                properties = {
+                    "score": float(score),
+                    "index": index,
+                    "generated_by": self.SEMANTIC_GRAPH_MARKER,
+                    "generated_at": generated_at,
+                }
+                pending.append(
+                    (
+                        node_id,
+                        neighbour_id,
+                        rel_type,
+                        orjson.dumps(properties).decode("utf-8"),
+                        None,
+                    )
+                )
+                if max_edges is not None and len(pending) >= max_edges:
+                    report.truncated = True
+                    break
+            if report.truncated:
+                break
+
+        if pending:
+            # Bulk insert: every edge shares one type and one property shape, so
+            # constraints are checked once rather than once per row. Going
+            # through create_relationship would re-validate both endpoints for
+            # each of k*N edges.
+            self._validate_constraints_on_relationship(
+                rel_type,
+                {
+                    "score": 0.0,
+                    "index": index,
+                    "generated_by": self.SEMANTIC_GRAPH_MARKER,
+                    "generated_at": generated_at,
+                },
+            )
+            try:
+                self.conn.executemany(
+                    """
+                    INSERT INTO relationships (source_node_id, target_node_id, type, properties, uri)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    pending,
+                )
+                if not self._in_transaction:
+                    self.conn.commit()
+            except sqlite3.Error as exc:
+                raise DatabaseError(f"Failed to create semantic graph: {exc}") from exc
+            report.edges_created = len(pending)
+
+        return report
+
+    def refresh_semantic_graph(
+        self,
+        index: str = "default",
+        *,
+        rel_type: str = "SEMANTIC_SIMILAR",
+        **kwargs: Any,
+    ) -> "SemanticGraphReport":
+        """Link nodes that have no semantic edges yet, leaving existing ones alone.
+
+        The incremental counterpart of :meth:`create_semantic_graph`: run it
+        after adding documents to connect the new ones without rebuilding the
+        whole graph.
+
+        This does not re-examine nodes that already have edges, so it will not
+        notice that an *existing* node's neighbourhood changed — only a full
+        rebuild does that. Embeddings that are updated in place drift out of
+        sync until then.
+        """
+        kwargs.setdefault("approximate", True)
+        kwargs.setdefault("replace", False)
+        return self.create_semantic_graph(index, rel_type=rel_type, **kwargs)
+
+    def drop_semantic_graph(self, rel_type: str = "SEMANTIC_SIMILAR") -> int:
+        """Delete the generated relationships of ``rel_type``.
+
+        Only edges carrying the :meth:`create_semantic_graph` marker are
+        removed; relationships of the same type created by hand are kept.
+
+        Returns:
+            Number of relationships deleted.
+        """
+        return self._delete_generated_relationships(rel_type)
+
+    def _delete_generated_relationships(self, rel_type: str) -> int:
+        """Remove relationships this class generated, by marker."""
+        try:
+            cursor = self.conn.execute(
+                """
+                DELETE FROM relationships
+                WHERE type = ?
+                  AND json_extract(properties, '$.generated_by') = ?
+                """,
+                (rel_type, self.SEMANTIC_GRAPH_MARKER),
+            )
+            if not self._in_transaction:
+                self.conn.commit()
+            return cursor.rowcount or 0
+        except sqlite3.Error as exc:
+            raise DatabaseError(f"Failed to remove generated relationships: {exc}") from exc
+
+    def _indexed_node_ids(self, index: str, labels: list[str] | None) -> list[int]:
+        """Node ids that carry a vector in ``index``, optionally label-filtered.
+
+        Enumerating from the node table rather than the backend keeps this
+        agnostic: the VectorIndex interface exposes ``get_vector`` but no way to
+        list what it holds.
+        """
+        vec_index = self._get_vector_index(index)
+        sql = "SELECT n.id AS id FROM nodes n"
+        params: list[Any] = []
+        if labels:
+            placeholders = ", ".join("?" for _ in labels)
+            sql += f"""
+                WHERE n.id IN (
+                    SELECT nl.node_id FROM node_labels nl
+                    JOIN labels l ON l.id = nl.label_id
+                    WHERE l.name IN ({placeholders})
+                )
+            """
+            params.extend(labels)
+        sql += " ORDER BY n.id"
+
+        stored: set[int] | None = None
+        if vec_index.options.get("store_embeddings"):
+            rows = self.conn.execute(
+                "SELECT node_id FROM vector_entries WHERE index_name = ?", (index,)
+            ).fetchall()
+            stored = {int(row["node_id"]) for row in rows}
+
+        result = []
+        for row in self.conn.execute(sql, params).fetchall():
+            node_id = int(row["id"])
+            if stored is not None:
+                if node_id in stored:
+                    result.append(node_id)
+                continue
+            if vec_index.get_vector(node_id) is not None:
+                result.append(node_id)
+        return result
+
+    def _external_id_map(self, label: str, id_key: str) -> dict[Any, int]:
+        """Map existing external ids to node ids, for upsert."""
+        rows = self.conn.execute(
+            """
+            SELECT n.id AS id, json_extract(n.properties, '$.' || ?) AS external_id
+            FROM nodes n
+            JOIN node_labels nl ON nl.node_id = n.id
+            JOIN labels l ON l.id = nl.label_id
+            WHERE l.name = ?
+            """,
+            (id_key, label),
+        ).fetchall()
+        return {
+            row["external_id"]: int(row["id"])
+            for row in rows
+            if row["external_id"] is not None
+        }
+
+    @staticmethod
+    def _select_document_properties(
+        row: dict[str, Any],
+        *,
+        id_key: str | None,
+        text_key: str,
+        relationships_key: str | None,
+        copy_attributes: bool,
+        allowlist: list[str] | None,
+    ) -> dict[str, Any]:
+        """Decide which row keys become node properties."""
+        if allowlist is not None:
+            return {key: row[key] for key in allowlist if key in row}
+        if copy_attributes:
+            # The relationships key describes edges, not the node; keeping it
+            # would duplicate the graph structure inside a property.
+            return {
+                key: value
+                for key, value in row.items()
+                if key != relationships_key
+            }
+        return {
+            key: row[key]
+            for key in (id_key, text_key)
+            if key is not None and key in row
+        }
 
     def from_networkx(
         self,
@@ -1163,6 +2203,43 @@ class GrafitoDatabase:
             if node:
                 output.append({"node": node, "score": score})
         return output
+
+    def vector_score(
+        self,
+        node: "Node | int",
+        query: list[float] | str,
+        index: str = "default",
+    ) -> float | None:
+        """Score one node's stored embedding against a query.
+
+        This is the pointwise counterpart of :meth:`semantic_search`: instead of
+        asking the index "which nodes are closest?", it asks "how close is *this*
+        node?". It backs the Cypher ``VECTOR_SCORE()``/``SIMILAR()`` functions,
+        where the candidate set already comes from a pattern match.
+
+        Returns ``None`` when the node has no embedding in ``index`` — an absent
+        vector is unknown, not distant, so it must not score as far away.
+
+        Scores follow the index metric and are always "higher is better":
+        cosine similarity in ``[-1, 1]``, inner product unbounded, and negated
+        squared distance (``<= 0``) for ``l2``.
+        """
+        node_id = node.id if hasattr(node, "id") else int(node)
+        if isinstance(query, str):
+            embedder = self._get_embedding_function(index)
+            if embedder is None:
+                raise DatabaseError(f"Vector index '{index}' has no embedding function")
+            query = embedder([query])[0]
+        vectors = self._collect_vectors(index, [node_id])
+        vector = vectors.get(node_id)
+        if vector is None:
+            return None
+        metric = self._get_vector_index(index).options.get("metric") or "cosine"
+        return self._vector_score(metric, query, vector)
+
+    def vector_metric(self, index: str = "default") -> str:
+        """Return the similarity metric configured for a vector index."""
+        return self._get_vector_index(index).options.get("metric") or "cosine"
 
     def _resolve_reranker(self, reranker: Any | None) -> Any | None:
         """Resolve reranker name to callable if needed."""
