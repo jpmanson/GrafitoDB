@@ -92,6 +92,9 @@ class CypherExecutor:
     def __init__(self, db: GrafitoDatabase, parameters: dict[str, Any] | None = None):
         self.db = db
         self.parameters = parameters or {}
+        # Query text -> embedding, so SIMILAR()/VECTOR_SCORE() embed each distinct
+        # query once per execution instead of once per candidate row.
+        self._query_vector_cache: dict[tuple[str, str], list[float]] = {}
 
     def _make_evaluator(self, context: dict[str, Any]) -> ExpressionEvaluator:
         """Build an expression evaluator with pattern comprehension support."""
@@ -100,7 +103,31 @@ class CypherExecutor:
             pattern_matcher=self._pattern_comprehension_matcher,
             parameters=self.parameters,
             node_resolver=self.db.get_node,
+            vector_scorer=self._score_against_query,
+            vector_metric=self.db.vector_metric,
         )
+
+    def _score_against_query(
+        self,
+        node: Any,
+        query: list[float] | str,
+        index: str,
+    ) -> float | None:
+        """Score a node against a query, reusing the embedding across rows."""
+        if isinstance(query, str):
+            cache_key = (index, query)
+            vector = self._query_vector_cache.get(cache_key)
+            if vector is None:
+                embedder = self.db._get_embedding_function(index)
+                if embedder is None:
+                    raise CypherExecutionError(
+                        f"Vector index '{index}' has no embedding function; "
+                        "pass a vector instead of a query string"
+                    )
+                vector = embedder([query])[0]
+                self._query_vector_cache[cache_key] = vector
+            query = vector
+        return self.db.vector_score(node, query, index=index)
 
     def _evaluate_properties(
         self,
@@ -351,7 +378,14 @@ class CypherExecutor:
                 continue
             for proc_row in proc_results:
                 if clause.yield_items:
-                    projected = {key: proc_row.get(key) for key in clause.yield_items}
+                    unknown = [name for name, _ in clause.yield_items if name not in proc_row]
+                    if unknown:
+                        available = ", ".join(sorted(proc_row))
+                        raise CypherExecutionError(
+                            f"{clause.name} does not yield {', '.join(unknown)} "
+                            f"(available: {available})"
+                        )
+                    projected = {alias: proc_row[name] for name, alias in clause.yield_items}
                 else:
                     projected = proc_row
                 merged = row.copy()

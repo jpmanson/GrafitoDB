@@ -430,3 +430,88 @@ def test_apoc_import_json_deflate():
     results = db.execute("MATCH (n:User) RETURN n.age AS age")
     assert results == [{"age": 12}]
     db.close()
+
+
+def _vector_db() -> GrafitoDatabase:
+    """Two orthogonal unit vectors, so cosine scores are exactly 1.0 or 0.0."""
+    db = GrafitoDatabase(':memory:')
+    db.create_vector_index("people_vec", dim=2, options={"store_embeddings": True})
+    alice = db.create_node(labels=["Person"], properties={"name": "Alice"})
+    bob = db.create_node(labels=["Person"], properties={"name": "Bob"})
+    db.upsert_embedding(alice.id, [1.0, 0.0], index="people_vec")
+    db.upsert_embedding(bob.id, [0.0, 1.0], index="people_vec")
+    db.create_relationship(alice.id, bob.id, "KNOWS")
+    return db
+
+
+def test_yield_alias_renames_outputs():
+    db = _vector_db()
+    results = db.execute("""
+        CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD node AS person, score AS s
+        RETURN person.name AS name, s
+    """)
+    assert results == [{"name": "Alice", "s": 1.0}]
+    db.close()
+
+
+def test_yield_alias_binds_into_match():
+    """The alias must be a real pattern variable, not just a projection name."""
+    db = _vector_db()
+    results = db.execute("""
+        CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD node AS a
+        MATCH (a)-[:KNOWS]->(b)
+        RETURN a.name AS a, b.name AS b
+    """)
+    assert results == [{"a": "Alice", "b": "Bob"}]
+    db.close()
+
+
+def test_two_calls_with_aliases_bound_to_both_path_ends():
+    """txtai-style deep graph search: both endpoints seeded from the ANN index."""
+    db = _vector_db()
+    results = db.execute("""
+        CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD node AS a
+        CALL db.vector.search('people_vec', [0.0, 1.0], 1) YIELD node AS b
+        MATCH p=(a)-[*1..2]->(b)
+        RETURN a.name AS ini, b.name AS fin, length(p) AS hops
+    """)
+    assert results == [{"ini": "Alice", "fin": "Bob", "hops": 1}]
+    db.close()
+
+
+def test_yield_without_alias_keeps_output_names():
+    db = _vector_db()
+    results = db.execute("""
+        CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD node, score
+        RETURN node.name AS name, score
+    """)
+    assert results == [{"name": "Alice", "score": 1.0}]
+    db.close()
+
+
+def test_yield_unknown_output_is_rejected():
+    db = _vector_db()
+    with pytest.raises(Exception, match="does not yield"):
+        db.execute("""
+            CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD nodo
+            RETURN nodo
+        """)
+    db.close()
+
+
+def test_yield_alias_requires_identifier():
+    db = _vector_db()
+    with pytest.raises(Exception, match="Expected identifier after AS"):
+        db.execute("""
+            CALL db.vector.search('people_vec', [1.0, 0.0], 1) YIELD node AS 42
+            RETURN node
+        """)
+    db.close()
+
+
+def test_map_literal_accepts_keyword_keys():
+    """Options maps use reserved words like `index`; the lexer must not block them."""
+    db = GrafitoDatabase(':memory:')
+    results = db.execute("RETURN {index: 'default', order: 2, limit: 3} AS opts")
+    assert results == [{"opts": {"index": "default", "order": 2, "limit": 3}}]
+    db.close()

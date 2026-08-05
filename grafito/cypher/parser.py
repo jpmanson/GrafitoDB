@@ -844,8 +844,20 @@ class Parser:
                         self.current_token().line,
                         self.current_token().column
                     )
-                yield_items.append(self.current_token().value)
+                output_name = self.current_token().value
                 self.advance()
+                alias = output_name
+                if self.current_token().type == TokenType.AS:
+                    self.advance()
+                    if self.current_token().type not in self._name_tokens:
+                        raise CypherSyntaxError(
+                            f"Expected identifier after AS, got {self.current_token().type.name}",
+                            self.current_token().line,
+                            self.current_token().column
+                        )
+                    alias = self.current_token().value
+                    self.advance()
+                yield_items.append((output_name, alias))
                 if self.current_token().type == TokenType.COMMA:
                     self.advance()
                     continue
@@ -1560,6 +1572,11 @@ class Parser:
                 key = key_token.value.lower()
                 self.advance()
             elif key_token.type == TokenType.STRING:
+                key = key_token.value
+                self.advance()
+            elif key_token.type in self._name_tokens:
+                # Keywords are valid map keys — options maps legitimately use
+                # names like `index` or `order` that the lexer reserves.
                 key = key_token.value
                 self.advance()
             else:

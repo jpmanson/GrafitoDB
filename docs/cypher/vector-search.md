@@ -112,6 +112,108 @@ YIELD node, score
 RETURN node.title, score
 ```
 
+## Aliasing YIELD Outputs
+
+`YIELD` accepts `AS` to rename an output. The alias is a real pattern variable,
+so it can be matched on directly:
+
+```cypher
+CALL db.vector.search('articles_vec', $query_vec, 10) YIELD node AS article, score AS relevance
+MATCH (article)<-[:AUTHORED]-(author:Person)
+RETURN article.title, author.name, relevance
+ORDER BY relevance DESC
+```
+
+Without `AS`, the outputs keep their procedure names (`node`, `score`) — which
+collide if you call the procedure twice in one query. Aliasing is what makes the
+two-endpoint pattern below possible.
+
+## Semantic Predicates
+
+`db.vector.search` answers "which nodes are closest?". Sometimes you already
+have a node from a pattern match and need the opposite question: "how close is
+*this* node?". Two functions score a node against a query:
+
+```cypher
+VECTOR_SCORE(node, query)                 // the raw similarity score, or NULL
+SIMILAR(node, query)                      // score >= default threshold (0.5)
+SIMILAR(node, query, 0.75)                // score >= 0.75
+SIMILAR(node, query, {index: 'articles_vec', min_score: 0.75})
+```
+
+`query` is either a vector literal/parameter or a string, which is embedded with
+the index's embedding function. Each distinct query string is embedded **once
+per execution**, not once per candidate row.
+
+Options:
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `index` | Vector index to score against | `'default'` |
+| `min_score` | Threshold for `SIMILAR` | `0.5` |
+
+Semantics worth knowing:
+
+- A node with **no embedding** in the index scores `NULL` under `VECTOR_SCORE`
+  and `false` under `SIMILAR` — an unindexed node is dropped by the filter
+  rather than propagating unknown through it.
+- A `NULL` node (from `OPTIONAL MATCH`) yields `NULL` for both.
+- Scores follow the index metric and are always "higher is better": cosine in
+  `[-1, 1]`, inner product unbounded, and negated squared distance (`<= 0`) for
+  `l2`. Because the default threshold is calibrated for cosine, `SIMILAR` on an
+  `l2` index **requires** an explicit `min_score` rather than silently matching
+  nothing.
+
+!!! warning "These are predicates, not seeks"
+    `SIMILAR` and `VECTOR_SCORE` score the node they are handed; they never
+    consult the ANN index for neighbours. Filtering a bare `MATCH (n)` with them
+    scans and scores **every node in the database**:
+
+    ```cypher
+    // Slow: full scan, one score per node
+    MATCH (n) WHERE SIMILAR(n, 'transformers') RETURN n
+    ```
+
+    Seed the pattern with `db.vector.search` — which does use the index — and
+    use `SIMILAR` only to constrain an already-bounded set:
+
+    ```cypher
+    // Fast: ANN picks 20 candidates, SIMILAR filters the far end
+    CALL db.vector.search('articles_vec', 'transformers', 20) YIELD node AS a
+    MATCH (a)-[:CITES]->(b)
+    WHERE SIMILAR(b, 'attention mechanism', 0.7)
+    RETURN a.title, b.title
+    ```
+
+## Deep Graph Search
+
+Because `YIELD` aliases bind as pattern variables, both ends of a path can be
+seeded semantically — finding paths whose endpoints are *similar to* two
+concepts, rather than searching for one concept and then the other:
+
+```cypher
+CALL db.vector.search('articles_vec', 'chatgpt', 10) YIELD node AS a
+CALL db.vector.search('articles_vec', 'anthropic', 10) YIELD node AS b
+MATCH p=(a)-[*1..3]->(b)
+RETURN p
+LIMIT 10
+```
+
+The second `CALL` runs per row from the first, so the pattern explores every
+pairing of the two candidate sets. Keep both `k` values modest — the path search
+is quadratic in them.
+
+To score how strongly each endpoint matched, keep the scores:
+
+```cypher
+CALL db.vector.search('papers_vec', $topic_a, 10) YIELD node AS a, score AS score_a
+CALL db.vector.search('papers_vec', $topic_b, 10) YIELD node AS b, score AS score_b
+MATCH p=(a)-[:CITES*1..3]->(b)
+RETURN a.title, b.title, length(p) AS hops, score_a + score_b AS strength
+ORDER BY strength DESC, hops ASC
+LIMIT 20
+```
+
 ## Combining with Graph Patterns
 
 ```python
