@@ -233,3 +233,59 @@ def test_analysis_graph_rejects_contradictory_filters(barbell):
 
 def test_analysis_graph_undirected(barbell):
     assert not barbell.to_analysis_graph(directed=False).is_directed()
+
+
+# --- pagerank without scipy ------------------------------------------------
+
+
+def test_pagerank_falls_back_when_scipy_is_missing(barbell, monkeypatch):
+    """NetworkX routes pagerank through scipy, which is not a dependency."""
+    import networkx as nx
+
+    def _no_scipy(*args, **kwargs):
+        raise ImportError("No module named 'scipy'")
+
+    monkeypatch.setattr(nx, "pagerank", _no_scipy)
+    results = barbell.centrality("pagerank")
+    assert len(results) == 7
+    assert abs(sum(row["score"] for row in results) - 1.0) < 1e-6
+
+
+def test_pagerank_fallback_matches_networkx(barbell):
+    """The fallback is only useful if it agrees with the real implementation."""
+    pytest.importorskip("scipy")
+    import networkx as nx
+
+    from grafito.algorithms import _pagerank
+
+    graph = barbell.to_analysis_graph()
+    reference = nx.pagerank(graph)
+    fallback = _pagerank(graph)
+    assert max(abs(reference[n] - fallback[n]) for n in reference) < 1e-9
+
+
+def test_pagerank_fallback_handles_dangling_nodes():
+    """A node with no outgoing edges leaks rank unless it is redistributed."""
+    import networkx as nx
+
+    from grafito.algorithms import _pagerank
+
+    scores = _pagerank(nx.path_graph(5, create_using=nx.DiGraph))
+    assert abs(sum(scores.values()) - 1.0) < 1e-9
+
+
+def test_pagerank_fallback_on_weighted_graph(barbell):
+    import networkx as nx
+
+    def _no_scipy(*args, **kwargs):
+        raise ImportError("No module named 'scipy'")
+
+    original = nx.pagerank
+    nx.pagerank = _no_scipy
+    try:
+        results = barbell.centrality(
+            "pagerank", rel_types=["SEMANTIC_SIMILAR"], weight_property="score"
+        )
+    finally:
+        nx.pagerank = original
+    assert abs(sum(row["score"] for row in results) - 1.0) < 1e-6

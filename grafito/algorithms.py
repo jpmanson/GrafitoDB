@@ -115,7 +115,13 @@ def compute_centrality(
         weight = "weight"
 
     if kind == "pagerank":
-        return nx.pagerank(graph, weight=weight, **kwargs)
+        try:
+            return nx.pagerank(graph, weight=weight, **kwargs)
+        except ImportError:
+            # NetworkX routes pagerank through scipy, which GrafitoDB does not
+            # depend on — adding it would more than double install size for one
+            # measure. Fall back to the same power iteration it implements.
+            return _pagerank(graph, weight=weight, **kwargs)
     if kind == "degree":
         return dict(nx.degree_centrality(graph, **kwargs))
     if kind == "in_degree":
@@ -201,6 +207,51 @@ def detect_communities(
     result = [set(group) for group in groups]
     result.sort(key=len, reverse=True)
     return result
+
+
+def _pagerank(
+    graph: Any,
+    *,
+    alpha: float = 0.85,
+    weight: str | None = None,
+    max_iter: int = 100,
+    tol: float = 1.0e-6,
+    **_: Any,
+) -> dict[int, float]:
+    """PageRank by power iteration, without scipy.
+
+    Mirrors ``nx.pagerank``'s contract (same defaults, same dangling-node
+    handling, so results agree to within ``tol``). Used only when scipy is
+    absent; NetworkX's scipy path is faster on large graphs.
+    """
+    nx = _require_networkx()
+    collapsed = _as_simple_graph(graph, weight=weight)
+    # stochastic_graph is directed-only; an undirected graph becomes a pair of
+    # opposing edges, which is how nx.pagerank treats it too.
+    directed = collapsed.to_directed() if not collapsed.is_directed() else collapsed.copy()
+    simple = nx.stochastic_graph(directed, weight="weight")
+    n = len(simple)
+    if n == 0:
+        return {}
+
+    scores = dict.fromkeys(simple, 1.0 / n)
+    teleport = 1.0 / n
+    dangling = [node for node in simple if simple.out_degree(node, weight="weight") == 0.0]
+
+    for _iteration in range(max_iter):
+        previous = scores
+        scores = dict.fromkeys(previous.keys(), 0.0)
+        leaked = alpha * sum(previous[node] for node in dangling)
+        for node in previous:
+            for neighbour, edge in simple[node].items():
+                scores[neighbour] += alpha * previous[node] * edge["weight"]
+        for node in scores:
+            scores[node] += leaked * teleport + (1.0 - alpha) * teleport
+        if sum(abs(scores[node] - previous[node]) for node in scores) < n * tol:
+            return scores
+    raise DatabaseError(
+        f"pagerank did not converge in {max_iter} iterations; raise max_iter"
+    )
 
 
 def _as_simple_graph(graph: Any, *, weight: str | None = None, undirected: bool = False) -> Any:
