@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/comparisons/rdflib/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/analysis/semantic-graph/">
       
       
-        <link rel="prev" href="../../integrations/visualization/">
+        <link rel="prev" href="../subgraphs/">
       
       
-        <link rel="next" href="../../embeddings/overview/">
+        <link rel="next" href="../../integrations/networkx/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>GrafitoDB vs. rdflib - GrafitoDB</title>
+        <title>Materialised Semantic Graph - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#grafitodb-vs-rdflib" class="md-skip">
+        <a href="#materialised-semantic-graph" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              GrafitoDB vs. rdflib
+              Materialised Semantic Graph
             
           </span>
         </div>
@@ -351,11 +351,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../analysis/graph-algorithms/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../graph-algorithms/" class="md-tabs__link">
           
   
   
@@ -391,13 +393,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../comparisons/rdflib/" class="md-tabs__link">
           
   
   
@@ -1745,28 +1745,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -1784,7 +1787,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1802,7 +1805,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../analysis/graph-algorithms/" class="md-nav__link">
+      <a href="../graph-algorithms/" class="md-nav__link">
         
   
   
@@ -1830,7 +1833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../analysis/subgraphs/" class="md-nav__link">
+      <a href="../subgraphs/" class="md-nav__link">
         
   
   
@@ -1855,10 +1858,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../analysis/semantic-graph/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Materialised Semantic Graph
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1874,6 +1904,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-use-it-and-when-not-to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Use It — and When Not To
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controlling-the-edge-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlling the Edge Count
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provenance-and-rebuilding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance and Rebuilding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#incremental-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incremental Updates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keeping-analysis-honest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping Analysis Honest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafito.ingest_report.SemanticGraphReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SemanticGraphReport
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2119,31 +2246,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -2161,7 +2285,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2176,37 +2300,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    GrafitoDB vs. rdflib
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../comparisons/rdflib/" class="md-nav__link">
         
   
   
@@ -2222,87 +2319,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Feature comparison
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#20000-nodes-200000-edges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        20,000 nodes / ~200,000 edges
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-the-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reading the results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-which" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to use which
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3006,10 +3022,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+  <a href="#when-to-use-it-and-when-not-to" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature comparison
+        When to Use It — and When Not To
       
     </span>
   </a>
@@ -3017,49 +3033,65 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
+  <a href="#controlling-the-edge-count" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark
+        Controlling the Edge Count
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Benchmark">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#20000-nodes-200000-edges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        20,000 nodes / ~200,000 edges
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-the-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reading the results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-to-use-which" class="md-nav__link">
+  <a href="#provenance-and-rebuilding" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When to use which
+        Provenance and Rebuilding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#incremental-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incremental Updates
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keeping-analysis-honest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping Analysis Honest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafito.ingest_report.SemanticGraphReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SemanticGraphReport
       
     </span>
   </a>
@@ -3086,199 +3118,221 @@
   
 
 
-<h1 id="grafitodb-vs-rdflib">GrafitoDB vs. rdflib</h1>
-<p><a href="https://rdflib.readthedocs.io">rdflib</a> is the de-facto RDF toolkit for Python: a
-triplestore with SPARQL, many serialization formats, and full Semantic-Web
-interoperability. GrafitoDB is a <strong>property-graph database</strong> on top of SQLite, queried
-with Cypher. They solve overlapping but different problems — this page explains when
-each is the better tool, backed by a reproducible benchmark.</p>
-<div class="admonition tip">
-<p class="admonition-title">Short version</p>
-<p>Use <strong>rdflib</strong> when you need RDF <em>as a standard</em>: SPARQL, named graphs, reasoning,
-Linked-Data interchange. Use <strong>GrafitoDB</strong> when you need a <em>database for a property
-graph</em>: durable persistence, bounded memory, and fast indexed lookups/traversals.
-The two interoperate through Grafito's <a href="../../integrations/rdf/">RDF integration</a>.</p>
+<h1 id="materialised-semantic-graph">Materialised Semantic Graph</h1>
+<p><code>create_semantic_graph()</code> turns the vector index into relationships: every
+indexed node gets edges to its <code>k</code> nearest neighbours, so similarity becomes
+something you can traverse with Cypher and cluster with community detection.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">index</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">rel_type</span><span class="o">=</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">min_score</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># SemanticGraphReport(742 edges, 100 nodes)</span>
+</span></code></pre></div>
+<h2 id="when-to-use-it-and-when-not-to">When to Use It — and When Not To</h2>
+<div class="admonition warning">
+<p class="admonition-title">Materialised edges are a cache, and caches go stale</p>
+<p>This writes <code>k</code> edges per node into the same table as your domain
+relationships. At 100k nodes with <code>k=15</code> that is ~750k rows. Those edges:</p>
+<ul>
+<li><strong>dominate unqualified traversals.</strong> <code>MATCH (a)-[]-&gt;(b)</code> now sweeps
+  similarity noise, and every centrality or community result is meaningless
+  unless it excludes them.</li>
+<li><strong>go stale silently.</strong> They reflect the embeddings as of the build.
+  Nothing updates them when a vector changes.</li>
+<li><strong>need maintenance forever.</strong> Every ingest leaves the graph a little more
+  out of date until you rebuild.</li>
+</ul>
+<p>Before reaching for this, check whether a query answers the same question:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="err">--</span><span class="w"> </span><span class="n">No</span><span class="w"> </span><span class="n">stored</span><span class="w"> </span><span class="n">edges</span><span class="p">,</span><span class="w"> </span><span class="n">never</span><span class="w"> </span><span class="n">stale</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">CALL</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">vector</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;default&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;transformers&#39;</span><span class="p">,</span><span class="w"> </span><span class="m">15</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="n">score</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="n">score</span>
+</span></code></pre></div>
+<p><a href="../../cypher/vector-search/"><code>SIMILAR()</code> and <code>db.vector.search</code></a> cover most
+of what materialised neighbours are used for, and
+<a href="../subgraphs/"><code>semantic_subgraph()</code></a> covers most of the rest.</p>
 </div>
-<h2 id="feature-comparison">Feature comparison</h2>
-<table>
-<thead>
-<tr>
-<th>Capability</th>
-<th>rdflib</th>
-<th>GrafitoDB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Data model</td>
-<td>RDF triples</td>
-<td>Property graph (nodes/edges with properties)</td>
-</tr>
-<tr>
-<td>Query language</td>
-<td>SPARQL 1.1</td>
-<td>Cypher (+ programmatic API)</td>
-</tr>
-<tr>
-<td>SPARQL over the data</td>
-<td>✅ native</td>
-<td>✅ via <a href="../../integrations/rdf/#sparql-queries"><code>query_sparql</code></a> (delegated)</td>
-</tr>
-<tr>
-<td>RDF import/export</td>
-<td>✅ 20+ formats</td>
-<td>✅ Turtle, JSON-LD, N-Triples, RDF/XML, N-Quads, N3, TriG</td>
-</tr>
-<tr>
-<td>Edge properties</td>
-<td>⚠️ needs reification (~4 triples/edge)</td>
-<td>✅ first-class (one row)</td>
-</tr>
-<tr>
-<td>Persistence</td>
-<td>in-memory (plugins for disk stores)</td>
-<td>✅ single SQLite file, transactional</td>
-</tr>
-<tr>
-<td>Memory footprint</td>
-<td>whole graph in RAM</td>
-<td>✅ streamed from disk</td>
-</tr>
-<tr>
-<td>Property indexes</td>
-<td>—</td>
-<td>✅ used by Cypher/<code>match_nodes</code></td>
-</tr>
-<tr>
-<td>Full-text &amp; vector search</td>
-<td>—</td>
-<td>✅ FTS5 + ANN backends</td>
-</tr>
-<tr>
-<td>Named graphs / quads</td>
-<td>✅</td>
-<td>—</td>
-</tr>
-<tr>
-<td>Reasoning (RDFS/OWL)</td>
-<td>✅ (plugins)</td>
-<td>—</td>
-</tr>
-<tr>
-<td>Graph isomorphism / diff</td>
-<td>✅</td>
-<td>✅ via <a href="../../integrations/rdf/#comparing-two-graphs"><code>graph_diff</code></a> (delegated)</td>
-</tr>
-</tbody>
-</table>
-<p>As a <strong>pure RDF engine, rdflib is more capable</strong> (native SPARQL, named graphs,
-reasoning). As a <strong>database for a property graph, GrafitoDB is substantially more
-efficient</strong>, as the benchmark below shows.</p>
-<h2 id="benchmark">Benchmark</h2>
-<p>The same knowledge graph (<code>Person</code> nodes with <code>name/age/city/mbox</code>, <code>KNOWS</code> edges with a
-<code>since</code> property) is stored in both engines and queried with each engine's native
-language — <strong>Cypher</strong> for Grafito, <strong>SPARQL</strong> for rdflib. Edges are modelled identically
-(the reified form Grafito's exporter produces). Median of 5 runs.</p>
-<p>The full, reproducible script lives in
-<a href="https://github.com/jpmanson/GrafitoDB/tree/main/playground/rdf_vs_grafito"><code>playground/rdf_vs_grafito/</code></a>.</p>
-<h3 id="20000-nodes-200000-edges">20,000 nodes / ~200,000 edges</h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>GrafitoDB</th>
-<th>rdflib</th>
-<th>Winner</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Build (ingest)</td>
-<td>26.0 s</td>
-<td>23.4 s</td>
-<td>rdflib 1.1×</td>
-</tr>
-<tr>
-<td>On-disk size</td>
-<td>31.9 MB</td>
-<td>24.1 MB</td>
-<td>rdflib 1.3×</td>
-</tr>
-<tr>
-<td>Reopen / reload</td>
-<td><strong>0.4 ms</strong></td>
-<td>10.4 s</td>
-<td><strong>Grafito</strong></td>
-</tr>
-<tr>
-<td>Memory resident</td>
-<td><strong>~0 (on disk)</strong></td>
-<td>885 MB</td>
-<td><strong>Grafito</strong></td>
-</tr>
-<tr>
-<td>Point lookup</td>
-<td><strong>0.08 ms</strong></td>
-<td>1.04 ms</td>
-<td><strong>Grafito 12×</strong></td>
-</tr>
-<tr>
-<td>1-hop neighbours</td>
-<td><strong>0.14 ms</strong></td>
-<td>1.33 ms</td>
-<td><strong>Grafito 10×</strong></td>
-</tr>
-<tr>
-<td>2-hop</td>
-<td><strong>0.49 ms</strong></td>
-<td>2.40 ms</td>
-<td><strong>Grafito 5×</strong></td>
-</tr>
-<tr>
-<td>Edge-property filter</td>
-<td><strong>2.37 s</strong></td>
-<td>3.47 s</td>
-<td><strong>Grafito 1.5×</strong></td>
-</tr>
-<tr>
-<td>Degree top-k (aggregation)</td>
-<td>2.25 s</td>
-<td>1.61 s</td>
-<td>rdflib 1.4×</td>
-</tr>
-</tbody>
-</table>
-<p>Point lookups are <strong>constant-time</strong> across scales (0.08–0.09 ms at both 5k and 20k
-nodes) because Grafito uses its property index; rdflib scans/filters, so its cost grows
-with the dataset.</p>
-<h3 id="reading-the-results">Reading the results</h3>
-<p><strong>GrafitoDB wins decisively on:</strong></p>
-<ul>
-<li><strong>Lookups and traversals</strong> — 5–12× faster, and constant-time thanks to indexes.</li>
-<li><strong>Reopen</strong> — the data is already on disk (~0.4 ms); rdflib must re-parse the whole
-  serialization (10 s at 20k nodes).</li>
-<li><strong>Memory</strong> — Grafito streams from SQLite (~0 resident); rdflib keeps every triple in
-  RAM (885 MB for ~900k triples). This gap grows linearly and is structural.</li>
-<li><strong>Edge-property queries</strong> — native edge properties vs. RDF reification overhead.</li>
-</ul>
-<p><strong>rdflib wins on:</strong></p>
-<ul>
-<li><strong>On-disk size</strong> — Turtle/N-Triples are more compact than a SQLite file with indexes.</li>
-<li><strong>Aggregations</strong> like degree top-k (SPARQL ~1.4×).</li>
-<li><strong>Bulk build at large scale</strong> — Grafito's insert path scales worse than linear.</li>
-</ul>
-<h2 id="when-to-use-which">When to use which</h2>
-<ul>
-<li><strong>Choose rdflib</strong> if RDF <em>is the point</em>: you consume/publish Linked Data, need SPARQL
-  features Cypher lacks, work with named graphs or ontologies/reasoning, or exchange data
-  across the Semantic-Web ecosystem.</li>
-<li><strong>Choose GrafitoDB</strong> if you need a <em>database</em>: durable and transactional storage,
-  bounded memory on large graphs, fast indexed lookups and multi-hop traversals, first-class
-  edge properties, or built-in full-text and vector search.</li>
-<li><strong>Use both</strong>: model and query in Grafito, then <code>export_*</code> / <code>import_*</code> to interoperate
-  with RDF tools, or run one-off <code>query_sparql</code> queries when a SPARQL feature is handy.
-  See the <a href="../../integrations/rdf/">RDF integration guide</a>.</li>
-</ul>
+<p>The case that genuinely needs materialised edges is <strong>community detection over
+similarity</strong>. Modularity algorithms need edges to exist; there is no way to run
+Louvain against an ANN index:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">for</span> <span class="n">community</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span> <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">):</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">community</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">community</span><span class="o">.</span><span class="n">nodes</span><span class="p">[:</span><span class="mi">3</span><span class="p">]])</span>
+</span></code></pre></div>
+<p>Multi-hop similarity patterns are the other — "things like this, and things like
+<em>those</em>", which an ANN query cannot express:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="n">p</span><span class="p">=(</span><span class="n">a</span><span class="p">:</span><span class="n">Doc</span><span class="w"> </span><span class="p">{</span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;d1&#39;</span><span class="p">})</span><span class="o">-[</span><span class="p">:</span><span class="n">SEMANTIC_SIMILAR</span><span class="p">*</span><span class="m">1</span><span class="p">..</span><span class="m">2</span><span class="o">]-</span><span class="p">(</span><span class="n">b</span><span class="p">:</span><span class="n">Doc</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="n">b</span>
+</span></code></pre></div>
+<h2 id="controlling-the-edge-count">Controlling the Edge Count</h2>
+<p><code>min_score</code> is the most effective lever — far more so than <code>k</code>, because it cuts
+the long tail of weak neighbours that inflate the graph without adding signal:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>   <span class="c1"># far fewer edges than min_score=0.1</span>
+</span></code></pre></div>
+<p><code>undirected=True</code> (the default) emits one edge per pair instead of one per
+direction, roughly halving the count. Query it with an undirected pattern:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">SEMANTIC_SIMILAR</span><span class="o">]-</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w">   </span><span class="err">--</span><span class="w"> </span><span class="n">note</span><span class="p">:</span><span class="w"> </span><span class="n">no</span><span class="w"> </span><span class="n">arrow</span>
+</span></code></pre></div>
+<p><code>labels</code> restricts which nodes participate, and <code>max_edges</code> caps the build
+outright:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Article&quot;</span><span class="p">],</span> <span class="n">max_edges</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="provenance-and-rebuilding">Provenance and Rebuilding</h2>
+<p>Every generated edge carries <code>score</code>, <code>index</code>, <code>generated_by</code>, and
+<code>generated_at</code>. The marker is what makes rebuilds safe: <code>replace=True</code> (the
+default) deletes only edges this method created, so a hand-made
+<code>SEMANTIC_SIMILAR</code> relationship survives a rebuild.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>   <span class="c1"># idempotent: re-running replaces</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">()</span>                        <span class="c1"># removes generated edges only</span>
+</span></code></pre></div>
+<h2 id="incremental-updates">Incremental Updates</h2>
+<p>After adding documents, link the new ones without rebuilding everything:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">new_rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Doc&quot;</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">refresh_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># SemanticGraphReport(30 edges, 2 nodes, 100 skipped)</span>
+</span></code></pre></div>
+<p><code>refresh_semantic_graph()</code> only processes nodes that have no edges of that type
+yet. It will <strong>not</strong> notice that an existing node's neighbourhood changed — new
+documents can be a better match for old ones than what is currently stored.
+Only a full rebuild fixes that, so schedule one periodically if your corpus
+keeps growing.</p>
+<h2 id="keeping-analysis-honest">Keeping Analysis Honest</h2>
+<p>Once these edges exist, every graph analysis needs to say whether it wants them:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Structure of the domain</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">db</span><span class="o">.</span><span class="n">centrality</span><span class="p">(</span><span class="s2">&quot;pagerank&quot;</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Structure of the embedding space</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span> <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The same applies to <a href="../subgraphs/">subgraph expansion</a> — a single hop through
+similarity edges reaches a large part of the database:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">db</span><span class="o">.</span><span class="n">semantic_subgraph</span><span class="p">(</span><span class="s2">&quot;agents&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<h2 id="api-reference">API Reference</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="grafito.ingest_report.SemanticGraphReport" class="doc doc-heading">
+            <code>grafito.ingest_report.SemanticGraphReport</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>What :meth:<code>~grafito.GrafitoDatabase.create_semantic_graph</code> materialised.</p>
+<p><code>edges_created</code> is the number worth watching: it grows as <code>k</code> times the
+node count, and those edges live in the same table as the domain's own. A
+build that produced far more edges than expected is usually a <code>min_score</code>
+that is too permissive.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>grafito/ingest_report.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#__codelineno-0-53">53</a></span>
+<span class="normal"><a href="#__codelineno-0-54">54</a></span>
+<span class="normal"><a href="#__codelineno-0-55">55</a></span>
+<span class="normal"><a href="#__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#__codelineno-0-59">59</a></span>
+<span class="normal"><a href="#__codelineno-0-60">60</a></span>
+<span class="normal"><a href="#__codelineno-0-61">61</a></span>
+<span class="normal"><a href="#__codelineno-0-62">62</a></span>
+<span class="normal"><a href="#__codelineno-0-63">63</a></span>
+<span class="normal"><a href="#__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#__codelineno-0-65">65</a></span>
+<span class="normal"><a href="#__codelineno-0-66">66</a></span>
+<span class="normal"><a href="#__codelineno-0-67">67</a></span>
+<span class="normal"><a href="#__codelineno-0-68">68</a></span>
+<span class="normal"><a href="#__codelineno-0-69">69</a></span>
+<span class="normal"><a href="#__codelineno-0-70">70</a></span>
+<span class="normal"><a href="#__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#__codelineno-0-73">73</a></span>
+<span class="normal"><a href="#__codelineno-0-74">74</a></span>
+<span class="normal"><a href="#__codelineno-0-75">75</a></span>
+<span class="normal"><a href="#__codelineno-0-76">76</a></span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="nd">@dataclass</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">class</span><span class="w"> </span><span class="nc">SemanticGraphReport</span><span class="p">:</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;What :meth:`~grafito.GrafitoDatabase.create_semantic_graph` materialised.</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    ``edges_created`` is the number worth watching: it grows as ``k`` times the</span>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">    node count, and those edges live in the same table as the domain&#39;s own. A</span>
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    build that produced far more edges than expected is usually a ``min_score``</span>
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    that is too permissive.</span>
+</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a>
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="n">edges_created</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="n">edges_removed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1">#: Nodes whose neighbourhood was computed.</span>
+</span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">nodes_processed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1">#: Nodes skipped because `approximate` found them already linked.</span>
+</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="n">nodes_skipped</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1">#: True when `max_edges` stopped the build before every node was processed.</span>
+</span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">truncated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a>
+</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-67"><a id="__codelineno-0-67" name="__codelineno-0-67"></a>        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_created</span><span class="si">}</span><span class="s2"> edges&quot;</span><span class="p">,</span>
+</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_processed</span><span class="si">}</span><span class="s2"> nodes&quot;</span><span class="p">,</span>
+</span><span id="__span-0-70"><a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="p">]</span>
+</span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="p">:</span>
+</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="si">}</span><span class="s2"> replaced&quot;</span><span class="p">)</span>
+</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="p">:</span>
+</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="si">}</span><span class="s2"> skipped&quot;</span><span class="p">)</span>
+</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">truncated</span><span class="p">:</span>
+</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;truncated&quot;</span><span class="p">)</span>
+</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SemanticGraphReport(</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 

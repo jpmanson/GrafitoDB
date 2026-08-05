@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/integrations/rdf/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/graphrag/overview/">
       
       
-        <link rel="prev" href="../networkx/">
+        <link rel="prev" href="../../search/examples/">
       
       
-        <link rel="next" href="../neo4j-import/">
+        <link rel="next" href="../../analysis/graph-algorithms/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>RDF/Turtle - GrafitoDB</title>
+        <title>Overview - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#rdfturtle-integration" class="md-skip">
+        <a href="#graphrag" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              RDF/Turtle
+              Overview
             
           </span>
         </div>
@@ -331,11 +331,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../graphrag/overview/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -371,13 +373,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../networkx/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../integrations/networkx/" class="md-tabs__link">
           
   
   
@@ -1656,28 +1656,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -1695,7 +1698,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1710,10 +1713,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../graphrag/overview/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1729,6 +1759,214 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-graph-adds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Graph Adds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pick-a-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pick a Level
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Ingest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-retrieve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Retrieve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-expand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Expand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rerank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Rerank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-serve-to-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Serve to a Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-understand-the-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Understand the Corpus
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recipes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#passage-level-rag-with-citations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Passage-level RAG with citations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retrieve-as-a-graph-rank-within-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retrieve as a graph, rank within the result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#governed-context-for-a-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governed context for a prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#thematic-map-of-a-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Thematic map of a corpus
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-missing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is Missing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1890,31 +2128,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
             
   
   
@@ -1932,7 +2167,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1950,7 +2185,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../networkx/" class="md-nav__link">
+      <a href="../../integrations/networkx/" class="md-nav__link">
         
   
   
@@ -1975,37 +2210,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    RDF/Turtle
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../integrations/rdf/" class="md-nav__link">
         
   
   
@@ -2021,214 +2229,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#public-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Public API
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exporting-to-rdf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Exporting to RDF
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Exporting to RDF">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#basic-export" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Export
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#export-to-turtle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Export to Turtle
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-the-mapping-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How the mapping works
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-predicates-and-typed-literals-__rdf__" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom predicates and typed literals (__rdf__)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#importing-rdf-into-grafitodb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Importing RDF into GrafitoDB
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Importing RDF into GrafitoDB">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#from-a-turtle-string-or-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        From a Turtle string or file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#from-an-existing-rdflibgraph" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        From an existing rdflib.Graph
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-mapping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import mapping
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#round-tripping" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Round-tripping
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-rdf-formats-json-ld-n-triples-rdfxml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other RDF formats (JSON-LD, N-Triples, RDF/XML…)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#sparql-queries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SPARQL queries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparing-two-graphs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparing two graphs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2241,7 +2241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neo4j-import/" class="md-nav__link">
+      <a href="../../integrations/neo4j-import/" class="md-nav__link">
         
   
   
@@ -2269,7 +2269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../okf/" class="md-nav__link">
+      <a href="../../integrations/okf/" class="md-nav__link">
         
   
   
@@ -2297,7 +2297,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../okf-agentic-search/" class="md-nav__link">
+      <a href="../../integrations/okf-agentic-search/" class="md-nav__link">
         
   
   
@@ -2325,7 +2325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../visualization/" class="md-nav__link">
+      <a href="../../integrations/visualization/" class="md-nav__link">
         
   
   
@@ -3133,10 +3133,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#what-the-graph-adds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        What the Graph Adds
       
     </span>
   </a>
@@ -3144,10 +3144,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#public-api" class="md-nav__link">
+  <a href="#pick-a-level" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Public API
+        Pick a Level
       
     </span>
   </a>
@@ -3155,22 +3155,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#exporting-to-rdf" class="md-nav__link">
+  <a href="#the-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exporting to RDF
+        The Pipeline
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Exporting to RDF">
+    <nav class="md-nav" aria-label="The Pipeline">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#basic-export" class="md-nav__link">
+  <a href="#1-ingest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Export
+        1. Ingest
       
     </span>
   </a>
@@ -3178,10 +3178,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#export-to-turtle" class="md-nav__link">
+  <a href="#2-retrieve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Export to Turtle
+        2. Retrieve
       
     </span>
   </a>
@@ -3189,10 +3189,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#how-the-mapping-works" class="md-nav__link">
+  <a href="#3-expand" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the mapping works
+        3. Expand
       
     </span>
   </a>
@@ -3200,10 +3200,43 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#custom-predicates-and-typed-literals-__rdf__" class="md-nav__link">
+  <a href="#4-rerank" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Custom predicates and typed literals (__rdf__)
+        4. Rerank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-serve-to-a-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Serve to a Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-understand-the-corpus" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Understand the Corpus
       
     </span>
   </a>
@@ -3216,22 +3249,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#importing-rdf-into-grafitodb" class="md-nav__link">
+  <a href="#recipes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Importing RDF into GrafitoDB
+        Recipes
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Importing RDF into GrafitoDB">
+    <nav class="md-nav" aria-label="Recipes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#from-a-turtle-string-or-file" class="md-nav__link">
+  <a href="#passage-level-rag-with-citations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        From a Turtle string or file
+        Passage-level RAG with citations
       
     </span>
   </a>
@@ -3239,10 +3272,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#from-an-existing-rdflibgraph" class="md-nav__link">
+  <a href="#retrieve-as-a-graph-rank-within-the-result" class="md-nav__link">
     <span class="md-ellipsis">
       
-        From an existing rdflib.Graph
+        Retrieve as a graph, rank within the result
       
     </span>
   </a>
@@ -3250,10 +3283,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#import-mapping" class="md-nav__link">
+  <a href="#governed-context-for-a-prompt" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import mapping
+        Governed context for a prompt
       
     </span>
   </a>
@@ -3261,10 +3294,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#round-tripping" class="md-nav__link">
+  <a href="#thematic-map-of-a-corpus" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Round-tripping
+        Thematic map of a corpus
       
     </span>
   </a>
@@ -3277,43 +3310,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#other-rdf-formats-json-ld-n-triples-rdfxml" class="md-nav__link">
+  <a href="#what-is-missing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Other RDF formats (JSON-LD, N-Triples, RDF/XML…)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#sparql-queries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SPARQL queries
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparing-two-graphs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparing two graphs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
+        What Is Missing
       
     </span>
   </a>
@@ -3340,328 +3340,323 @@
   
 
 
-<h1 id="rdfturtle-integration">RDF/Turtle Integration</h1>
-<p>GrafitoDB can <strong>export to</strong> and <strong>import from</strong> RDF (Resource Description Framework),
-using <a href="https://rdflib.readthedocs.io"><code>rdflib</code></a> under the hood. This makes a Grafito
-property graph interoperable with the Semantic Web / Linked Data ecosystem.</p>
-<h2 id="prerequisites">Prerequisites</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>grafito<span class="o">[</span>rdf<span class="o">]</span>
-</span></code></pre></div>
-<p>This installs <code>rdflib</code> for RDF handling.</p>
-<h2 id="public-api">Public API</h2>
-<p>The integration lives in <code>grafito.integrations</code>:</p>
+<h1 id="graphrag">GraphRAG</h1>
+<p>Retrieval-augmented generation where the retrieval step uses the graph, not just
+vector distance. This page is the map: what GrafitoDB provides at each stage of
+the pipeline, and which of the three abstraction levels to work at.</p>
+<h2 id="what-the-graph-adds">What the Graph Adds</h2>
+<p>Plain RAG retrieves the top-k chunks nearest a query embedding. That misses two
+things the graph knows:</p>
+<ul>
+<li><strong>The thing that answers the question is often adjacent to the match, not the
+  match itself.</strong> A question about a decision retrieves the decision; the
+  rationale lives in the document it supersedes.</li>
+<li><strong>Results are related to each other.</strong> Eight of thirty hits citing one another
+  is a signal — about which one is central, and about what to include when the
+  budget only fits five.</li>
+</ul>
+<p>Everything below is machinery for those two: following edges from what matched,
+and using the structure among results.</p>
+<h2 id="pick-a-level">Pick a Level</h2>
+<p>Three layers cover the same pipeline at increasing levels of opinion. Working at
+the wrong one is the most common way to make this harder than it is.</p>
 <table>
 <thead>
 <tr>
-<th>Function</th>
-<th>Purpose</th>
+<th>Level</th>
+<th>Use when</th>
+<th>Entry point</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>export_rdf(db, ...)</code></td>
-<td>Export the graph to an <code>rdflib.Graph</code></td>
+<td><strong>Graph</strong></td>
+<td>Your data is already a graph, or you want full control of retrieval and expansion</td>
+<td><a href="../../analysis/subgraphs/"><code>semantic_subgraph()</code></a></td>
 </tr>
 <tr>
-<td><code>export_turtle(db, ...)</code></td>
-<td>Export the graph to a Turtle string</td>
+<td><strong>Documents</strong></td>
+<td>You have files or long text to chunk, retrieve at passage level, and cite</td>
+<td><code>DocumentIngestor</code></td>
 </tr>
 <tr>
-<td><code>export_string(db, format=..., ...)</code></td>
-<td>Export to any rdflib format as a string</td>
-</tr>
-<tr>
-<td><code>export_to_file(db, path, ...)</code></td>
-<td>Export to a file, format inferred from extension</td>
-</tr>
-<tr>
-<td><code>import_rdf(db, graph, ...)</code></td>
-<td>Import an <code>rdflib.Graph</code> into the database</td>
-</tr>
-<tr>
-<td><code>import_turtle(db, source, ...)</code></td>
-<td>Parse Turtle (string or file) and import it</td>
-</tr>
-<tr>
-<td><code>import_from_file(db, path, ...)</code></td>
-<td>Import a file, format inferred from extension</td>
-</tr>
-<tr>
-<td><code>query_sparql(db, query, ...)</code></td>
-<td>Run SPARQL over the graph (delegated to rdflib)</td>
-</tr>
-<tr>
-<td><code>graph_diff(a, b, ...)</code></td>
-<td>Compare two graphs by RDF isomorphism</td>
+<td><strong>OKF</strong></td>
+<td>You want a governed knowledge base: provenance, trust levels, supersession, review workflow</td>
+<td><a href="../../integrations/okf/"><code>OKFBundle</code></a></td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="exporting-to-rdf">Exporting to RDF</h2>
-<h3 id="basic-export">Basic Export</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_rdf</span><span class="p">,</span> <span class="n">export_turtle</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">alice</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Person&#39;</span><span class="p">],</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Alice&#39;</span><span class="p">})</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">bob</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Person&#39;</span><span class="p">],</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Bob&#39;</span><span class="p">})</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">bob</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;KNOWS&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;since&#39;</span><span class="p">:</span> <span class="mi">2021</span><span class="p">})</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Export to an rdflib Graph</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">rdf_graph</span> <span class="o">=</span> <span class="n">export_rdf</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Triples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rdf_graph</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<p>They stack rather than compete — OKF is built on documents, documents on the
+graph — but you should pick one as your primary interface and drop down only
+when you need to.</p>
+<h2 id="the-pipeline">The Pipeline</h2>
+<h3 id="1-ingest">1. Ingest</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../search/bulk-ingest/"><code>db.index_documents()</code></a></td>
+<td>Row-shaped data: HuggingFace datasets, DataFrames, JSONL. Nodes, edges and batched embeddings in one call</td>
+</tr>
+<tr>
+<td><code>DocumentIngestor.ingest()</code></td>
+<td>Long text that needs chunking, with a section tree and stable ids across re-ingests</td>
+</tr>
+<tr>
+<td>Chunkers</td>
+<td><code>fixed</code>, <code>recursive</code>, <code>markdown</code>, <code>semantic</code>, plus a <code>chonkie</code> adapter</td>
+</tr>
+<tr>
+<td><code>OKFBundle.add_concept()</code></td>
+<td>Governed concepts with frontmatter, citations and layers</td>
+</tr>
+</tbody>
+</table>
+<p>Register an FTS index alongside the vector index if you want hybrid retrieval —
+<code>db.create_text_index("node", "Doc", ["text"])</code>.</p>
+<h3 id="2-retrieve">2. Retrieve</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>db.semantic_search()</code></td>
+<td>Vector top-k</td>
+</tr>
+<tr>
+<td><code>db.text_search()</code></td>
+<td>FTS5/BM25</td>
+</tr>
+<tr>
+<td><a href="../../cypher/vector-search/"><code>CALL db.vector.search</code></a></td>
+<td>Vector search <em>inside</em> a Cypher pattern — seeds a traversal from the ANN index</td>
+</tr>
+<tr>
+<td><a href="../../cypher/vector-search/"><code>SIMILAR()</code> / <code>VECTOR_SCORE()</code></a></td>
+<td>Constrain the far end of a pattern by similarity</td>
+</tr>
+<tr>
+<td><code>DocumentIngestor.hybrid_search()</code></td>
+<td>Vector + lexical fused with RRF (<code>grafito.document.hybrid.rrf_fuse</code>)</td>
+</tr>
+<tr>
+<td><code>OKFBundle.search()</code></td>
+<td>Retrieval with governance filters (layer, trust, superseded)</td>
+</tr>
+</tbody>
+</table>
+<p>The Cypher-level tools are what make retrieval structural rather than a
+pre-filter. Both endpoints of a path can be seeded semantically:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">vector</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;papers_vec&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;chatgpt&#39;</span><span class="p">,</span><span class="w"> </span><span class="m">10</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">a</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">CALL</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">vector</span><span class="p">.</span><span class="n">search</span><span class="p">(</span><span class="s">&#39;papers_vec&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;anthropic&#39;</span><span class="p">,</span><span class="w"> </span><span class="m">10</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">b</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">MATCH</span><span class="w"> </span><span class="n">p</span><span class="p">=(</span><span class="n">a</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">CITES</span><span class="p">*</span><span class="m">1</span><span class="p">..</span><span class="m">3</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="k">LIMIT</span><span class="w"> </span><span class="m">10</span>
 </span></code></pre></div>
-<p><code>export_rdf</code> signature:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">export_rdf</span><span class="p">(</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">db</span><span class="p">,</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">base_uri</span><span class="o">=</span><span class="s2">&quot;grafito:&quot;</span><span class="p">,</span>     <span class="c1"># namespace for nodes/labels/property predicates</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">node_prefix</span><span class="o">=</span><span class="s2">&quot;node/&quot;</span><span class="p">,</span>     <span class="c1"># URI segment for nodes without an explicit uri</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">rel_prefix</span><span class="o">=</span><span class="s2">&quot;rel/&quot;</span><span class="p">,</span>       <span class="c1"># URI segment for reified relationships</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">prefixes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>           <span class="c1"># dict {prefix: namespace} merged with the defaults</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">rdflib</span><span class="o">.</span><span class="n">Graph</span>
+<h3 id="3-expand">3. Expand</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../analysis/subgraphs/"><code>db.semantic_subgraph()</code></a></td>
+<td>Hits plus their neighbourhood, with <code>hops</code>/<code>scores</code> provenance</td>
+</tr>
+<tr>
+<td><code>db.subgraph()</code></td>
+<td>Same, from any seeds — including your own fused hits</td>
+</tr>
+<tr>
+<td><code>DocumentIngestor.expand()</code></td>
+<td>Passage-level: siblings, parents, and surrounding sections</td>
+</tr>
+<tr>
+<td><code>OKFBundle.context()</code></td>
+<td>Expansion governed by filters, so a <code>min_trust</code> guarantee holds through links</td>
+</tr>
+</tbody>
+</table>
+<p>Expansion is where the guard rails matter. One hop from a hub reaches most of the
+database; <code>exclude_rel_types</code> and <code>max_nodes</code> are not optional in a real corpus.</p>
+<h3 id="4-rerank">4. Rerank</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LexicalReranker</code></td>
+<td>Offline, no dependencies. A sane default</td>
+</tr>
+<tr>
+<td><code>CrossEncoderReranker</code></td>
+<td>Local cross-encoder. The usual quality winner</td>
+</tr>
+<tr>
+<td><code>CohereReranker</code>, <code>VoyageReranker</code>, <code>JinaReranker</code></td>
+<td>Hosted reranking APIs</td>
+</tr>
+<tr>
+<td><code>rrf_fuse()</code></td>
+<td>Reciprocal rank fusion across retrieval strategies</td>
+</tr>
+<tr>
+<td><code>db.centrality(graph=...)</code></td>
+<td>Graph-aware: rank by position within the retrieved subgraph</td>
+</tr>
+</tbody>
+</table>
+<p>All live in <code>grafito.okf.rerank</code> except <code>rrf_fuse</code> (<code>grafito.document.hybrid</code>).
+Rerankers plug into <code>OKFBundle.context(rerank=...)</code>, <code>semantic_search(reranker=...)</code>
+and <code>CALL db.vector.search(..., {reranker: 'name'})</code>.</p>
+<p>Graph-aware reranking is worth trying but not worth assuming: a node with a
+middling vector score that everything else in the result set points at is often
+the right answer — and often noise. Measure it (see <a href="#what-is-missing">below</a>).</p>
+<h3 id="5-pack">5. Pack</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OKFBundle.context()</code></td>
+<td>Search → expand → rerank → pack to a token budget, with citations and per-block provenance (<code>via JOINS_WITH</code>)</td>
+</tr>
+<tr>
+<td><code>DocumentIngestor.pack()</code></td>
+<td>Passage-level packing with citations</td>
+</tr>
+<tr>
+<td><code>Subgraph</code></td>
+<td>Raw material when you want to build the prompt yourself</td>
+</tr>
+</tbody>
+</table>
+<p><code>context()</code> is the most complete one-shot path: it names the relationship that
+pulled each block in, so the model can cite structure and not just text, and its
+filters govern expansion as well as retrieval.</p>
+<h3 id="6-serve-to-a-model">6. Serve to a Model</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GraphTools</code></td>
+<td><code>graph_schema</code>, <code>graph_neighbors</code>, <code>text_search</code>, <code>vector_search</code></td>
+</tr>
+<tr>
+<td><code>CypherTools</code></td>
+<td><code>graph_query</code> — read-only Cypher escape hatch</td>
+</tr>
+<tr>
+<td><code>DocumentTools</code></td>
+<td><code>document_context</code>, <code>document_search</code>, <code>document_expand</code>, <code>document_toc</code>, <code>document_load_sections</code>; writes opt-in</td>
+</tr>
+<tr>
+<td><code>grafito-mcp</code></td>
+<td>Serves any of the above over MCP stdio</td>
+</tr>
+<tr>
+<td><code>run_agent()</code></td>
+<td>In-process agent loop with <code>OpenAIChat</code> / <code>AnthropicChat</code></td>
+</tr>
+</tbody>
+</table>
+<p>One-shot <code>context()</code> and an agentic loop are not equivalent in cost: measured on
+a real model, letting the agent drive retrieval cost ~3.7x the one-shot pack.
+That is structural — resent conversation state — not a framework problem. Reach
+for the agent when the query genuinely needs several retrieval rounds.</p>
+<h3 id="7-understand-the-corpus">7. Understand the Corpus</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../analysis/graph-algorithms/"><code>db.communities()</code></a></td>
+<td>Thematic clusters</td>
+</tr>
+<tr>
+<td><code>db.centrality()</code></td>
+<td>Which documents are structurally central</td>
+</tr>
+<tr>
+<td><a href="../../analysis/semantic-graph/"><code>db.create_semantic_graph()</code></a></td>
+<td>Materialise similarity as edges — the prerequisite for clustering by similarity</td>
+</tr>
+<tr>
+<td><code>export_graph()</code></td>
+<td>Visualise a subgraph (<code>grafito.integrations.viz</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="recipes">Recipes</h2>
+<h3 id="passage-level-rag-with-citations">Passage-level RAG with citations</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="s2">&quot;passages&quot;</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span> <span class="n">embedding_function</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">ingestor</span> <span class="o">=</span> <span class="n">DocumentIngestor</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">embed_index</span><span class="o">=</span><span class="s2">&quot;passages&quot;</span><span class="p">,</span> <span class="n">configure_fts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">ingestor</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;adr-042.md&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(),</span> <span class="n">document_key</span><span class="o">=</span><span class="s2">&quot;adr-042&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">hits</span> <span class="o">=</span> <span class="n">ingestor</span><span class="o">.</span><span class="n">hybrid_search</span><span class="p">(</span><span class="s2">&quot;why did we drop the queue?&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">ingestor</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="n">ingestor</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">node</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">4000</span><span class="p">)</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">pack</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
 </span></code></pre></div>
-<p>The following prefixes are always bound: <code>rdf</code>, <code>rdfs</code>, <code>xsd</code>, <code>owl</code>, <code>schema</code>.</p>
-<h3 id="export-to-turtle">Export to Turtle</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">turtle_str</span> <span class="o">=</span> <span class="n">export_turtle</span><span class="p">(</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">db</span><span class="p">,</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">,</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">prefixes</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="s1">&#39;schema&#39;</span><span class="p">:</span> <span class="s1">&#39;http://schema.org/&#39;</span><span class="p">,</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="s1">&#39;foaf&#39;</span><span class="p">:</span> <span class="s1">&#39;http://xmlns.com/foaf/0.1/&#39;</span><span class="p">,</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="p">},</span>
+<p><code>expand()</code> takes one centre passage, not the whole hit list — window each hit you
+want to keep, then pack the union.</p>
+<h3 id="retrieve-as-a-graph-rank-within-the-result">Retrieve as a graph, rank within the result</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">sub</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_subgraph</span><span class="p">(</span><span class="s2">&quot;autonomous agents&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>                           <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">top</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">centrality</span><span class="p">(</span><span class="s2">&quot;pagerank&quot;</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">sub</span><span class="o">.</span><span class="n">to_networkx</span><span class="p">(),</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="governed-context-for-a-prompt">Governed context for a prompt</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">bundle</span> <span class="o">=</span> <span class="n">OKFBundle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;kb/&quot;</span><span class="p">,</span> <span class="n">embed</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">bundle</span><span class="o">.</span><span class="n">context</span><span class="p">(</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="s2">&quot;retry policy for payments&quot;</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">budget_tokens</span><span class="o">=</span><span class="mi">4000</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">expand_hops</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">min_trust</span><span class="o">=</span><span class="s2">&quot;human-reviewed&quot;</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">rerank</span><span class="o">=</span><span class="n">CrossEncoderReranker</span><span class="p">(),</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">)</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;export.ttl&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">turtle_str</span><span class="p">)</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">prompt</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pack</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Output:</p>
-<div class="language-turtle highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">@prefix</span><span class="w"> </span><span class="nn">:</span><span class="w"> </span><span class="nv">&lt;http://example.org/&gt;</span><span class="w"> </span><span class="p">.</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">@prefix</span><span class="w"> </span><span class="nn">xsd:</span><span class="w"> </span><span class="nv">&lt;http://www.w3.org/2001/XMLSchema#&gt;</span><span class="w"> </span><span class="p">.</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nv">&lt;http://example.org/rel/1&gt;</span> <span class="kt">a</span> <span class="p">:</span><span class="nt">KNOWS</span> <span class="p">;</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="p">:</span><span class="nt">since</span> <span class="mi">2021</span> <span class="p">;</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="p">:</span><span class="nt">source</span> <span class="nv">&lt;http://example.org/node/1&gt;</span> <span class="p">;</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">:</span><span class="nt">target</span> <span class="nv">&lt;http://example.org/node/2&gt;</span> <span class="p">.</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="nv">&lt;http://example.org/node/1&gt;</span> <span class="kt">a</span> <span class="p">:</span><span class="nt">Person</span> <span class="p">;</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="p">:</span><span class="nt">KNOWS</span> <span class="nv">&lt;http://example.org/node/2&gt;</span> <span class="p">;</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="p">:</span><span class="nt">name</span> <span class="s">&quot;Alice&quot;</span> <span class="p">.</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="nv">&lt;http://example.org/node/2&gt;</span> <span class="kt">a</span> <span class="p">:</span><span class="nt">Person</span> <span class="p">;</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="p">:</span><span class="nt">name</span> <span class="s">&quot;Bob&quot;</span> <span class="p">.</span>
+<h3 id="thematic-map-of-a-corpus">Thematic map of a corpus</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                        <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">nodes</span><span class="p">[:</span><span class="mi">3</span><span class="p">]])</span>
 </span></code></pre></div>
-<h3 id="how-the-mapping-works">How the mapping works</h3>
-<table>
-<thead>
-<tr>
-<th>GrafitoDB concept</th>
-<th>RDF mapping</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Node</td>
-<td>Subject IRI (from the node's <code>uri</code>, or <code>base_uri + node_prefix + id</code>)</td>
-</tr>
-<tr>
-<td>Label</td>
-<td><code>rdf:type</code></td>
-</tr>
-<tr>
-<td>Property (literal)</td>
-<td>Predicate <code>base_uri:&lt;key&gt;</code> → literal object</td>
-</tr>
-<tr>
-<td>Relationship</td>
-<td>Direct triple <code>(source) base_uri:&lt;TYPE&gt; (target)</code></td>
-</tr>
-<tr>
-<td>Relationship <strong>with properties</strong></td>
-<td>Additionally <strong>reified</strong>: a <code>rel/&lt;id&gt;</code> resource typed as the relationship, carrying <code>:source</code>, <code>:target</code> and one predicate per property</td>
-</tr>
-</tbody>
-</table>
-<p>Relationships are reified so that edge properties (which plain RDF triples cannot
-carry) are preserved. This is the inverse of what <code>import_rdf</code> recognises, so a
-round-trip is loss-free (see <a href="#round-tripping">Round-tripping</a>).</p>
-<h3 id="custom-predicates-and-typed-literals-__rdf__">Custom predicates and typed literals (<code>__rdf__</code>)</h3>
-<p>For fine-grained control over predicates, datatypes and language tags, add an
-<code>__rdf__</code> block to a node's (or relationship's) properties. It supports a JSON-LD
-style <code>@context</code>, plus <code>@id</code> (IRI object), <code>@value</code>/<code>@type</code>/<code>@lang</code> (typed/tagged
-literals), and lists:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Person&#39;</span><span class="p">],</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Alice&#39;</span><span class="p">,</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="s1">&#39;__rdf__&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            <span class="s1">&#39;@context&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;foaf&#39;</span><span class="p">:</span> <span class="s1">&#39;http://xmlns.com/foaf/0.1/&#39;</span><span class="p">},</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>            <span class="s1">&#39;foaf:homepage&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;@id&#39;</span><span class="p">:</span> <span class="s1">&#39;https://alice.example&#39;</span><span class="p">},</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            <span class="s1">&#39;foaf:age&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;@value&#39;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s1">&#39;@type&#39;</span><span class="p">:</span> <span class="s1">&#39;xsd:integer&#39;</span><span class="p">},</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            <span class="s1">&#39;foaf:name&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;@value&#39;</span><span class="p">:</span> <span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="s1">&#39;@lang&#39;</span><span class="p">:</span> <span class="s1">&#39;en&#39;</span><span class="p">},</span>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="p">},</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="p">},</span>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">)</span>
-</span></code></pre></div>
-<p>The <code>__rdf__</code> key itself is never emitted as a literal; only its expanded triples are.</p>
-<hr />
-<h2 id="importing-rdf-into-grafitodb">Importing RDF into GrafitoDB</h2>
-<h3 id="from-a-turtle-string-or-file">From a Turtle string or file</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_turtle</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">import_turtle</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s1">&#39;data.ttl&#39;</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>  <span class="c1"># {&#39;nodes&#39;: 42, &#39;relationships&#39;: 87}</span>
-</span></code></pre></div>
-<p><code>import_turtle</code> accepts either a <strong>file path</strong> or a <strong>Turtle string</strong> as <code>source</code>,
-and forwards <code>format</code> to <code>rdflib</code> (default <code>"turtle"</code>; also <code>"xml"</code>, <code>"json-ld"</code>,
-<code>"nt"</code>, <code>"n3"</code>, <code>"trig"</code>, …).</p>
-<h3 id="from-an-existing-rdflibgraph">From an existing <code>rdflib.Graph</code></h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">rdflib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Graph</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_rdf</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">g</span> <span class="o">=</span> <span class="n">Graph</span><span class="p">()</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">g</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s1">&#39;data.jsonld&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;json-ld&#39;</span><span class="p">)</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">import_rdf</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="import-mapping">Import mapping</h3>
-<p><code>import_rdf</code> projects RDF onto the property-graph model:</p>
-<ul>
-<li>A subject's <code>rdf:type</code> values become node <strong>labels</strong>.</li>
-<li>Triples whose object is a <strong>literal</strong> become node <strong>properties</strong>.</li>
-<li>Triples whose object is another <strong>resource</strong> become <strong>relationships</strong>.</li>
-<li>Grafito's <strong>reified edges</strong> (resources carrying <code>&lt;base&gt;source</code> and <code>&lt;base&gt;target</code>)
-  are recognised and imported as relationships that keep their literal predicates as
-  <strong>edge properties</strong>; the redundant direct triple is de-duplicated.</li>
-<li>When <code>store_uri=True</code> (default), the original subject IRI is stored on the node's
-  <code>uri</code> field, enabling loss-free re-export.</li>
-</ul>
-<p>IRIs are shortened to compact label/property names by stripping <code>base_uri</code>, or
-falling back to the fragment (<code>#…</code>) or last path segment.</p>
-<p>It works on arbitrary RDF, not just Grafito's own export:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">foaf</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="s2">@prefix foaf: &lt;http://xmlns.com/foaf/0.1/&gt; .</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="s2">@prefix ex: &lt;http://example.org/&gt; .</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="s2">ex:alice a foaf:Person ; foaf:name &quot;Alice&quot; ; foaf:knows ex:bob .</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="s2">ex:bob a foaf:Person ; foaf:name &quot;Bob&quot; .</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="s2">&quot;&quot;&quot;</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">import_turtle</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">foaf</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># -&gt; node Person{name: Alice} -[knows]-&gt; node Person{name: Bob}</span>
-</span></code></pre></div>
-<h3 id="round-tripping">Round-tripping</h3>
-<p><code>export</code> and <code>import</code> are inverses, so a graph survives a full cycle:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">turtle</span> <span class="o">=</span> <span class="n">export_turtle</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">restored</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">import_turtle</span><span class="p">(</span><span class="n">restored</span><span class="p">,</span> <span class="n">turtle</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># restored has the same nodes, labels, properties, relationships and edge properties</span>
-</span></code></pre></div>
-<hr />
-<h2 id="other-rdf-formats-json-ld-n-triples-rdfxml">Other RDF formats (JSON-LD, N-Triples, RDF/XML…)</h2>
-<p><code>export_string</code> and <code>export_to_file</code> reach any format <code>rdflib</code> supports. On files the
-format is inferred from the extension (override with <code>format=</code>):</p>
-<table>
-<thead>
-<tr>
-<th>Extension</th>
-<th>Format</th>
-<th></th>
-<th>Extension</th>
-<th>Format</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>.ttl</code></td>
-<td>turtle</td>
-<td></td>
-<td><code>.rdf</code> / <code>.xml</code></td>
-<td>xml</td>
-</tr>
-<tr>
-<td><code>.jsonld</code> / <code>.json</code></td>
-<td>json-ld</td>
-<td></td>
-<td><code>.n3</code></td>
-<td>n3</td>
-</tr>
-<tr>
-<td><code>.nt</code></td>
-<td>nt (N-Triples)</td>
-<td></td>
-<td><code>.trig</code></td>
-<td>trig</td>
-</tr>
-<tr>
-<td><code>.nq</code></td>
-<td>nquads</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_string</span><span class="p">,</span> <span class="n">export_to_file</span><span class="p">,</span> <span class="n">import_from_file</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># As a string, in any format</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">jsonld</span> <span class="o">=</span> <span class="n">export_string</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;json-ld&#39;</span><span class="p">)</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="c1"># To a file (format inferred from the extension)</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">export_to_file</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s1">&#39;graph.jsonld&#39;</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># Import back, format inferred</span>
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">restored</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span>
-</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">import_from_file</span><span class="p">(</span><span class="n">restored</span><span class="p">,</span> <span class="s1">&#39;graph.jsonld&#39;</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span></code></pre></div>
-<h2 id="sparql-queries">SPARQL queries</h2>
-<p>Grafito has no native SPARQL engine, but <code>query_sparql</code> materialises the graph as an
-<code>rdflib.Graph</code> and runs the query there, giving full <strong>SPARQL 1.1</strong>
-(SELECT / ASK / CONSTRUCT / DESCRIBE) over Grafito data:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">query_sparql</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">rows</span> <span class="o">=</span> <span class="n">query_sparql</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s2">&quot;&quot;&quot;</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s2">    PREFIX ex: &lt;http://example.org/&gt;</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="s2">    SELECT ?name ?age</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="s2">    WHERE { ?p a ex:Person ; ex:name ?name ; ex:age ?age }</span>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="s2">    ORDER BY DESC(?age)</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># -&gt; [{&#39;name&#39;: &#39;Alice&#39;, &#39;age&#39;: 30}, {&#39;name&#39;: &#39;Bob&#39;, &#39;age&#39;: 25}]</span>
-</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
-</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">query_sparql</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="s1">&#39;PREFIX ex: &lt;http://example.org/&gt; ASK { ?x ex:name &quot;Alice&quot; }&#39;</span><span class="p">,</span>
-</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>             <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="c1"># -&gt; [{&#39;boolean&#39;: True}]</span>
-</span></code></pre></div>
-<p>Return shapes: <code>SELECT</code> → list of <code>{variable: value}</code> dicts; <code>ASK</code> → <code>[{'boolean': ...}]</code>;
-<code>CONSTRUCT</code>/<code>DESCRIBE</code> → list of <code>{'s', 'p', 'o'}</code> triples.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The whole graph is loaded into memory for each call, so this is meant for interop
-and small/medium graphs. For large graphs and traversals, use Cypher
-(<code>db.execute(...)</code>) or the programmatic API, which query SQLite directly and use
-indexes.</p>
-</div>
-<h2 id="comparing-two-graphs">Comparing two graphs</h2>
-<p><code>graph_diff</code> compares two databases by <strong>RDF isomorphism</strong> (via <code>rdflib.compare</code>),
-correctly ignoring node-id ordering and blank-node labelling:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">graph_diff</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">graph_diff</span><span class="p">(</span><span class="n">db_a</span><span class="p">,</span> <span class="n">db_b</span><span class="p">,</span> <span class="n">base_uri</span><span class="o">=</span><span class="s1">&#39;http://example.org/&#39;</span><span class="p">)</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># -&gt; {&#39;isomorphic&#39;: True, &#39;in_both&#39;: 11, &#39;only_in_first&#39;: 0, &#39;only_in_second&#39;: 0}</span>
-</span></code></pre></div>
-<hr />
-<h2 id="limitations">Limitations</h2>
-<ul>
-<li><strong>Relationships are reified</strong> to carry edge properties (an extra resource per edge
-  with properties). This is the standard RDF n-ary/reification pattern.</li>
-<li><strong>Parallel edges collapse</strong>: RDF is a <em>set</em> of triples, so two relationships of the
-  same type between the same pair of nodes cannot be distinguished after export.</li>
-<li><strong>Blank nodes</strong> are imported as property-less nodes without a stable <code>uri</code>.</li>
-<li>Datatypes are inferred by <code>rdflib</code> on import (<code>toPython()</code>); <code>xsd:decimal</code> becomes a
-  Python <code>float</code>, and RDF types Grafito cannot store natively are coerced to strings.</li>
-</ul>
+<h2 id="what-is-missing">What Is Missing</h2>
+<p>There is <strong>no retrieval evaluation harness</strong> in GrafitoDB. Every knob on this
+page — <code>expand</code> depth, reranker choice, <code>min_score</code>, RRF weights, whether
+graph-aware reranking helps at all — changes retrieval quality in ways that are
+not predictable from first principles, and nothing here measures that.</p>
+<p>Build a small labelled set of queries and expected documents for your corpus
+before tuning. Without one you are guessing, and the guesses tend to favour
+whatever is most elaborate rather than what works.</p>
 
 
 

@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/comparisons/rdflib/">
+        <link rel="canonical" href="https://github.com/jpmanson/GrafitoDB/search/bulk-ingest/">
       
       
-        <link rel="prev" href="../../integrations/visualization/">
+        <link rel="prev" href="../vector/">
       
       
-        <link rel="next" href="../../embeddings/overview/">
+        <link rel="next" href="../document-chunking/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>GrafitoDB vs. rdflib - GrafitoDB</title>
+        <title>Bulk Document Ingest - GrafitoDB</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#grafitodb-vs-rdflib" class="md-skip">
+        <a href="#bulk-document-ingest" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              GrafitoDB vs. rdflib
+              Bulk Document Ingest
             
           </span>
         </div>
@@ -311,11 +311,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../search/overview/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
           
   
   
@@ -391,13 +393,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../comparisons/rdflib/" class="md-tabs__link">
           
   
   
@@ -1371,28 +1371,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1410,7 +1413,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1428,7 +1431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1456,7 +1459,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/fulltext/" class="md-nav__link">
+      <a href="../fulltext/" class="md-nav__link">
         
   
   
@@ -1484,7 +1487,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/vector/" class="md-nav__link">
+      <a href="../vector/" class="md-nav__link">
         
   
   
@@ -1509,10 +1512,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../search/bulk-ingest/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bulk Document Ingest
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1528,6 +1558,120 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationships
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity-and-re-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity and Re-ingest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#embedding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full-Text
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End to End
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafito.ingest_report.IndexReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IndexReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IndexReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grafito.ingest_report.IndexReport.nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1540,7 +1684,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/document-chunking/" class="md-nav__link">
+      <a href="../document-chunking/" class="md-nav__link">
         
   
   
@@ -1568,7 +1712,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/ann-backends/" class="md-nav__link">
+      <a href="../ann-backends/" class="md-nav__link">
         
   
   
@@ -1596,7 +1740,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/hybrid/" class="md-nav__link">
+      <a href="../hybrid/" class="md-nav__link">
         
   
   
@@ -1624,7 +1768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -2119,31 +2263,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
             
   
   
@@ -2161,7 +2302,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2176,37 +2317,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    GrafitoDB vs. rdflib
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../comparisons/rdflib/" class="md-nav__link">
         
   
   
@@ -2222,87 +2336,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Feature comparison
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#20000-nodes-200000-edges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        20,000 nodes / ~200,000 edges
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-the-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reading the results
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-which" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to use which
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3006,10 +3039,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#feature-comparison" class="md-nav__link">
+  <a href="#relationships" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature comparison
+        Relationships
       
     </span>
   </a>
@@ -3017,33 +3050,77 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#benchmark" class="md-nav__link">
+  <a href="#identity-and-re-ingest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#20000-nodes-200000-edges" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        20,000 nodes / ~200,000 edges
+        Identity and Re-ingest
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-the-results" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#embedding" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reading the results
+        Embedding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full-Text
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End to End
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafito.ingest_report.IndexReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IndexReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IndexReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grafito.ingest_report.IndexReport.nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nodes
       
     </span>
   </a>
@@ -3052,17 +3129,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-to-use-which" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When to use which
-      
-    </span>
-  </a>
   
 </li>
       
@@ -3086,199 +3152,255 @@
   
 
 
-<h1 id="grafitodb-vs-rdflib">GrafitoDB vs. rdflib</h1>
-<p><a href="https://rdflib.readthedocs.io">rdflib</a> is the de-facto RDF toolkit for Python: a
-triplestore with SPARQL, many serialization formats, and full Semantic-Web
-interoperability. GrafitoDB is a <strong>property-graph database</strong> on top of SQLite, queried
-with Cypher. They solve overlapping but different problems — this page explains when
-each is the better tool, backed by a reproducible benchmark.</p>
-<div class="admonition tip">
-<p class="admonition-title">Short version</p>
-<p>Use <strong>rdflib</strong> when you need RDF <em>as a standard</em>: SPARQL, named graphs, reasoning,
-Linked-Data interchange. Use <strong>GrafitoDB</strong> when you need a <em>database for a property
-graph</em>: durable persistence, bounded memory, and fast indexed lookups/traversals.
-The two interoperate through Grafito's <a href="../../integrations/rdf/">RDF integration</a>.</p>
+<h1 id="bulk-document-ingest">Bulk Document Ingest</h1>
+<p><code>index_documents()</code> turns row-shaped data — a HuggingFace dataset, a DataFrame's
+<code>to_dict("records")</code>, a JSONL file — into nodes, relationships, and embeddings in
+one call.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">rows</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;Graph databases store nodes and edges&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="mi">2024</span><span class="p">},</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;Vector search finds nearest neighbours&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="mi">2025</span><span class="p">},</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">]</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span> <span class="n">embedding_function</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Document&quot;</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># IndexReport(2 created, 0 updated, 0 relationships, 2 embedded)</span>
+</span></code></pre></div>
+<p>Every key other than the relationships field becomes a node property, so <code>year</code>
+above is queryable immediately. Set <code>copy_attributes=False</code> to keep only <code>id</code> and
+<code>text</code>, or pass <code>properties=["id", "year"]</code> for an explicit allowlist.</p>
+<h2 id="relationships">Relationships</h2>
+<p>Point <code>relationships_key</code> at the field holding each row's outgoing edges. Both
+shapes work:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">rows</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">]},</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;CITES&quot;</span><span class="p">,</span> <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}},</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="p">]},</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;links&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">]</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">,</span> <span class="n">relationships_key</span><span class="o">=</span><span class="s2">&quot;links&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>A bare id uses <code>default_rel_type</code> (<code>RELATED_TO</code>); the mapping form takes <code>type</code>
+and <code>properties</code>.</p>
+<p>Nodes are created in a first pass and relationships in a second, so a row may
+reference a document that appears later in <code>rows</code> — forward references resolve.
+Targets that name an id no row supplied are skipped and collected:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">unresolved</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">unresolved</span><span class="p">)</span><span class="si">}</span><span class="s2"> dangling references: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">unresolved</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>A dataset slice legitimately references rows outside the slice, so this is not an
+error. But a long <code>unresolved</code> list usually means <code>id_key</code> does not match the ids
+used in the relationship field.</p>
+<h2 id="identity-and-re-ingest">Identity and Re-ingest</h2>
+<p><code>id_key</code> (default <code>"id"</code>) gives rows an external identity. When <code>upsert=True</code>
+(the default), re-ingesting a row with a known id updates that node instead of
+creating a duplicate:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">)</span>           <span class="c1"># 3 created</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">updated_rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">)</span>   <span class="c1"># 0 created, 3 updated</span>
+</span></code></pre></div>
+<p>Pass <code>upsert=False</code> to always create, or <code>id_key=None</code> for data with no identity
+— note that relationships cannot be resolved without an id key.</p>
+<p><code>report.ids</code> maps external ids to node ids, which is how you connect this data to
+the rest of the graph afterwards:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">ids</span><span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">],</span> <span class="n">author_node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;AUTHORED_BY&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="embedding">Embedding</h2>
+<p>Text is embedded in batches using the vector index's embedding function:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">&quot;papers_vec&quot;</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+</span></code></pre></div>
+<ul>
+<li><code>batch_size</code> controls how many texts go to the embedder per call. Larger
+  batches are faster for API-backed embedders and use more memory for local ones.</li>
+<li>Rows with no <code>text_key</code>, or with blank text, are stored as nodes but not
+  embedded.</li>
+<li><code>index=None</code> skips embedding entirely — useful for a structure-only load.</li>
+</ul>
+<h2 id="full-text">Full-Text</h2>
+<p><code>index_documents()</code> populates the vector index only. For hybrid search, register
+the FTS index as well — FTS5 indexes existing rows when created, so the order
+does not matter:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_text_index</span><span class="p">(</span><span class="s2">&quot;node&quot;</span><span class="p">,</span> <span class="s2">&quot;Paper&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">])</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">db</span><span class="o">.</span><span class="n">semantic_search</span><span class="p">(</span><span class="s2">&quot;nearest neighbours&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">db</span><span class="o">.</span><span class="n">text_search</span><span class="p">(</span><span class="s2">&quot;nearest neighbours&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="end-to-end">End to End</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;papers.db&quot;</span><span class="p">)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span> <span class="n">embedding_function</span><span class="o">=</span><span class="n">embedder</span><span class="p">)</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">dataset</span><span class="p">,</span>                      <span class="c1"># any iterable of dicts</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Paper&quot;</span><span class="p">,</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">text_key</span><span class="o">=</span><span class="s2">&quot;abstract&quot;</span><span class="p">,</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="n">relationships_key</span><span class="o">=</span><span class="s2">&quot;citations&quot;</span><span class="p">,</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="n">default_rel_type</span><span class="o">=</span><span class="s2">&quot;CITES&quot;</span><span class="p">,</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="n">batch_size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="p">)</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">db</span><span class="o">.</span><span class="n">create_text_index</span><span class="p">(</span><span class="s2">&quot;node&quot;</span><span class="p">,</span> <span class="s2">&quot;Paper&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;abstract&quot;</span><span class="p">])</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="c1"># Retrieve as a graph, then rank within the result</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">sub</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">semantic_subgraph</span><span class="p">(</span><span class="s2">&quot;retrieval augmented generation&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">centrality</span><span class="p">(</span><span class="s2">&quot;pagerank&quot;</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">sub</span><span class="o">.</span><span class="n">to_networkx</span><span class="p">(),</span> <span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">hit</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">],</span> <span class="n">hit</span><span class="p">[</span><span class="s2">&quot;score&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<h2 id="api-reference">API Reference</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="grafito.ingest_report.IndexReport" class="doc doc-heading">
+            <code>grafito.ingest_report.IndexReport</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>What :meth:<code>~grafito.GrafitoDatabase.index_documents</code> actually did.</p>
+<p><code>unresolved</code> is the part worth checking: relationship targets that named
+an id no document supplied. They are skipped rather than raising, because a
+dataset slice legitimately references rows outside the slice — but a long
+list here usually means <code>id_key</code> does not match the ids used in the
+relationship field.</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>grafito/ingest_report.py</code></summary>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-0-10">10</a></span>
+<span class="normal"><a href="#__codelineno-0-11">11</a></span>
+<span class="normal"><a href="#__codelineno-0-12">12</a></span>
+<span class="normal"><a href="#__codelineno-0-13">13</a></span>
+<span class="normal"><a href="#__codelineno-0-14">14</a></span>
+<span class="normal"><a href="#__codelineno-0-15">15</a></span>
+<span class="normal"><a href="#__codelineno-0-16">16</a></span>
+<span class="normal"><a href="#__codelineno-0-17">17</a></span>
+<span class="normal"><a href="#__codelineno-0-18">18</a></span>
+<span class="normal"><a href="#__codelineno-0-19">19</a></span>
+<span class="normal"><a href="#__codelineno-0-20">20</a></span>
+<span class="normal"><a href="#__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#__codelineno-0-22">22</a></span>
+<span class="normal"><a href="#__codelineno-0-23">23</a></span>
+<span class="normal"><a href="#__codelineno-0-24">24</a></span>
+<span class="normal"><a href="#__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#__codelineno-0-38">38</a></span>
+<span class="normal"><a href="#__codelineno-0-39">39</a></span>
+<span class="normal"><a href="#__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#__codelineno-0-41">41</a></span>
+<span class="normal"><a href="#__codelineno-0-42">42</a></span>
+<span class="normal"><a href="#__codelineno-0-43">43</a></span>
+<span class="normal"><a href="#__codelineno-0-44">44</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9"></a><span class="nd">@dataclass</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10"></a><span class="k">class</span><span class="w"> </span><span class="nc">IndexReport</span><span class="p">:</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;What :meth:`~grafito.GrafitoDatabase.index_documents` actually did.</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12"></a>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="sd">    ``unresolved`` is the part worth checking: relationship targets that named</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="sd">    an id no document supplied. They are skipped rather than raising, because a</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    dataset slice legitimately references rows outside the slice — but a long</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">    list here usually means ``id_key`` does not match the ids used in the</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">    relationship field.</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a>    <span class="n">nodes_created</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="n">nodes_updated</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="n">relationships_created</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="c1">#: Number of nodes whose text was embedded.</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="n">embedded</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="c1">#: External id -&gt; node id, for every row that carried an id.</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="n">ids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="c1">#: Relationship targets that could not be resolved to a node.</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="n">unresolved</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="nd">@property</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Total nodes touched, created or updated.&quot;&quot;&quot;</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_created</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_updated</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a>        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_created</span><span class="si">}</span><span class="s2"> created&quot;</span><span class="p">,</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_updated</span><span class="si">}</span><span class="s2"> updated&quot;</span><span class="p">,</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">relationships_created</span><span class="si">}</span><span class="s2"> relationships&quot;</span><span class="p">,</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">embedded</span><span class="si">}</span><span class="s2"> embedded&quot;</span><span class="p">,</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a>        <span class="p">]</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unresolved</span><span class="p">:</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unresolved</span><span class="p">)</span><span class="si">}</span><span class="s2"> unresolved&quot;</span><span class="p">)</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;IndexReport(</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="grafito.ingest_report.IndexReport.nodes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">nodes</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Total nodes touched, created or updated.</p>
+
+    </div>
+
 </div>
-<h2 id="feature-comparison">Feature comparison</h2>
-<table>
-<thead>
-<tr>
-<th>Capability</th>
-<th>rdflib</th>
-<th>GrafitoDB</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Data model</td>
-<td>RDF triples</td>
-<td>Property graph (nodes/edges with properties)</td>
-</tr>
-<tr>
-<td>Query language</td>
-<td>SPARQL 1.1</td>
-<td>Cypher (+ programmatic API)</td>
-</tr>
-<tr>
-<td>SPARQL over the data</td>
-<td>✅ native</td>
-<td>✅ via <a href="../../integrations/rdf/#sparql-queries"><code>query_sparql</code></a> (delegated)</td>
-</tr>
-<tr>
-<td>RDF import/export</td>
-<td>✅ 20+ formats</td>
-<td>✅ Turtle, JSON-LD, N-Triples, RDF/XML, N-Quads, N3, TriG</td>
-</tr>
-<tr>
-<td>Edge properties</td>
-<td>⚠️ needs reification (~4 triples/edge)</td>
-<td>✅ first-class (one row)</td>
-</tr>
-<tr>
-<td>Persistence</td>
-<td>in-memory (plugins for disk stores)</td>
-<td>✅ single SQLite file, transactional</td>
-</tr>
-<tr>
-<td>Memory footprint</td>
-<td>whole graph in RAM</td>
-<td>✅ streamed from disk</td>
-</tr>
-<tr>
-<td>Property indexes</td>
-<td>—</td>
-<td>✅ used by Cypher/<code>match_nodes</code></td>
-</tr>
-<tr>
-<td>Full-text &amp; vector search</td>
-<td>—</td>
-<td>✅ FTS5 + ANN backends</td>
-</tr>
-<tr>
-<td>Named graphs / quads</td>
-<td>✅</td>
-<td>—</td>
-</tr>
-<tr>
-<td>Reasoning (RDFS/OWL)</td>
-<td>✅ (plugins)</td>
-<td>—</td>
-</tr>
-<tr>
-<td>Graph isomorphism / diff</td>
-<td>✅</td>
-<td>✅ via <a href="../../integrations/rdf/#comparing-two-graphs"><code>graph_diff</code></a> (delegated)</td>
-</tr>
-</tbody>
-</table>
-<p>As a <strong>pure RDF engine, rdflib is more capable</strong> (native SPARQL, named graphs,
-reasoning). As a <strong>database for a property graph, GrafitoDB is substantially more
-efficient</strong>, as the benchmark below shows.</p>
-<h2 id="benchmark">Benchmark</h2>
-<p>The same knowledge graph (<code>Person</code> nodes with <code>name/age/city/mbox</code>, <code>KNOWS</code> edges with a
-<code>since</code> property) is stored in both engines and queried with each engine's native
-language — <strong>Cypher</strong> for Grafito, <strong>SPARQL</strong> for rdflib. Edges are modelled identically
-(the reified form Grafito's exporter produces). Median of 5 runs.</p>
-<p>The full, reproducible script lives in
-<a href="https://github.com/jpmanson/GrafitoDB/tree/main/playground/rdf_vs_grafito"><code>playground/rdf_vs_grafito/</code></a>.</p>
-<h3 id="20000-nodes-200000-edges">20,000 nodes / ~200,000 edges</h3>
-<table>
-<thead>
-<tr>
-<th>Metric</th>
-<th>GrafitoDB</th>
-<th>rdflib</th>
-<th>Winner</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Build (ingest)</td>
-<td>26.0 s</td>
-<td>23.4 s</td>
-<td>rdflib 1.1×</td>
-</tr>
-<tr>
-<td>On-disk size</td>
-<td>31.9 MB</td>
-<td>24.1 MB</td>
-<td>rdflib 1.3×</td>
-</tr>
-<tr>
-<td>Reopen / reload</td>
-<td><strong>0.4 ms</strong></td>
-<td>10.4 s</td>
-<td><strong>Grafito</strong></td>
-</tr>
-<tr>
-<td>Memory resident</td>
-<td><strong>~0 (on disk)</strong></td>
-<td>885 MB</td>
-<td><strong>Grafito</strong></td>
-</tr>
-<tr>
-<td>Point lookup</td>
-<td><strong>0.08 ms</strong></td>
-<td>1.04 ms</td>
-<td><strong>Grafito 12×</strong></td>
-</tr>
-<tr>
-<td>1-hop neighbours</td>
-<td><strong>0.14 ms</strong></td>
-<td>1.33 ms</td>
-<td><strong>Grafito 10×</strong></td>
-</tr>
-<tr>
-<td>2-hop</td>
-<td><strong>0.49 ms</strong></td>
-<td>2.40 ms</td>
-<td><strong>Grafito 5×</strong></td>
-</tr>
-<tr>
-<td>Edge-property filter</td>
-<td><strong>2.37 s</strong></td>
-<td>3.47 s</td>
-<td><strong>Grafito 1.5×</strong></td>
-</tr>
-<tr>
-<td>Degree top-k (aggregation)</td>
-<td>2.25 s</td>
-<td>1.61 s</td>
-<td>rdflib 1.4×</td>
-</tr>
-</tbody>
-</table>
-<p>Point lookups are <strong>constant-time</strong> across scales (0.08–0.09 ms at both 5k and 20k
-nodes) because Grafito uses its property index; rdflib scans/filters, so its cost grows
-with the dataset.</p>
-<h3 id="reading-the-results">Reading the results</h3>
-<p><strong>GrafitoDB wins decisively on:</strong></p>
-<ul>
-<li><strong>Lookups and traversals</strong> — 5–12× faster, and constant-time thanks to indexes.</li>
-<li><strong>Reopen</strong> — the data is already on disk (~0.4 ms); rdflib must re-parse the whole
-  serialization (10 s at 20k nodes).</li>
-<li><strong>Memory</strong> — Grafito streams from SQLite (~0 resident); rdflib keeps every triple in
-  RAM (885 MB for ~900k triples). This gap grows linearly and is structural.</li>
-<li><strong>Edge-property queries</strong> — native edge properties vs. RDF reification overhead.</li>
-</ul>
-<p><strong>rdflib wins on:</strong></p>
-<ul>
-<li><strong>On-disk size</strong> — Turtle/N-Triples are more compact than a SQLite file with indexes.</li>
-<li><strong>Aggregations</strong> like degree top-k (SPARQL ~1.4×).</li>
-<li><strong>Bulk build at large scale</strong> — Grafito's insert path scales worse than linear.</li>
-</ul>
-<h2 id="when-to-use-which">When to use which</h2>
-<ul>
-<li><strong>Choose rdflib</strong> if RDF <em>is the point</em>: you consume/publish Linked Data, need SPARQL
-  features Cypher lacks, work with named graphs or ontologies/reasoning, or exchange data
-  across the Semantic-Web ecosystem.</li>
-<li><strong>Choose GrafitoDB</strong> if you need a <em>database</em>: durable and transactional storage,
-  bounded memory on large graphs, fast indexed lookups and multi-hop traversals, first-class
-  edge properties, or built-in full-text and vector search.</li>
-<li><strong>Use both</strong>: model and query in Grafito, then <code>export_*</code> / <code>import_*</code> to interoperate
-  with RDF tools, or run one-off <code>query_sparql</code> queries when a SPARQL feature is handy.
-  See the <a href="../../integrations/rdf/">RDF integration guide</a>.</li>
-</ul>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
