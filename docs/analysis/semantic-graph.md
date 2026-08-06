@@ -83,12 +83,55 @@ db.create_semantic_graph(k=15)                  # DatabaseError on an l2 index
 db.create_semantic_graph(k=15, min_score=-0.5)  # explicit, and meaningful
 ```
 
-`undirected=True` (the default) emits one edge per pair instead of one per
-direction, roughly halving the count. Query it with an undirected pattern:
+`symmetrize` decides how each node's k-nearest list becomes edges:
+
+| Mode | Keeps a pair when | Relative size |
+| --- | --- | --- |
+| `"union"` (default) | either node chose the other | baseline |
+| `"mutual"` | **both** nodes chose the other | much smaller |
+| `"directed"` | one edge per node per neighbour | ~2× union |
+
+`union` and `mutual` emit one edge per pair, so query them with an undirected
+pattern:
 
 ```cypher
 MATCH (a)-[:SEMANTIC_SIMILAR]-(b)   -- note: no arrow
 ```
+
+(`undirected=True/False` is the older shorthand for `union`/`directed` and still
+works; an explicit `symmetrize` wins.)
+
+### Mutual k-NN
+
+Reciprocity removes exactly the edges that do the most damage to clustering. A
+node sitting at the edge of a cluster gets pulled into distant nodes' neighbour
+lists without them appearing in its own — those one-sided links are what glue
+unrelated groups together.
+
+```python
+db.create_semantic_graph(k=5, min_score=0.3, symmetrize="mutual")
+db.communities("louvain", rel_types=["SEMANTIC_SIMILAR"], weight_property="score")
+```
+
+!!! warning "It trades coverage for precision — raise `k` with it"
+    Measured on synthetic clusters with deliberate overlap, three planted
+    clusters of six nodes:
+
+    | `k` | mode | edges | crossing clusters | communities found |
+    | --- | --- | --- | --- | --- |
+    | 3 | union | 40 | 40% | 3 |
+    | 3 | mutual | 14 | **14%** | **8** |
+    | 5 | union | 59 | 44% | 3 |
+    | 5 | mutual | 31 | 39% | 3 |
+
+    At `k=3`, `mutual` cuts cross-cluster edges from 40% to 14% — and shatters
+    the three clusters into eight fragments, because too few pairs survive to
+    keep each cluster connected. At `k=5` the fragmentation is gone, and so is
+    most of the advantage.
+
+    So `mutual` is not a free improvement: it needs a larger `k` than you would
+    use with `union`, and the right value depends on your data. This is what the
+    numbers looked like on one synthetic corpus — measure it on yours.
 
 `labels` restricts which nodes participate, and `max_edges` caps the build:
 
