@@ -105,7 +105,19 @@ class CypherExecutor:
             node_resolver=self.db.get_node,
             vector_scorer=self._score_against_query,
             vector_metric=self.db.vector_metric,
+            pattern_exists=self._pattern_predicate_matcher,
         )
+
+    def _pattern_predicate_matcher(self, expr, context: dict[str, Any]) -> bool:
+        """Whether a pattern matches at least once, given the current bindings.
+
+        Stops at the first match: a predicate only needs existence, so a node
+        with thousands of neighbours costs the same as one with a single edge.
+        """
+        for match in self._match_pattern(expr.pattern):
+            if self._pattern_bindings_match(context, match):
+                return True
+        return False
 
     def _score_against_query(
         self,

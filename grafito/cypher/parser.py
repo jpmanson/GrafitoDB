@@ -10,7 +10,7 @@ from .ast_nodes import (
     ReturnItem, Expression, Literal, Parameter, PropertyAccess, PropertyLookup, FunctionCall, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, CaseWhen, UnionClause, SubqueryClause, ProcedureCallClause, ListLiteral, ListComprehension,
     ListIndex, ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
-    ReduceExpression, PatternComprehension, UnwindClause, LoadCsvClause,
+    ReduceExpression, PatternComprehension, PatternPredicate, UnwindClause, LoadCsvClause,
     CreateIndexClause, DropIndexClause, ShowIndexesClause,
     CreateConstraintClause, DropConstraintClause, ShowConstraintsClause,
     ForeachClause
@@ -1392,6 +1392,25 @@ class Parser:
 
         return expr
 
+    def _try_parse_pattern_predicate(self) -> Expression | None:
+        """Parse ``(a)-[:R]->(b)`` as a boolean, or rewind and return None.
+
+        Only a pattern with at least one relationship qualifies: a bare ``(x)``
+        is a parenthesised expression, and reading it as a pattern would turn
+        every grouping into a graph match.
+        """
+        start = self.pos
+        try:
+            pattern = self._parse_pattern()
+        except CypherSyntaxError:
+            self.pos = start
+            return None
+
+        if not isinstance(pattern, Pattern) or len(pattern.elements) < 2:
+            self.pos = start
+            return None
+        return PatternPredicate(pattern=pattern)
+
     def _parse_primary_base(self) -> Expression:
         """Parse base primary expression without postfix operators."""
         token = self.current_token()
@@ -1413,6 +1432,14 @@ class Parser:
                           TokenType.COLLECT, TokenType.STDDEV, TokenType.PERCENTILECONT):
             if self.peek_token().type == TokenType.LPAREN:
                 return self._parse_function_call()
+
+        # Pattern predicate: (a)-[:KNOWS]->(). Tried before the parenthesised
+        # expression because both start with '('; only a relationship arrow
+        # after the closing paren tells them apart, so this backtracks.
+        if token.type == TokenType.LPAREN:
+            predicate = self._try_parse_pattern_predicate()
+            if predicate is not None:
+                return predicate
 
         # Parenthesized expression
         if token.type == TokenType.LPAREN:

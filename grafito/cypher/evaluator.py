@@ -10,7 +10,7 @@ from .ast_nodes import (
     Expression, Literal, Parameter, PropertyAccess, PropertyLookup, BinaryOp, UnaryOp, LabelPredicate,
     CaseExpression, ListLiteral, ListComprehension, ListIndex,
     ListSlice, ListPredicate, FunctionCallExpression, Variable, MapLiteral,
-    ReduceExpression, PatternComprehension
+    ReduceExpression, PatternComprehension, PatternPredicate
 )
 from .exceptions import CypherExecutionError
 from ..models import Path, Point
@@ -25,7 +25,7 @@ class ExpressionEvaluator:
     """Evaluates WHERE clause expressions against a variable context."""
 
     def __init__(self, context: dict[str, Any], pattern_matcher=None, parameters: dict[str, Any] | None = None,
-                 node_resolver=None, vector_scorer=None, vector_metric=None):
+                 node_resolver=None, vector_scorer=None, vector_metric=None, pattern_exists=None):
         """Initialize evaluator with variable context.
 
         Args:
@@ -36,6 +36,8 @@ class ExpressionEvaluator:
             vector_scorer: Optional callable(node, query, index) -> float | None,
                 for SIMILAR()/VECTOR_SCORE()
             vector_metric: Optional callable(index) -> str, naming the index metric
+            pattern_exists: Optional callable(expr, context) -> bool, for pattern
+                predicates such as (a)-[:KNOWS]->()
         """
         self.context = context
         self.pattern_matcher = pattern_matcher
@@ -43,6 +45,7 @@ class ExpressionEvaluator:
         self.node_resolver = node_resolver
         self.vector_scorer = vector_scorer
         self.vector_metric = vector_metric
+        self.pattern_exists = pattern_exists
 
     def evaluate(self, expr: Expression) -> Any:
         """Evaluate an expression and return the result.
@@ -86,6 +89,8 @@ class ExpressionEvaluator:
             return self._evaluate_list_predicate(expr)
         elif isinstance(expr, PatternComprehension):
             return self._evaluate_pattern_comprehension(expr)
+        elif isinstance(expr, PatternPredicate):
+            return self._evaluate_pattern_predicate(expr)
         elif isinstance(expr, FunctionCallExpression):
             return self._evaluate_function_call(expr)
         elif isinstance(expr, MapLiteral):
@@ -525,6 +530,12 @@ class ExpressionEvaluator:
             raise CypherExecutionError("Pattern comprehensions require a query context")
         return self.pattern_matcher(expr, self.context)
 
+    def _evaluate_pattern_predicate(self, expr: PatternPredicate) -> bool:
+        """True when the pattern matches at least once from the current bindings."""
+        if self.pattern_exists is None:
+            raise CypherExecutionError("Pattern predicates require a query context")
+        return self.pattern_exists(expr, self.context)
+
     def _evaluate_map_literal(self, expr: MapLiteral) -> Any:
         """Evaluate a map literal."""
         return {key: self.evaluate(value) for key, value in expr.items.items()}
@@ -563,6 +574,16 @@ class ExpressionEvaluator:
     def _evaluate_function_call(self, expr: FunctionCallExpression) -> Any:
         """Evaluate list-related function calls."""
         name = expr.name.lower()
+
+        # exists() over a pattern must ask whether the pattern matches, not
+        # whether the boolean it evaluates to is non-null — which is always true.
+        if (
+            name == 'exists'
+            and len(expr.arguments) == 1
+            and isinstance(expr.arguments[0], PatternPredicate)
+        ):
+            return self._evaluate_pattern_predicate(expr.arguments[0])
+
         args = [self.evaluate(arg) for arg in expr.arguments]
 
         if name in {'filter', 'extract', 'reduce'}:
