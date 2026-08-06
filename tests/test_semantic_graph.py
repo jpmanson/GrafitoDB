@@ -162,9 +162,22 @@ def test_labels_restrict_which_nodes_are_linked(db):
 
 
 def test_max_edges_truncates_and_reports_it(db):
+    """The cap is enforced between nodes, so it overshoots by at most k-1."""
     report = db.create_semantic_graph(k=4, min_score=0.0, max_edges=3)
     assert report.truncated is True
-    assert report.edges_created == 3
+    assert 3 <= report.edges_created < 3 + 4
+    assert report.nodes_processed < 5
+
+
+def test_capped_refreshes_eventually_build_the_whole_graph(db):
+    """Every node the cap lets through is complete, so progress never stalls."""
+    db.create_semantic_graph(k=2, min_score=0.0, max_edges=2)
+    for _ in range(10):
+        db.refresh_semantic_graph(k=2, min_score=0.0, max_edges=2)
+    capped = _generated_count(db)
+
+    db.create_semantic_graph(k=2, min_score=0.0)
+    assert _generated_count(db) == capped
 
 
 def test_nodes_without_embeddings_are_ignored(db):

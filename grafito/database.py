@@ -1052,7 +1052,14 @@ class GrafitoDatabase:
                 first. Only edges carrying this method's marker are removed, so
                 hand-made relationships of the same type survive, as do edges
                 generated from a different vector index.
-            max_edges: Stop once this many edges have been created.
+            max_edges: Stop once this many edges have been created. Enforced
+                *between* nodes, so the count can overshoot by up to ``k-1``:
+                cutting a node off half way through its neighbours would leave
+                it looking processed with an incomplete neighbourhood, and no
+                later refresh would finish it. Because every node it does
+                process is complete, repeated
+                :meth:`refresh_semantic_graph` calls under the same cap
+                eventually build the whole graph.
 
         Returns:
             A :class:`~grafito.ingest_report.SemanticGraphReport`.
@@ -1120,6 +1127,13 @@ class GrafitoDatabase:
             if approximate and node_id in linked:
                 report.nodes_skipped += 1
                 continue
+            # Stop between nodes, never inside one. A node cut off half way
+            # through its neighbours would still count as processed — being the
+            # source of an edge — and no later refresh would finish it. The cost
+            # is that max_edges is approximate, overshooting by at most k-1.
+            if max_edges is not None and len(pending) >= max_edges:
+                report.truncated = True
+                break
             vector = vec_index.get_vector(node_id)
             if vector is None:
                 vector = self._collect_vectors(index, [node_id]).get(node_id)
@@ -1160,11 +1174,6 @@ class GrafitoDatabase:
                         None,
                     )
                 )
-                if max_edges is not None and len(pending) >= max_edges:
-                    report.truncated = True
-                    break
-            if report.truncated:
-                break
 
         if pending:
             # Every edge shares one type and one property shape, so constraints
