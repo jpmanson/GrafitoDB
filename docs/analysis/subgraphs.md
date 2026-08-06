@@ -124,6 +124,56 @@ sub = db.subgraph([node_id_1, node_id_2], expand=2)
 sub = db.subgraph(my_fused_hits, expand=1)   # [{"node": Node, "score": ...}]
 ```
 
+## Context From Routes, Not Rankings
+
+`path_context()` asks a different question: not "what is nearest this concept?"
+but "how do these concepts connect, and what lies between them?"
+
+```python
+sub = db.path_context(
+    ["Roman Empire", "Vikings", "Battle of Hastings"],
+    k=3,
+    max_hops=3,
+    exclude_rel_types=["SEMANTIC_SIMILAR"],
+)
+
+for route in sub.paths:
+    print(" → ".join(db.get_node(n).properties["title"] for n in route))
+```
+
+```text
+Roman Empire → Saxons → Vikings → Battle of Hastings
+```
+
+Each waypoint is located semantically, then routes are traced between
+consecutive waypoints. The result is the union of those routes, so `hops` is
+**position along the route** rather than distance from a hit — an intermediate
+document is the answer here, not something incidental that turned up nearby.
+
+A vector search for "Roman Empire Vikings Hastings" returns neither end well and
+nothing in between. This returns the material that connects them.
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `k` | Candidates per waypoint. Cost grows with `k²` | `3` |
+| `max_hops` | Longest route between two waypoints | `3` |
+| `direction` | `"both"`, `"out"`, `"in"` | `"both"` |
+| `rel_types` / `exclude_rel_types` | Which edges may be travelled | all |
+| `max_paths` | Stop after this many routes | `20` |
+| `expand` | Neighbourhood to add around the routes | `0` |
+
+!!! warning "Exclude similarity edges unless they *are* the subject"
+    A materialised semantic graph connects everything to everything, so a route
+    through one means almost nothing. In the test corpus, "Roman Empire" and
+    "Italian pasta" are two hops apart through a single `SEMANTIC_SIMILAR` edge;
+    with that type excluded, there is no route at all — which is the truthful
+    answer.
+
+An empty result means no pair of waypoints is connected within `max_hops`. That
+is a real answer, and one a similarity search would have concealed behind
+plausible-looking hits. Raise `max_hops` if you want a looser notion of
+connected — but past three or four, "connected" stops meaning much.
+
 ## Visualising
 
 `to_networkx()` carries the provenance into the graph, so a viewer can size or

@@ -6,6 +6,7 @@ import re
 import sqlite3
 from datetime import date, datetime, time, timedelta, timezone
 from collections.abc import Iterable
+from itertools import pairwise
 from typing import TYPE_CHECKING, Any, Callable
 
 from .exceptions import (
@@ -906,6 +907,234 @@ class GrafitoDatabase:
             max_nodes=max_nodes,
             include_edges=include_edges,
         )
+
+    def path_context(
+        self,
+        waypoints: "list[str | list[float]]",
+        *,
+        index: str = "default",
+        k: int = 3,
+        max_hops: int = 3,
+        direction: str = "both",
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        max_paths: int = 20,
+        expand: int = 0,
+        include_edges: bool = True,
+    ) -> "Subgraph":
+        """Find how a sequence of concepts connects, and return what lies between.
+
+        Each waypoint is located semantically, then routes are traced between
+        consecutive waypoints. The result is the union of those routes: not the
+        documents nearest each concept, but the ones that *link* them.
+
+        This answers a question top-k retrieval cannot. "How does X relate to
+        Y?" has an answer made of the material along the way, and a vector
+        search for "X Y" returns neither end well and nothing in between.
+
+        Args:
+            waypoints: Two or more query strings (or vectors), in the order they
+                should be connected.
+            index: Vector index used to locate each waypoint.
+            k: Candidate nodes per waypoint. Routes are attempted between every
+                pairing of consecutive candidates, so cost grows with ``k²`` —
+                keep it small.
+            max_hops: Longest route to accept between two waypoints. Past three
+                or four, "connected" stops meaning much in a dense graph.
+            direction: ``"both"`` (default), ``"out"`` or ``"in"``.
+            rel_types: Only travel along these relationship types.
+            exclude_rel_types: Never travel along these. Similarity edges make
+                everything reachable from everything, so exclude them unless the
+                similarity graph *is* what you mean to traverse.
+            max_paths: Stop after this many routes.
+            expand: Hops of neighbourhood to add around the routes.
+            include_edges: Fetch relationships among the selected nodes.
+
+        Returns:
+            A :class:`~grafito.subgraph.Subgraph` whose ``paths`` holds the
+            routes as ordered node ids, ``seeds`` are the waypoint matches that
+            a route actually used, and ``hops`` is the position along the route.
+
+            Empty when no pair of waypoints is connected within ``max_hops`` —
+            which is an answer, and one a similarity search would have hidden
+            behind plausible-looking results.
+        """
+        from .subgraph import Subgraph
+
+        if not isinstance(waypoints, (list, tuple)) or len(waypoints) < 2:
+            raise DatabaseError("path_context needs at least two waypoints")
+        if k <= 0:
+            raise DatabaseError("k must be a positive integer")
+        if max_hops <= 0:
+            raise DatabaseError("max_hops must be a positive integer")
+        if max_paths <= 0:
+            raise DatabaseError("max_paths must be a positive integer")
+
+        anchors = [
+            self.semantic_search(waypoint, k=k, index=index) for waypoint in waypoints
+        ]
+
+        routes: list[list[int]] = []
+        seen_routes: set[tuple[int, ...]] = set()
+        for left, right in pairwise(anchors):
+            for start in left:
+                if len(routes) >= max_paths:
+                    break
+                for end in right:
+                    if len(routes) >= max_paths:
+                        break
+                    if start["node"].id == end["node"].id:
+                        continue
+                    route = self._shortest_route(
+                        start["node"].id,
+                        end["node"].id,
+                        max_hops=max_hops,
+                        direction=direction,
+                        rel_types=rel_types,
+                        exclude_rel_types=exclude_rel_types,
+                    )
+                    if route and tuple(route) not in seen_routes:
+                        seen_routes.add(tuple(route))
+                        routes.append(route)
+
+        on_route = {node_id for route in routes for node_id in route}
+        if not on_route:
+            return Subgraph()
+
+        # Only waypoint matches a route actually used count as seeds; the rest
+        # were candidates that led nowhere and would misreport as results.
+        seeds = [
+            hit for anchor in anchors for hit in anchor if hit["node"].id in on_route
+        ]
+        # Distance along the route, not from a seed: an intermediate node is
+        # what makes this a path context, and calling it "2 hops from a hit"
+        # would describe it as incidental.
+        position = {}
+        for route in routes:
+            for step, node_id in enumerate(route):
+                position[node_id] = min(position.get(node_id, step), step)
+
+        nodes = [node for node in (self.get_node(nid) for nid in sorted(on_route)) if node]
+        present = {node.id for node in nodes}
+        subgraph = Subgraph(
+            nodes=nodes,
+            seeds=[hit for hit in seeds if hit["node"].id in present],
+            scores={
+                hit["node"].id: float(hit["score"])
+                for hit in seeds
+                if hit["node"].id in present and hit.get("score") is not None
+            },
+            hops={nid: position[nid] for nid in present},
+            paths=routes,
+        )
+        if expand:
+            expanded = self.subgraph(
+                [node.id for node in nodes],
+                expand=expand,
+                direction=direction,
+                rel_types=rel_types,
+                exclude_rel_types=exclude_rel_types,
+                include_edges=include_edges,
+            )
+            for node in expanded.nodes:
+                if node.id not in present:
+                    subgraph.nodes.append(node)
+                    subgraph.hops[node.id] = expanded.hops[node.id] + max(
+                        position.values(), default=0
+                    )
+            present = {node.id for node in subgraph.nodes}
+        if include_edges:
+            subgraph.relationships = self._relationships_within(
+                present, rel_types, exclude_rel_types
+            )
+        return subgraph
+
+    def _shortest_route(
+        self,
+        source_id: int,
+        target_id: int,
+        *,
+        max_hops: int,
+        direction: str,
+        rel_types: list[str] | None,
+        exclude_rel_types: list[str] | None,
+    ) -> list[int] | None:
+        """Breadth-first shortest route, honouring the traversal filters.
+
+        :meth:`find_shortest_path` cannot be reused: it traverses every
+        relationship type and has no hop limit, so on a graph carrying
+        similarity edges it finds a short route between almost any two nodes.
+        """
+        if source_id == target_id:
+            return [source_id]
+        previous: dict[int, int] = {}
+        frontier = [source_id]
+        visited = {source_id}
+        for _hop in range(max_hops):
+            if not frontier:
+                break
+            reached = self._adjacency(frontier, direction, rel_types, exclude_rel_types)
+            next_frontier: list[int] = []
+            for node_id, from_id in reached.items():
+                if node_id in visited:
+                    continue
+                visited.add(node_id)
+                previous[node_id] = from_id
+                if node_id == target_id:
+                    route = [node_id]
+                    while route[-1] != source_id:
+                        route.append(previous[route[-1]])
+                    return list(reversed(route))
+                next_frontier.append(node_id)
+            frontier = next_frontier
+        return None
+
+    def _adjacency(
+        self,
+        frontier: list[int],
+        direction: str,
+        rel_types: list[str] | None,
+        exclude_rel_types: list[str] | None,
+    ) -> dict[int, int]:
+        """Neighbours of ``frontier``, each mapped to the member that reaches it."""
+        placeholders = ", ".join("?" for _ in frontier)
+        conditions: list[str] = []
+        params: list[Any] = []
+        if direction == "out":
+            conditions.append(f"source_node_id IN ({placeholders})")
+            params.extend(frontier)
+        elif direction == "in":
+            conditions.append(f"target_node_id IN ({placeholders})")
+            params.extend(frontier)
+        else:
+            conditions.append(
+                f"(source_node_id IN ({placeholders}) OR target_node_id IN ({placeholders}))"
+            )
+            params.extend(frontier)
+            params.extend(frontier)
+        if rel_types:
+            conditions.append(f"type IN ({', '.join('?' for _ in rel_types)})")
+            params.extend(rel_types)
+        if exclude_rel_types:
+            conditions.append(f"type NOT IN ({', '.join('?' for _ in exclude_rel_types)})")
+            params.extend(exclude_rel_types)
+
+        rows = self.conn.execute(
+            "SELECT source_node_id, target_node_id FROM relationships "
+            f"WHERE {' AND '.join(conditions)} ORDER BY id",
+            params,
+        ).fetchall()
+
+        frontier_set = set(frontier)
+        reached: dict[int, int] = {}
+        for row in rows:
+            source_id = int(row["source_node_id"])
+            target_id = int(row["target_node_id"])
+            if direction in {"both", "out"} and source_id in frontier_set:
+                reached.setdefault(target_id, source_id)
+            if direction in {"both", "in"} and target_id in frontier_set:
+                reached.setdefault(source_id, target_id)
+        return reached
 
     def text_subgraph(
         self,
