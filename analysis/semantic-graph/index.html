@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.1
+          v0.7.2
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.1
+          v0.7.2
         </li>
       </ul>
     
@@ -3200,6 +3200,9 @@ vector index survive a rebuild.</p>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">()</span>                           <span class="c1"># generated edges only</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;papers_vec&quot;</span><span class="p">)</span>         <span class="c1"># ...from one index only</span>
 </span></code></pre></div>
+<p><code>replace=False</code> appends instead of rebuilding, and deduplicates against what is
+already stored — so it adds the edges a wider <code>k</code> discovers without stacking a
+second copy of the ones already there.</p>
 <div class="admonition note">
 <p class="admonition-title">The rebuild is atomic</p>
 <p>Neighbours are computed first — the slow part, minutes on a large corpus —
@@ -3214,11 +3217,20 @@ missing.</p>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">refresh_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># SemanticGraphReport(30 edges, 2 nodes, 100 skipped)</span>
 </span></code></pre></div>
-<p><code>refresh_semantic_graph()</code> only processes nodes that have no <em>generated</em> edge for
-that <code>rel_type</code> and <code>index</code> yet. Hand-made relationships of the same type do not
-count as "already linked", and neither do edges generated from a different vector
-index — otherwise a single manual edge would exclude its endpoints from the
-semantic graph forever.</p>
+<p><code>refresh_semantic_graph()</code> only processes nodes whose neighbourhood has already
+been searched — that is, nodes that are the <em>source</em> of a generated edge for this
+<code>rel_type</code> and <code>index</code>. Three things deliberately do <strong>not</strong> count as done:</p>
+<ul>
+<li>hand-made relationships of the same type;</li>
+<li>edges generated from a different vector index;</li>
+<li>edges a node merely <em>received</em>, which say nothing about whether its own
+  neighbours were ever computed. A build cut short by <code>max_edges</code> leaves exactly
+  such nodes, and counting them would strand them permanently.</li>
+</ul>
+<p>Being strict here can re-search a node whose edges were all deduplicated away.
+That costs a lookup and creates nothing: the refresh deduplicates against edges
+already in the database, so running it repeatedly converges instead of
+accumulating.</p>
 <p>It will <strong>not</strong> notice that an existing node's neighbourhood changed — new
 documents can be a better match for old ones than what is currently stored.
 Only a full rebuild fixes that, so schedule one periodically if your corpus
