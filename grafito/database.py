@@ -826,27 +826,94 @@ class GrafitoDatabase:
             configure_fts: Also register a full-text index over
                 ``label``/``text_key``, so the documents are reachable by
                 :meth:`text_search` and hybrid retrieval without a second call.
-                Off by default: it creates an index you did not ask for.
+                Registered after the rows are loaded, so a failed ingest leaves
+                no index behind. Off by default: it creates an index you did not
+                ask for.
 
         Returns:
             An :class:`~grafito.ingest_report.IndexReport`.
 
+        Warning:
+            This is **not atomic**. Rows are written as they are read, so a
+            failure part-way through — a bad row, an embedding provider
+            timing out — leaves the rows before it in the database. That is
+            deliberate: the alternative is holding a write transaction open
+            across every embedding call, which on a hosted embedder means
+            blocking writers for minutes.
+
+            To resume, re-run with the remaining rows; with ``upsert=True``
+            (the default) re-feeding rows that already landed updates them
+            instead of duplicating. Wrap the call in
+            :meth:`begin_transaction`/:meth:`rollback` yourself if you need
+            all-or-nothing and your embedder is local and fast.
+
         Note:
             Without ``configure_fts`` this populates the vector index only. You
-            can also call :meth:`create_text_index` yourself at any point —
-            FTS5 indexes existing rows when created, so order does not matter.
+            can call :meth:`create_text_index` yourself instead, but do it
+            *before* loading: it registers the configuration and indexes rows as
+            they are written, so documents already in the database need a
+            :meth:`rebuild_text_index` to become searchable.
         """
         from .ingest_report import IndexReport
 
         if batch_size <= 0:
             raise DatabaseError("batch_size must be a positive integer")
-        if configure_fts:
-            self.create_text_index("node", label, [text_key])
         embedder = None
         if index is not None:
             embedder = self._get_embedding_function(index)
 
-        report = IndexReport()
+        # Registered up front so rows are indexed as they are written, rather
+        # than needing a full rebuild afterwards. Undone below if the ingest
+        # fails, so a failed call leaves no index for documents never loaded.
+        fts_registered_here = False
+        if configure_fts and not any(
+            cfg["entity_type"] == "node"
+            and cfg["label_or_type"] == label
+            and cfg["property"] == text_key
+            for cfg in self.list_text_indexes()
+        ):
+            self.create_text_index("node", label, [text_key])
+            fts_registered_here = True
+
+        try:
+            return self._index_documents(
+                rows,
+                label=label,
+                id_key=id_key,
+                text_key=text_key,
+                index=index,
+                relationships_key=relationships_key,
+                default_rel_type=default_rel_type,
+                copy_attributes=copy_attributes,
+                properties=properties,
+                batch_size=batch_size,
+                upsert=upsert,
+                embedder=embedder,
+                report=IndexReport(),
+            )
+        except Exception:
+            if fts_registered_here:
+                self.drop_text_index("node", label, [text_key])
+            raise
+
+    def _index_documents(
+        self,
+        rows: "Iterable[dict[str, Any]]",
+        *,
+        label: str,
+        id_key: str | None,
+        text_key: str,
+        index: str | None,
+        relationships_key: str | None,
+        default_rel_type: str,
+        copy_attributes: bool,
+        properties: list[str] | None,
+        batch_size: int,
+        upsert: bool,
+        embedder: Any,
+        report: "IndexReport",
+    ) -> "IndexReport":
+        """Load rows into nodes, edges and embeddings. See :meth:`index_documents`."""
         pending_relationships: list[tuple[int, Any, str, dict]] = []
         existing: dict[Any, int] = {}
         if id_key and upsert:
@@ -1021,33 +1088,30 @@ class GrafitoDatabase:
         min_score = self._resolve_semantic_min_score(min_score, index)
 
         linked: set[int] = set()
-        if approximate and not replace:
-            # Only this method's own edges for this index count as "already
-            # linked". A hand-made relationship of the same type must not
-            # exclude a node from ever being processed, and neither should an
-            # edge generated from a different vector index.
-            # With replace=True those edges are about to be deleted, so nothing
-            # is linked and the filter would be meaningless.
-            rows = self.conn.execute(
-                """
-                SELECT DISTINCT source_node_id AS id FROM relationships
-                WHERE type = ?
-                  AND json_extract(properties, '$.generated_by') = ?
-                  AND json_extract(properties, '$.index') = ?
-                UNION
-                SELECT DISTINCT target_node_id AS id FROM relationships
-                WHERE type = ?
-                  AND json_extract(properties, '$.generated_by') = ?
-                  AND json_extract(properties, '$.index') = ?
-                """,
-                (rel_type, self.SEMANTIC_GRAPH_MARKER, index) * 2,
-            ).fetchall()
-            linked = {int(row["id"]) for row in rows}
+        seen_pairs: set[tuple[int, int]] = set()
+        if not replace:
+            # With replace=True everything below is about to be deleted, so
+            # neither the skip set nor the dedup set would mean anything.
+            existing = self._generated_edge_pairs(rel_type, index)
+            if approximate:
+                # A node counts as processed only if it is the *source* of a
+                # generated edge — that is the node whose neighbourhood was
+                # searched. Counting targets too would permanently skip nodes
+                # that merely received an edge before a truncated build stopped,
+                # which is the same "excluded forever" failure the marker was
+                # meant to prevent. The cost of being strict is re-searching a
+                # node whose edges were all deduplicated away; `seen_pairs`
+                # below keeps that from creating duplicates.
+                linked = {source for source, _ in existing}
+            seen_pairs = {
+                (min(source, target), max(source, target)) if undirected
+                else (source, target)
+                for source, target in existing
+            }
 
         candidates = self._indexed_node_ids(index, labels)
         candidate_set = set(candidates)
         generated_at = datetime.now(timezone.utc).isoformat()
-        seen_pairs: set[tuple[int, int]] = set()
         pending: list[tuple[int, int, str, str, None]] = []
 
         for node_id in candidates:
@@ -1068,11 +1132,17 @@ class GrafitoDatabase:
                     continue
                 if labels and neighbour_id not in candidate_set:
                     continue
-                if undirected:
-                    pair = (min(node_id, neighbour_id), max(node_id, neighbour_id))
-                    if pair in seen_pairs:
-                        continue
-                    seen_pairs.add(pair)
+                # Deduplicate within this build and against edges already in the
+                # database, so re-running never stacks a second copy of an edge
+                # that is already there.
+                pair = (
+                    (min(node_id, neighbour_id), max(node_id, neighbour_id))
+                    if undirected
+                    else (node_id, neighbour_id)
+                )
+                if pair in seen_pairs:
+                    continue
+                seen_pairs.add(pair)
                 properties = {
                     "score": float(score),
                     "index": index,
@@ -1208,6 +1278,19 @@ class GrafitoDatabase:
         except sqlite3.Error as exc:
             raise DatabaseError(f"Failed to remove generated relationships: {exc}") from exc
 
+    def _generated_edge_pairs(self, rel_type: str, index: str) -> list[tuple[int, int]]:
+        """(source, target) of every edge this method generated for one index."""
+        rows = self.conn.execute(
+            """
+            SELECT source_node_id, target_node_id FROM relationships
+            WHERE type = ?
+              AND json_extract(properties, '$.generated_by') = ?
+              AND json_extract(properties, '$.index') = ?
+            """,
+            (rel_type, self.SEMANTIC_GRAPH_MARKER, index),
+        ).fetchall()
+        return [(int(row["source_node_id"]), int(row["target_node_id"])) for row in rows]
+
     def _resolve_semantic_min_score(self, min_score: float | None, index: str) -> float:
         """Pick a neighbour-score floor, refusing where no default is meaningful.
 
@@ -1217,6 +1300,10 @@ class GrafitoDatabase:
         graph with no edges.
         """
         if min_score is not None:
+            # bool is a subclass of int, so float(True) would silently become a
+            # threshold of 1.0. SIMILAR() already refuses this.
+            if isinstance(min_score, bool) or not isinstance(min_score, (int, float)):
+                raise DatabaseError("min_score must be a number")
             return float(min_score)
         metric = self.vector_metric(index)
         if metric == "l2":

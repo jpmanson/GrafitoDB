@@ -199,10 +199,17 @@ def test_replace_spares_hand_made_edges_of_the_same_type(db):
     assert rows[0]["c"] == 1
 
 
-def test_replace_false_appends(db):
+def test_replace_false_adds_without_duplicating(db):
+    """Appending must not stack a second copy of edges that already exist."""
     first = db.create_semantic_graph(k=2, min_score=0.1)
     db.create_semantic_graph(k=2, min_score=0.1, replace=False)
-    assert _generated_count(db) == first.edges_created * 2
+    assert _generated_count(db) == first.edges_created
+
+
+def test_replace_false_adds_edges_a_wider_k_discovers(db):
+    narrow = db.create_semantic_graph(k=1, min_score=0.0)
+    db.create_semantic_graph(k=3, min_score=0.0, replace=False)
+    assert _generated_count(db) > narrow.edges_created
 
 
 def test_approximate_skips_already_linked_nodes(db):
@@ -480,3 +487,70 @@ def test_l2_index_requires_an_explicit_min_score():
 def test_explicit_min_score_of_zero_is_honoured(db):
     """None means 'pick a default'; 0.0 means 0.0."""
     assert db.create_semantic_graph(k=4, min_score=0.0).edges_created > 0
+
+
+# --- min_score validation --------------------------------------------------
+
+
+@pytest.mark.parametrize("bad", [True, False, "0.5", [0.5], object()])
+def test_min_score_rejects_non_numbers(db, bad):
+    """bool is a subclass of int: float(True) would silently mean 1.0."""
+    with pytest.raises(DatabaseError, match="min_score must be a number"):
+        db.create_semantic_graph(k=2, min_score=bad)
+
+
+def test_min_score_accepts_ints(db):
+    assert db.create_semantic_graph(k=2, min_score=0).edges_created > 0
+
+
+# --- processed vs merely linked --------------------------------------------
+
+
+def test_a_truncated_build_does_not_strand_nodes(db):
+    """A node that only *received* an edge was never searched; it must not be
+    treated as done, or a truncated build would exclude it forever."""
+    truncated = db.create_semantic_graph(k=2, min_score=0.0, max_edges=3)
+    assert truncated.truncated is True
+
+    sources = {
+        row["id"]
+        for row in db.execute("""
+            MATCH (a:Doc)-[r:SEMANTIC_SIMILAR]->()
+            WHERE r.generated_by IS NOT NULL RETURN DISTINCT a.id AS id
+        """)
+    }
+    targets = {
+        row["id"]
+        for row in db.execute("""
+            MATCH (a:Doc)<-[r:SEMANTIC_SIMILAR]-()
+            WHERE r.generated_by IS NOT NULL RETURN DISTINCT a.id AS id
+        """)
+    }
+    receivers_only = targets - sources
+    assert receivers_only, "fixture no longer produces the case under test"
+
+    db.refresh_semantic_graph(k=2, min_score=0.0)
+
+    for doc_id in receivers_only:
+        reachable = db.execute(
+            "MATCH (a:Doc {id: $id})-[:SEMANTIC_SIMILAR]-(b:Doc) "
+            "RETURN count(DISTINCT b.id) AS c",
+            {"id": doc_id},
+        )
+        assert reachable[0]["c"] > 0
+
+
+def test_refresh_is_idempotent(db):
+    """Re-running must converge, not accumulate."""
+    db.create_semantic_graph(k=2, min_score=0.0)
+    db.refresh_semantic_graph(k=2, min_score=0.0)
+    settled = _generated_count(db)
+    db.refresh_semantic_graph(k=2, min_score=0.0)
+    db.refresh_semantic_graph(k=2, min_score=0.0)
+    assert _generated_count(db) == settled
+
+
+def test_directed_mode_also_deduplicates_against_the_database(db):
+    first = db.create_semantic_graph(k=2, min_score=0.1, undirected=False)
+    db.create_semantic_graph(k=2, min_score=0.1, undirected=False, replace=False)
+    assert _generated_count(db) == first.edges_created
