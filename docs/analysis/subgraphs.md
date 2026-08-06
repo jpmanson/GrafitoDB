@@ -82,7 +82,7 @@ sub = db.semantic_subgraph(
 )
 ```
 
-## Lexical and Explicit Seeds
+## Lexical, Hybrid and Explicit Seeds
 
 `text_subgraph()` is the FTS5/BM25 counterpart, taking the same expansion
 arguments:
@@ -90,6 +90,31 @@ arguments:
 ```python
 sub = db.text_subgraph("attention mechanism", k=20, expand=1)
 ```
+
+`hybrid_subgraph()` seeds from both at once, fused with Reciprocal Rank Fusion:
+
+```python
+sub = db.hybrid_subgraph("ENOSPC retry policy", k=20, expand=1)
+```
+
+This is usually the one you want. The two retrieval modes fail differently —
+vector search misses exact tokens it never learned (identifiers, surnames, error
+codes), lexical search misses paraphrase — and RRF merges them by *rank*, so
+cosine similarity and BM25 never have to be made comparable. It degrades rather
+than fails: with only one index configured, that side is returned alone.
+
+`hybrid_search()` is the same fusion without the graph, returning
+`[{"node": Node, "score": float}, ...]`:
+
+```python
+hits = db.hybrid_search("ENOSPC retry policy", k=10, vector_weight=1.0, text_weight=1.5)
+```
+
+!!! note "No relevance floor"
+    Like the top-k searches it builds on, `hybrid_search` returns `k` results
+    whenever the corpus has them, however weak the match — a query sharing
+    nothing with any document still comes back full, at scores near zero.
+    Filter on the score when an empty answer is the right answer.
 
 `subgraph()` takes seeds directly — node ids, `Node` objects, or search hits —
 so any retrieval strategy can feed it, including a hybrid fusion of your own:

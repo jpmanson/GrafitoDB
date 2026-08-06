@@ -724,6 +724,157 @@ class GrafitoDatabase:
             include_edges=include_edges,
         )
 
+    def hybrid_search(
+        self,
+        query: str,
+        k: int | None = None,
+        *,
+        index: str = "default",
+        vector_k: int | None = None,
+        text_k: int | None = None,
+        vector_weight: float = 1.0,
+        text_weight: float = 1.0,
+        rrf_k: int = 60,
+        labels: list[str] | None = None,
+        filter_props: dict[str, Any] | PropertyFilterGroup | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search by meaning and by keyword, fused with Reciprocal Rank Fusion.
+
+        The two retrieval modes fail differently, which is why combining them
+        helps: vector search misses exact tokens it never learned — identifiers,
+        surnames, error codes — while lexical search misses paraphrase. RRF
+        merges them by *rank* rather than score, so the two scales (cosine
+        similarity and BM25) never have to be made comparable.
+
+        Degrades rather than fails: with no text index configured, or no vector
+        index, whichever side works is returned on its own.
+
+        Args:
+            query: The query text, used for both sides.
+            k: Number of results.
+            index: Vector index to search.
+            vector_k, text_k: Candidates to draw from each side before fusing.
+                Default ``4 * k`` — fusion needs more material than it returns,
+                since a result ranked well by one side may be absent from the
+                other.
+            vector_weight, text_weight: Relative influence of each side.
+            rrf_k: RRF constant. Larger flattens the contribution of top ranks.
+            labels: Restrict both sides to nodes carrying one of these labels.
+            filter_props: Property filter applied to the vector side.
+
+        Returns:
+            ``[{"node": Node, "score": float}, ...]``, best first. ``score`` is
+            the fused RRF score — a small number around ``1/rrf_k``, comparable
+            only within one result set, not with the scores from
+            :meth:`semantic_search` or :meth:`text_search`.
+
+        Note:
+            There is no relevance floor. Like the top-k searches it builds on,
+            this returns ``k`` results whenever the corpus has them, however
+            weak the match: a query sharing nothing with any document still
+            comes back full, at scores near zero. Filter on the score, or use
+            :meth:`text_search` alone, when an empty answer is the right answer.
+        """
+        from .document.hybrid import rrf_fuse
+
+        if not isinstance(query, str) or not query.strip():
+            raise DatabaseError("hybrid_search requires a non-empty query string")
+        if k is None:
+            k = self.default_top_k
+        if k <= 0:
+            raise DatabaseError("k must be a positive integer")
+        candidates = max(k * 4, k)
+        vector_k = candidates if vector_k is None else vector_k
+        text_k = candidates if text_k is None else text_k
+
+        vector_hits: list[dict[str, Any]] = []
+        try:
+            vector_hits = self.semantic_search(
+                query,
+                k=vector_k,
+                index=index,
+                filter_labels=labels,
+                filter_props=filter_props,
+            )
+        except DatabaseError:
+            # No vector index, or no embedding function to turn text into one.
+            vector_hits = []
+
+        text_hits: list[dict[str, Any]] = []
+        try:
+            text_hits = [
+                {"node": row["entity"], "score": row["score"]}
+                for row in self.text_search(query, k=text_k, labels=labels)
+                if row.get("entity_type") == "node"
+            ]
+        except DatabaseError:
+            text_hits = []
+
+        if not text_hits:
+            return vector_hits[:k]
+        if not vector_hits:
+            return text_hits[:k]
+
+        fused = rrf_fuse(
+            [vector_hits, text_hits],
+            k=rrf_k,
+            weights=[vector_weight, text_weight],
+            limit=k,
+            key=lambda hit: hit["node"].id,
+        )
+        return [{"node": hit["node"], "score": score} for hit, score in fused]
+
+    def hybrid_subgraph(
+        self,
+        query: str,
+        k: int | None = None,
+        *,
+        index: str = "default",
+        expand: int = 1,
+        direction: str = "both",
+        rel_types: list[str] | None = None,
+        exclude_rel_types: list[str] | None = None,
+        labels: list[str] | None = None,
+        max_nodes: int | None = None,
+        include_edges: bool = True,
+        search_labels: list[str] | None = None,
+        **search_kwargs: Any,
+    ) -> "Subgraph":
+        """Hybrid search, returned as an induced subgraph.
+
+        The fused counterpart of :meth:`semantic_subgraph` and
+        :meth:`text_subgraph`: seeds come from :meth:`hybrid_search`, so a
+        document that matches on an exact term and one that matches on meaning
+        both make it into the graph.
+
+        Args:
+            query: The query text.
+            k: Number of seed hits.
+            index: Vector index to search.
+            search_labels: Restrict *retrieval* to these labels.
+            expand, direction, rel_types, exclude_rel_types, labels, max_nodes,
+                include_edges: Constrain *expansion*, as in :meth:`subgraph`.
+            **search_kwargs: Forwarded to :meth:`hybrid_search`
+                (``vector_k``, ``text_k``, ``vector_weight``, ``text_weight``,
+                ``rrf_k``, ``filter_props``).
+
+        Returns:
+            A :class:`~grafito.subgraph.Subgraph`.
+        """
+        hits = self.hybrid_search(
+            query, k=k, index=index, labels=search_labels, **search_kwargs
+        )
+        return self.subgraph(
+            hits,
+            expand=expand,
+            direction=direction,
+            rel_types=rel_types,
+            exclude_rel_types=exclude_rel_types,
+            labels=labels,
+            max_nodes=max_nodes,
+            include_edges=include_edges,
+        )
+
     def text_subgraph(
         self,
         query: str,
