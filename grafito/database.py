@@ -826,9 +826,11 @@ class GrafitoDatabase:
             configure_fts: Also register a full-text index over
                 ``label``/``text_key``, so the documents are reachable by
                 :meth:`text_search` and hybrid retrieval without a second call.
-                Registered after the rows are loaded, so a failed ingest leaves
-                no index behind. Off by default: it creates an index you did not
-                ask for.
+                Registered *before* loading, so rows are indexed as they are
+                written. If this call registered it and the ingest then fails,
+                the registration is undone; an index that already existed is
+                left alone. Off by default: it creates an index you did not ask
+                for.
 
         Returns:
             An :class:`~grafito.ingest_report.IndexReport`.
