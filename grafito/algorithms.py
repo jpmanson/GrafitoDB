@@ -12,6 +12,9 @@ Everything here operates on plain NetworkX graphs and node ids; the
 
 from __future__ import annotations
 
+import math
+import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -207,6 +210,83 @@ def detect_communities(
     result = [set(group) for group in groups]
     result.sort(key=len, reverse=True)
     return result
+
+
+#: How term scores are computed when labelling communities.
+LABEL_SCORINGS = ("tfidf", "frequency")
+
+_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+
+def label_communities(
+    groups: list[list[str]],
+    *,
+    terms: int = 4,
+    scoring: str = "tfidf",
+    stopwords: set[str] | None = None,
+    min_length: int = 3,
+) -> list[tuple[list[str], str]]:
+    """Pick the terms that distinguish each group's text from the others.
+
+    Args:
+        groups: One list of text fragments per community, in the same order as
+            the communities they describe.
+        terms: Terms to keep per community.
+        scoring: ``"tfidf"`` weights a term by how concentrated it is in one
+            community, so words common to all of them score near zero.
+            ``"frequency"`` is a plain count, which mostly surfaces whatever the
+            corpus says most often.
+        stopwords: Words to drop outright. With ``tfidf`` this is rarely needed
+            — ubiquitous words are already discounted — but it helps for terms
+            frequent in *some* communities and meaningless in all.
+        min_length: Shortest term to keep.
+
+    Returns:
+        ``(terms, label)`` per group, where ``label`` joins the terms with
+        ``", "``. Empty for a community whose nodes carry no usable text.
+    """
+    if scoring not in LABEL_SCORINGS:
+        raise DatabaseError(
+            f"Unknown label scoring '{scoring}'. Expected one of: {', '.join(LABEL_SCORINGS)}"
+        )
+    if terms <= 0:
+        raise DatabaseError("terms must be a positive integer")
+
+    stop = {word.lower() for word in (stopwords or set())}
+    counts: list[Counter[str]] = []
+    for fragments in groups:
+        counter: Counter[str] = Counter()
+        for fragment in fragments:
+            for token in _WORD.findall((fragment or "").lower()):
+                if len(token) >= min_length and token not in stop:
+                    counter[token] += 1
+        counts.append(counter)
+
+    # Document frequency across communities, not across nodes: the question is
+    # which terms single a community out from its siblings.
+    appearances: Counter[str] = Counter()
+    for counter in counts:
+        appearances.update(counter.keys())
+
+    total = len(counts) or 1
+    results: list[tuple[list[str], str]] = []
+    for counter in counts:
+        if not counter:
+            results.append(([], ""))
+            continue
+        if scoring == "frequency":
+            scored = {term: float(count) for term, count in counter.items()}
+        else:
+            occurrences = sum(counter.values()) or 1
+            scored = {
+                term: (count / occurrences) * math.log(total / appearances[term] + 1.0)
+                for term, count in counter.items()
+            }
+        # Alphabetical tiebreak so equal scores do not depend on dict order.
+        top = sorted(scored.items(), key=lambda item: (-item[1], item[0]))[:terms]
+        chosen = [term for term, _ in top]
+        results.append((chosen, ", ".join(chosen)))
+    return results
 
 
 def _pagerank(

@@ -289,3 +289,101 @@ def test_pagerank_fallback_on_weighted_graph(barbell):
     finally:
         nx.pagerank = original
     assert abs(sum(row["score"] for row in results) - 1.0) < 1e-6
+
+
+# --- topic labelling -------------------------------------------------------
+
+
+@pytest.fixture
+def topical() -> GrafitoDatabase:
+    """Three chains of text, each on its own subject."""
+    db = GrafitoDatabase(':memory:')
+    docs = [
+        "graph databases store nodes and edges efficiently",
+        "graph databases query nodes with cypher",
+        "graph traversal over nodes and edges",
+        "vector search finds nearest neighbours quickly",
+        "vector embeddings encode meaning for search",
+        "nearest neighbour search over embeddings",
+        "pasta carbonara needs eggs and pancetta",
+        "italian pasta recipes with tomato sauce",
+        "cooking pasta al dente takes practice",
+    ]
+    ids = [db.create_node(labels=["Doc"], properties={"text": t}).id for t in docs]
+    for a, b in [(0, 1), (1, 2), (3, 4), (4, 5), (6, 7), (7, 8)]:
+        db.create_relationship(ids[a], ids[b], "REL")
+    yield db
+    db.close()
+
+
+def test_labelling_is_off_by_default(topical):
+    community = topical.communities("louvain", seed=1)[0]
+    assert community.terms == []
+    assert community.label is None
+
+
+def test_labels_name_each_topic(topical):
+    communities = topical.communities("louvain", seed=1, label_terms=3)
+    labels = {c.label for c in communities}
+    assert len(communities) == 3
+    assert all(c.terms and c.label for c in communities)
+    # Each subject's defining word lands in exactly one community.
+    for word in ("graph", "pasta"):
+        assert sum(1 for c in communities if word in c.terms) == 1
+    assert len(labels) == 3
+
+
+def test_terms_are_limited(topical):
+    for community in topical.communities("louvain", seed=1, label_terms=2):
+        assert len(community.terms) <= 2
+
+
+def test_label_joins_the_terms(topical):
+    community = topical.communities("louvain", seed=1, label_terms=3)[0]
+    assert community.label == ", ".join(community.terms)
+
+
+def test_tfidf_discounts_words_common_to_every_community(topical):
+    """"and" appears across subjects; frequency surfaces it, tfidf should not."""
+    tfidf = topical.communities("louvain", seed=1, label_terms=3, label_scoring="tfidf")
+    frequency = topical.communities(
+        "louvain", seed=1, label_terms=3, label_scoring="frequency"
+    )
+    assert not any("and" in c.terms for c in tfidf)
+    assert any("and" in c.terms for c in frequency)
+
+
+def test_stopwords_are_excluded(topical):
+    communities = topical.communities(
+        "louvain", seed=1, label_terms=3, stopwords={"graph", "pasta"}
+    )
+    assert not any({"graph", "pasta"} & set(c.terms) for c in communities)
+
+
+def test_a_custom_text_property(topical):
+    for node in topical.match_nodes(labels=["Doc"]):
+        topical.update_node_properties(node.id, {"summary": node.properties["text"]})
+    communities = topical.communities(
+        "louvain", seed=1, label_terms=2, text_property="summary"
+    )
+    assert all(c.terms for c in communities)
+
+
+def test_missing_text_yields_no_terms():
+    db = GrafitoDatabase(':memory:')
+    a = db.create_node(labels=["N"], properties={"name": "a"})
+    b = db.create_node(labels=["N"], properties={"name": "b"})
+    db.create_relationship(a.id, b.id, "REL")
+    communities = db.communities("louvain", seed=1, label_terms=3)
+    assert all(c.terms == [] and c.label is None for c in communities)
+    db.close()
+
+
+def test_unknown_scoring_is_rejected(topical):
+    with pytest.raises(DatabaseError, match="Unknown label scoring"):
+        topical.communities("louvain", seed=1, label_terms=3, label_scoring="sif")
+
+
+def test_invalid_term_count_is_rejected(topical):
+    with pytest.raises(DatabaseError, match="terms must be"):
+        topical.communities("louvain", seed=1, label_terms=-1, label_scoring="tfidf")

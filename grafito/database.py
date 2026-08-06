@@ -388,6 +388,10 @@ class GrafitoDatabase:
         seed: int | None = None,
         min_size: int = 1,
         graph: Any | None = None,
+        label_terms: int = 0,
+        text_property: str = "text",
+        label_scoring: str = "tfidf",
+        stopwords: set[str] | None = None,
         **kwargs: Any,
     ) -> list["Community"]:
         """Partition the graph into communities, largest first.
@@ -412,12 +416,22 @@ class GrafitoDatabase:
             min_size: Drop communities smaller than this. Singletons are noise
                 in most datasets; raise it to skip them.
             graph: Analyse this pre-built NetworkX graph instead of exporting one.
+            label_terms: Label each community with this many distinguishing
+                terms, drawn from ``text_property``. ``0`` (default) skips
+                labelling and leaves ``Community.terms`` empty.
+            text_property: Node property to read text from when labelling.
+            label_scoring: ``"tfidf"`` (default) favours terms concentrated in
+                one community; ``"frequency"`` is a plain count.
+            stopwords: Words to exclude from labels.
             **kwargs: Passed to the underlying NetworkX function.
 
         Returns:
-            A list of :class:`~grafito.algorithms.Community`.
+            A list of :class:`~grafito.algorithms.Community`. With
+            ``label_terms``, each carries ``terms`` and a ``label`` joining
+            them — the cheap end of topic modelling: the clusters come from the
+            graph, and the words only describe what landed in each.
         """
-        from .algorithms import Community, detect_communities
+        from .algorithms import Community, detect_communities, label_communities
 
         if graph is None:
             graph = self.to_analysis_graph(
@@ -444,6 +458,24 @@ class GrafitoDatabase:
             if not nodes:
                 continue
             result.append(Community(id=len(result), nodes=nodes, size=len(nodes)))
+
+        if label_terms and result:
+            labelled = label_communities(
+                [
+                    [
+                        str(node.properties.get(text_property) or "")
+                        for node in community.nodes
+                    ]
+                    for community in result
+                ],
+                terms=label_terms,
+                scoring=label_scoring,
+                stopwords=stopwords,
+            )
+            for community, (terms, label) in zip(result, labelled):
+                community.terms = terms
+                community.label = label or None
+
         return result
 
     def subgraph(
