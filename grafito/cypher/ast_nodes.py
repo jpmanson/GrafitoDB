@@ -184,6 +184,18 @@ class PatternComprehension(Expression):
 
 
 @dataclass
+class PatternPredicate(Expression):
+    """A pattern used as a truth value: ``(a)-[:KNOWS]->()``.
+
+    True when the pattern matches at least once, with any variables already
+    bound in the surrounding scope held fixed. Distinct from
+    :class:`PatternComprehension`, which projects the matches instead of
+    collapsing them to a boolean.
+    """
+    pattern: 'Pattern'
+
+
+@dataclass
 class MapLiteral(Expression):
     """Map literal: {key: value, ...}."""
     items: dict[str, Expression] = field(default_factory=dict)

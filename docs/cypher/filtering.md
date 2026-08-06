@@ -344,28 +344,92 @@ db.execute(query, {"min_age": 18, "names": ["Alice", "Bob"]})
 
 ## Pattern Filtering
 
-### EXISTS
+A pattern can be used directly as a truth value: it is true when it matches at
+least once, holding fixed whatever variables are already bound.
 
 ```cypher
 // Persons who know someone
 MATCH (p:Person)
-WHERE EXISTS((p)-[:KNOWS]->())
+WHERE (p)-[:KNOWS]->()
 RETURN p.name
 
-// Persons who work at a company
+// ...and the reason this exists: persons who know nobody
 MATCH (p:Person)
-WHERE EXISTS((p)-[:WORKS_AT]->(:Company))
+WHERE NOT (p)-[:KNOWS]->()
 RETURN p.name
 ```
 
-### Filtering on Patterns
+Matching stops at the first hit, so a node with thousands of neighbours costs
+the same as one with a single edge — unlike counting them.
+
+### What the Pattern Can Contain
+
+Anything `MATCH` accepts: types, labels, direction, inline properties, and
+variable-length paths.
 
 ```cypher
-// Persons who know someone over 30
+WHERE (p)-[:WORKS_AT]->(:Company)          // label on the far node
+WHERE (p)-[:KNOWS {since: 2020}]->()       // property on the relationship
+WHERE (p)-->({age: 30})                    // property on the far node
+WHERE ()-[:REPORTS_TO]->(p)                // incoming
+WHERE (p)--()                              // either direction
+WHERE (p)-[*1..3]->(:Company)              // within three hops
+WHERE (p)-->()-->(:Company)                // multi-hop
+```
+
+Variables already bound by the surrounding query keep their values, so a pattern
+over two of them asks about those specific nodes:
+
+```cypher
+MATCH (p:Person), (c:Company {name: 'Acme'})
+WHERE NOT (p)-[:WORKS_AT]->(c)
+RETURN p.name          // everyone who does not work at Acme
+```
+
+### EXISTS
+
+`EXISTS()` over a pattern means the same thing, and reads better when combined
+with other predicates:
+
+```cypher
 MATCH (p:Person)
-WHERE EXISTS((p)-[:KNOWS]->({age: 30}))
+WHERE EXISTS((p)-[:KNOWS]->()) AND p.age > 30
 RETURN p.name
 ```
+
+Note that `EXISTS()` is overloaded: given a property it tests for presence
+(see [Property Existence](#property-existence)), given a pattern it tests for a
+match.
+
+### As a Value
+
+A pattern predicate is an ordinary boolean expression, so it can be returned or
+projected:
+
+```cypher
+MATCH (p:Person)
+RETURN p.name, (p)-[:KNOWS]->() AS is_connected
+```
+
+To *count* matches rather than test for one, use a
+[pattern comprehension](collections.md):
+
+```cypher
+MATCH (p:Person)
+RETURN p.name, size([(p)-[:KNOWS]->(f) | f]) AS friends
+```
+
+!!! note "Filtering on a WITH alias"
+    `WITH n, (n)-->() AS connected WHERE connected` does not work — and not
+    because of patterns: referring to a `WITH` alias inside that same clause's
+    `WHERE` is unsupported for any expression. Filter in a following clause:
+
+    ```cypher
+    MATCH (n:Person)
+    WITH n
+    WHERE (n)-[:KNOWS]->()
+    RETURN n.name
+    ```
 
 ## Property Existence
 
