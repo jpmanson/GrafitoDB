@@ -56,7 +56,8 @@ Register an FTS index alongside the vector index if you want hybrid retrieval �
 | `db.text_search()` | FTS5/BM25 |
 | [`CALL db.vector.search`](../cypher/vector-search.md) | Vector search *inside* a Cypher pattern — seeds a traversal from the ANN index |
 | [`SIMILAR()` / `VECTOR_SCORE()`](../cypher/vector-search.md) | Constrain the far end of a pattern by similarity |
-| `DocumentIngestor.hybrid_search()` | Vector + lexical fused with RRF (`grafito.document.hybrid.rrf_fuse`) |
+| `db.hybrid_search()` | Vector + lexical fused with RRF. Usually the right default: the two modes fail differently |
+| `DocumentIngestor.hybrid_search()` | The same fusion at passage level, with ownership filters |
 | `OKFBundle.search()` | Retrieval with governance filters (layer, trust, superseded) |
 
 The Cypher-level tools are what make retrieval structural rather than a
@@ -73,8 +74,9 @@ RETURN p LIMIT 10
 
 | Tool | For |
 | --- | --- |
-| [`db.semantic_subgraph()`](../analysis/subgraphs.md) | Hits plus their neighbourhood, with `hops`/`scores` provenance |
-| `db.subgraph()` | Same, from any seeds — including your own fused hits |
+| [`db.hybrid_subgraph()`](../analysis/subgraphs.md) | Fused hits plus their neighbourhood, with `hops`/`scores` provenance |
+| `db.semantic_subgraph()` / `db.text_subgraph()` | The same, seeded by one retrieval mode |
+| `db.subgraph()` | The same, from any seeds — including a fusion of your own |
 | `DocumentIngestor.expand()` | Passage-level: siblings, parents, and surrounding sections |
 | `OKFBundle.context()` | Expansion governed by filters, so a `min_trust` guarantee holds through links |
 
