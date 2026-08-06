@@ -24,6 +24,13 @@ from .embedding_functions import create_embedding_function, EmbeddingFunction
 from .query import PathFinder
 from .schema import initialize_schema
 
+#: Neighbour-score floor create_semantic_graph applies when none is given.
+#: Lower than the SIMILAR() default (0.5) on purpose: SIMILAR() answers "is this
+#: similar?", where a permissive threshold produces wrong answers, while here `k`
+#: already bounds the result and min_score is a quality floor on the tail.
+#: Matches txtai's minscore default.
+DEFAULT_SEMANTIC_GRAPH_MIN_SCORE = 0.1
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .algorithms import Community
     from .ingest_report import IndexReport, SemanticGraphReport
@@ -772,6 +779,7 @@ class GrafitoDatabase:
         properties: list[str] | None = None,
         batch_size: int = 256,
         upsert: bool = True,
+        configure_fts: bool = False,
     ) -> "IndexReport":
         """Ingest a collection of documents as nodes, edges, and embeddings.
 
@@ -815,19 +823,25 @@ class GrafitoDatabase:
             batch_size: Rows embedded per call to the embedding function.
             upsert: When an ``id_key`` value already exists under ``label``,
                 update that node instead of creating a duplicate.
+            configure_fts: Also register a full-text index over
+                ``label``/``text_key``, so the documents are reachable by
+                :meth:`text_search` and hybrid retrieval without a second call.
+                Off by default: it creates an index you did not ask for.
 
         Returns:
             An :class:`~grafito.ingest_report.IndexReport`.
 
         Note:
-            This populates the vector index only. For hybrid search, also call
-            :meth:`create_text_index` for ``label``/``text_key``; FTS5 indexes
-            existing rows when created.
+            Without ``configure_fts`` this populates the vector index only. You
+            can also call :meth:`create_text_index` yourself at any point —
+            FTS5 indexes existing rows when created, so order does not matter.
         """
         from .ingest_report import IndexReport
 
         if batch_size <= 0:
             raise DatabaseError("batch_size must be a positive integer")
+        if configure_fts:
+            self.create_text_index("node", label, [text_key])
         embedder = None
         if index is not None:
             embedder = self._get_embedding_function(index)
@@ -926,7 +940,7 @@ class GrafitoDatabase:
         *,
         rel_type: str = "SEMANTIC_SIMILAR",
         k: int = 15,
-        min_score: float = 0.0,
+        min_score: float | None = None,
         approximate: bool = False,
         labels: list[str] | None = None,
         undirected: bool = True,
@@ -949,17 +963,26 @@ class GrafitoDatabase:
             index: Vector index to read neighbours from.
             rel_type: Relationship type to create.
             k: Neighbours per node.
-            min_score: Skip neighbours scoring below this. The single most
-                effective control on how many edges you end up with.
-            approximate: Only process nodes that have no ``rel_type`` edge yet.
-                This is the incremental mode — see :meth:`refresh_semantic_graph`.
+            min_score: Skip neighbours scoring below this — the single most
+                effective control on how many edges you end up with. Defaults
+                to ``0.1``; required on an ``l2`` index, whose scores are
+                negative.
+            approximate: Only process nodes that have no generated edge for this
+                ``rel_type`` and ``index`` yet. Hand-made relationships of the
+                same type do not count, so they never exclude a node from being
+                processed. This is the incremental mode — see
+                :meth:`refresh_semantic_graph`. Has no effect with
+                ``replace=True``, which deletes exactly those edges.
             labels: Only link nodes carrying one of these labels.
             undirected: Emit one edge per pair rather than one per direction.
-                Halves the edge count; query it with an undirected pattern,
-                ``MATCH (a)-[:SEMANTIC_SIMILAR]-(b)``.
-            replace: Delete previously generated edges of this type first.
-                Only edges carrying this method's marker are removed, so
-                hand-made relationships of the same type survive.
+                Halves the edge count. Query it with an undirected pattern,
+                ``MATCH (a)-[:SEMANTIC_SIMILAR]-(b)`` — every node still reaches
+                its ``k`` neighbours that way, but its *outgoing* degree alone
+                will be less than ``k``.
+            replace: Delete previously generated edges of this type and index
+                first. Only edges carrying this method's marker are removed, so
+                hand-made relationships of the same type survive, as do edges
+                generated from a different vector index.
             max_edges: Stop once this many edges have been created.
 
         Returns:
@@ -975,6 +998,12 @@ class GrafitoDatabase:
             edges reflect the embeddings as of the build, and nothing updates
             them when vectors change. Re-run, or use
             :meth:`refresh_semantic_graph` for new nodes.
+
+        Note:
+            The rebuild is atomic. Neighbours are computed first — the slow
+            part — and the old edges are swapped for the new ones in a single
+            short transaction, so a failure mid-build leaves the previous graph
+            intact and readers never see it empty.
         """
         from datetime import datetime, timezone
 
@@ -989,16 +1018,29 @@ class GrafitoDatabase:
 
         vec_index = self._get_vector_index(index)
         report = SemanticGraphReport()
-
-        if replace:
-            report.edges_removed = self._delete_generated_relationships(rel_type)
+        min_score = self._resolve_semantic_min_score(min_score, index)
 
         linked: set[int] = set()
-        if approximate:
+        if approximate and not replace:
+            # Only this method's own edges for this index count as "already
+            # linked". A hand-made relationship of the same type must not
+            # exclude a node from ever being processed, and neither should an
+            # edge generated from a different vector index.
+            # With replace=True those edges are about to be deleted, so nothing
+            # is linked and the filter would be meaningless.
             rows = self.conn.execute(
-                "SELECT DISTINCT source_node_id AS id FROM relationships WHERE type = ? "
-                "UNION SELECT DISTINCT target_node_id AS id FROM relationships WHERE type = ?",
-                (rel_type, rel_type),
+                """
+                SELECT DISTINCT source_node_id AS id FROM relationships
+                WHERE type = ?
+                  AND json_extract(properties, '$.generated_by') = ?
+                  AND json_extract(properties, '$.index') = ?
+                UNION
+                SELECT DISTINCT target_node_id AS id FROM relationships
+                WHERE type = ?
+                  AND json_extract(properties, '$.generated_by') = ?
+                  AND json_extract(properties, '$.index') = ?
+                """,
+                (rel_type, self.SEMANTIC_GRAPH_MARKER, index) * 2,
             ).fetchall()
             linked = {int(row["id"]) for row in rows}
 
@@ -1053,10 +1095,11 @@ class GrafitoDatabase:
                 break
 
         if pending:
-            # Bulk insert: every edge shares one type and one property shape, so
-            # constraints are checked once rather than once per row. Going
-            # through create_relationship would re-validate both endpoints for
-            # each of k*N edges.
+            # Every edge shares one type and one property shape, so constraints
+            # are checked once rather than once per row. Going through
+            # create_relationship would re-validate both endpoints for each of
+            # k*N edges. Do it before opening the transaction, so a constraint
+            # violation never reaches the delete.
             self._validate_constraints_on_relationship(
                 rel_type,
                 {
@@ -1066,7 +1109,20 @@ class GrafitoDatabase:
                     "generated_at": generated_at,
                 },
             )
-            try:
+
+        # Swap the old graph for the new one atomically. The neighbour search
+        # above is the slow part and runs entirely outside this transaction, so
+        # readers never observe a window where the semantic graph is missing,
+        # and a failure mid-build leaves the previous graph intact.
+        owns_transaction = not self._in_transaction
+        if owns_transaction:
+            self.begin_transaction()
+        try:
+            if replace:
+                report.edges_removed = self._delete_generated_relationships(
+                    rel_type, index=index
+                )
+            if pending:
                 self.conn.executemany(
                     """
                     INSERT INTO relationships (source_node_id, target_node_id, type, properties, uri)
@@ -1074,11 +1130,15 @@ class GrafitoDatabase:
                     """,
                     pending,
                 )
-                if not self._in_transaction:
-                    self.conn.commit()
-            except sqlite3.Error as exc:
+                report.edges_created = len(pending)
+            if owns_transaction:
+                self.commit()
+        except Exception as exc:
+            if owns_transaction:
+                self.rollback()
+            if isinstance(exc, sqlite3.Error):
                 raise DatabaseError(f"Failed to create semantic graph: {exc}") from exc
-            report.edges_created = len(pending)
+            raise
 
         return report
 
@@ -1104,33 +1164,68 @@ class GrafitoDatabase:
         kwargs.setdefault("replace", False)
         return self.create_semantic_graph(index, rel_type=rel_type, **kwargs)
 
-    def drop_semantic_graph(self, rel_type: str = "SEMANTIC_SIMILAR") -> int:
+    def drop_semantic_graph(
+        self,
+        rel_type: str = "SEMANTIC_SIMILAR",
+        *,
+        index: str | None = None,
+    ) -> int:
         """Delete the generated relationships of ``rel_type``.
 
         Only edges carrying the :meth:`create_semantic_graph` marker are
         removed; relationships of the same type created by hand are kept.
 
+        Args:
+            rel_type: Relationship type to clear.
+            index: Only drop edges generated from this vector index. ``None``
+                drops them regardless of source index.
+
         Returns:
             Number of relationships deleted.
         """
-        return self._delete_generated_relationships(rel_type)
+        return self._delete_generated_relationships(rel_type, index=index)
 
-    def _delete_generated_relationships(self, rel_type: str) -> int:
-        """Remove relationships this class generated, by marker."""
+    def _delete_generated_relationships(self, rel_type: str, index: str | None = None) -> int:
+        """Remove relationships this class generated, by marker.
+
+        ``index`` narrows the deletion to edges generated from one vector index,
+        so rebuilding one index does not wipe another's edges of the same type.
+        """
+        sql = """
+            DELETE FROM relationships
+            WHERE type = ?
+              AND json_extract(properties, '$.generated_by') = ?
+        """
+        params: list[Any] = [rel_type, self.SEMANTIC_GRAPH_MARKER]
+        if index is not None:
+            sql += " AND json_extract(properties, '$.index') = ?"
+            params.append(index)
         try:
-            cursor = self.conn.execute(
-                """
-                DELETE FROM relationships
-                WHERE type = ?
-                  AND json_extract(properties, '$.generated_by') = ?
-                """,
-                (rel_type, self.SEMANTIC_GRAPH_MARKER),
-            )
+            cursor = self.conn.execute(sql, params)
             if not self._in_transaction:
                 self.conn.commit()
             return cursor.rowcount or 0
         except sqlite3.Error as exc:
             raise DatabaseError(f"Failed to remove generated relationships: {exc}") from exc
+
+    def _resolve_semantic_min_score(self, min_score: float | None, index: str) -> float:
+        """Pick a neighbour-score floor, refusing where no default is meaningful.
+
+        Mirrors the Cypher ``SIMILAR()`` rule: a cosine-calibrated default is
+        silently wrong on an ``l2`` index, whose scores are negated distances
+        (``<= 0``), so require an explicit value there instead of building a
+        graph with no edges.
+        """
+        if min_score is not None:
+            return float(min_score)
+        metric = self.vector_metric(index)
+        if metric == "l2":
+            raise DatabaseError(
+                f"create_semantic_graph requires an explicit min_score on the "
+                f"'{index}' index because its 'l2' metric produces negative "
+                "scores (e.g. min_score=-0.5)"
+            )
+        return DEFAULT_SEMANTIC_GRAPH_MIN_SCORE
 
     def _indexed_node_ids(self, index: str, labels: list[str] | None) -> list[int]:
         """Node ids that carry a vector in ``index``, optionally label-filtered.

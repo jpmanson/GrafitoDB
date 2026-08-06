@@ -67,7 +67,20 @@ RETURN DISTINCT b
 the long tail of weak neighbours that inflate the graph without adding signal:
 
 ```python
-db.create_semantic_graph(k=15, min_score=0.5)   # far fewer edges than min_score=0.1
+db.create_semantic_graph(k=15, min_score=0.5)   # far fewer edges than the 0.1 default
+```
+
+It defaults to `0.1`. That is lower than the `SIMILAR()` default of `0.5`, on
+purpose: `SIMILAR()` answers "is this similar?", where a permissive threshold
+gives wrong answers, whereas here `k` already bounds the result and `min_score`
+only trims the tail.
+
+On an `l2` index the default is refused rather than guessed — those scores are
+negated distances (`<= 0`), so any positive threshold would build an empty graph:
+
+```python
+db.create_semantic_graph(k=15)                  # DatabaseError on an l2 index
+db.create_semantic_graph(k=15, min_score=-0.5)  # explicit, and meaningful
 ```
 
 `undirected=True` (the default) emits one edge per pair instead of one per
@@ -87,14 +100,23 @@ db.create_semantic_graph(k=15, min_score=0.3, labels=["Article"], max_edges=100_
 ## Provenance and Rebuilding
 
 Every generated edge carries `score`, `index`, `generated_by`, and
-`generated_at`. The marker is what makes rebuilds safe: `replace=True` (the
-default) deletes only edges this method created, so a hand-made
-`SEMANTIC_SIMILAR` relationship survives a rebuild.
+`generated_at`. Those last two are what make rebuilds safe: `replace=True` (the
+default) deletes only edges this method created **from the same index**, so both
+a hand-made `SEMANTIC_SIMILAR` relationship and edges generated from a different
+vector index survive a rebuild.
 
 ```python
-db.create_semantic_graph(k=15, min_score=0.3)   # idempotent: re-running replaces
-db.drop_semantic_graph()                        # removes generated edges only
+db.create_semantic_graph(k=15, min_score=0.3)      # idempotent: re-running replaces
+db.drop_semantic_graph()                           # generated edges only
+db.drop_semantic_graph(index="papers_vec")         # ...from one index only
 ```
+
+!!! note "The rebuild is atomic"
+    Neighbours are computed first — the slow part, minutes on a large corpus —
+    and the old edges are swapped for the new ones inside a single short
+    transaction. A failure mid-build leaves the previous graph intact, and
+    concurrent readers never observe a window where the semantic graph is
+    missing.
 
 ## Incremental Updates
 
@@ -106,8 +128,13 @@ report = db.refresh_semantic_graph(k=15, min_score=0.3)
 print(report)  # SemanticGraphReport(30 edges, 2 nodes, 100 skipped)
 ```
 
-`refresh_semantic_graph()` only processes nodes that have no edges of that type
-yet. It will **not** notice that an existing node's neighbourhood changed — new
+`refresh_semantic_graph()` only processes nodes that have no *generated* edge for
+that `rel_type` and `index` yet. Hand-made relationships of the same type do not
+count as "already linked", and neither do edges generated from a different vector
+index — otherwise a single manual edge would exclude its endpoints from the
+semantic graph forever.
+
+It will **not** notice that an existing node's neighbourhood changed — new
 documents can be a better match for old ones than what is currently stored.
 Only a full rebuild fixes that, so schedule one periodically if your corpus
 keeps growing.

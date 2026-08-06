@@ -515,3 +515,48 @@ def test_map_literal_accepts_keyword_keys():
     results = db.execute("RETURN {index: 'default', order: 2, limit: 3} AS opts")
     assert results == [{"opts": {"index": "default", "order": 2, "limit": 3}}]
     db.close()
+
+
+def test_distinct_aggregation_over_graph_entities():
+    """Nodes are unhashable dataclasses; DISTINCT must key on identity."""
+    db = _vector_db()
+    alice, bob = db.match_nodes(labels=["Person"])
+
+    assert db.execute(
+        "MATCH (a)-[:KNOWS]->(b) RETURN count(DISTINCT b) AS c"
+    ) == [{"c": 1}]
+    assert db.execute(
+        "MATCH ()-[r:KNOWS]->() RETURN count(DISTINCT r) AS c"
+    ) == [{"c": 1}]
+    assert db.execute(
+        "MATCH p=(a)-[:KNOWS]->(b) RETURN count(DISTINCT p) AS c"
+    ) == [{"c": 1}]
+
+    collected = db.execute("MATCH (n:Person) RETURN collect(DISTINCT n) AS people")
+    assert {node.id for node in collected[0]["people"]} == {alice.id, bob.id}
+    db.close()
+
+
+def test_distinct_deduplicates_repeated_nodes():
+    db = _vector_db()
+    alice, bob = db.match_nodes(labels=["Person"])
+    db.create_relationship(alice.id, bob.id, "KNOWS")  # a second, parallel edge
+
+    assert db.execute(
+        "MATCH (a)-[:KNOWS]->(b) RETURN count(b) AS c"
+    ) == [{"c": 2}]
+    assert db.execute(
+        "MATCH (a)-[:KNOWS]->(b) RETURN count(DISTINCT b) AS c"
+    ) == [{"c": 1}]
+    db.close()
+
+
+def test_union_distinct_over_nodes():
+    db = _vector_db()
+    rows = db.execute("""
+        MATCH (n:Person {name: 'Alice'}) RETURN n
+        UNION
+        MATCH (n:Person {name: 'Alice'}) RETURN n
+    """)
+    assert len(rows) == 1
+    db.close()

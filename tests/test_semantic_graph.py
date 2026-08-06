@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import sqlite3
 
 import pytest
 
@@ -301,3 +302,181 @@ def test_report_str_is_readable(db):
     report = db.create_semantic_graph(k=2, min_score=0.1)
     assert "edges" in str(report)
     assert "nodes" in str(report)
+
+
+# --- atomicity -------------------------------------------------------------
+
+
+def test_failed_rebuild_leaves_the_previous_graph_intact(db):
+    """The slow neighbour search runs before anything is deleted."""
+    db.create_semantic_graph(k=2, min_score=0.1)
+    before = _generated_count(db)
+    assert before > 0
+
+    index = db._get_vector_index("default")
+    original = index.search
+    calls = {"n": 0}
+
+    def flaky(vector, k):
+        calls["n"] += 1
+        if calls["n"] > 2:
+            raise RuntimeError("vector backend exploded")
+        return original(vector, k)
+
+    index.search = flaky
+    try:
+        with pytest.raises(RuntimeError, match="exploded"):
+            db.create_semantic_graph(k=2, min_score=0.1)
+    finally:
+        index.search = original
+
+    assert _generated_count(db) == before
+
+
+def test_a_failed_insert_rolls_the_delete_back(db):
+    """The delete and the insert must land together or not at all."""
+    db.create_semantic_graph(k=2, min_score=0.1)
+    before = _generated_count(db)
+
+    class _FailingInsert:
+        """Delegates everything to the real connection except the bulk insert."""
+
+        def __init__(self, conn):
+            self._conn = conn
+
+        def executemany(self, *args, **kwargs):
+            raise sqlite3.OperationalError("disk I/O error")
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+    real_conn = db.conn
+    db.conn = _FailingInsert(real_conn)
+    try:
+        with pytest.raises(DatabaseError, match="Failed to create semantic graph"):
+            db.create_semantic_graph(k=2, min_score=0.1)
+    finally:
+        db.conn = real_conn
+
+    assert _generated_count(db) == before
+
+
+def test_rebuild_inside_an_explicit_transaction_is_rolled_back(db):
+    db.create_semantic_graph(k=2, min_score=0.1)
+    before = _generated_count(db)
+
+    db.begin_transaction()
+    db.create_semantic_graph(k=3, min_score=0.0)
+    db.rollback()
+
+    assert _generated_count(db) == before
+
+
+# --- approximate scoping ---------------------------------------------------
+
+
+def test_approximate_ignores_hand_made_edges(db):
+    """A manual edge must not exclude its endpoints from ever being linked."""
+    a = db.match_nodes(labels=["Doc"], properties={"id": "d1"})[0]
+    b = db.match_nodes(labels=["Doc"], properties={"id": "d5"})[0]
+    db.create_relationship(a.id, b.id, "SEMANTIC_SIMILAR", {"manual": True})
+
+    report = db.refresh_semantic_graph(k=2, min_score=0.1)
+    assert report.nodes_skipped == 0
+    assert report.nodes_processed == 5
+
+    linked = db.execute("""
+        MATCH (n:Doc)-[r:SEMANTIC_SIMILAR]->()
+        WHERE r.generated_by IS NOT NULL
+        RETURN DISTINCT n.id AS id
+    """)
+    assert {"d1", "d5"} & {row["id"] for row in linked}
+
+
+def test_approximate_ignores_edges_from_another_index(db):
+    """Edges generated from a different index say nothing about this one."""
+    db.create_vector_index("other", dim=32, embedding_function=_Embedder(),
+                           options={"store_embeddings": True})
+    embedder = _Embedder()
+    for node in db.match_nodes(labels=["Doc"]):
+        db.upsert_embedding(node.id, embedder([node.properties["text"]])[0], index="other")
+    db.create_semantic_graph(index="other", k=2, min_score=0.1)
+
+    report = db.refresh_semantic_graph(index="default", k=2, min_score=0.1)
+    assert report.nodes_skipped == 0
+    assert report.nodes_processed == 5
+
+
+def test_approximate_still_skips_its_own_edges(db):
+    db.create_semantic_graph(k=2, min_score=0.1)
+    report = db.refresh_semantic_graph(k=2, min_score=0.1)
+    assert report.nodes_processed == 0
+    assert report.nodes_skipped == 5
+
+
+# --- per-index scoping -----------------------------------------------------
+
+
+def _seed_second_index(db) -> None:
+    db.create_vector_index("other", dim=32, embedding_function=_Embedder(),
+                           options={"store_embeddings": True})
+    embedder = _Embedder()
+    for node in db.match_nodes(labels=["Doc"]):
+        db.upsert_embedding(node.id, embedder([node.properties["text"]])[0], index="other")
+
+
+def test_rebuilding_one_index_spares_another(db):
+    _seed_second_index(db)
+    db.create_semantic_graph(index="default", k=2, min_score=0.1)
+    after_first = _generated_count(db)
+    db.create_semantic_graph(index="other", k=2, min_score=0.1)
+    assert _generated_count(db) > after_first
+
+    db.create_semantic_graph(index="default", k=2, min_score=0.1)
+    assert _generated_count(db) > after_first
+
+
+def test_drop_can_target_one_index(db):
+    _seed_second_index(db)
+    db.create_semantic_graph(index="default", k=2, min_score=0.1)
+    default_edges = _generated_count(db)
+    db.create_semantic_graph(index="other", k=2, min_score=0.1)
+
+    dropped = db.drop_semantic_graph(index="other")
+    assert dropped > 0
+    assert _generated_count(db) == default_edges
+
+
+# --- min_score defaults ----------------------------------------------------
+
+
+def test_default_min_score_is_not_permissive(db):
+    """0.0 would admit orthogonal neighbours; the default must not."""
+    from grafito.database import DEFAULT_SEMANTIC_GRAPH_MIN_SCORE
+
+    default = db.create_semantic_graph(k=4)
+    permissive = db.create_semantic_graph(k=4, min_score=0.0)
+    assert DEFAULT_SEMANTIC_GRAPH_MIN_SCORE > 0.0
+    assert default.edges_created < permissive.edges_created
+
+
+def test_l2_index_requires_an_explicit_min_score():
+    """l2 scores are negative, so a cosine-shaped default builds nothing."""
+    database = GrafitoDatabase(':memory:')
+    database.create_vector_index(
+        "default", dim=32, embedding_function=_Embedder(),
+        options={"store_embeddings": True, "metric": "l2"},
+    )
+    database.index_documents(DOCS, label="Doc")
+
+    with pytest.raises(DatabaseError, match="explicit min_score"):
+        database.create_semantic_graph(k=2)
+
+    report = database.create_semantic_graph(k=2, min_score=-2.0)
+    assert report.edges_created > 0
+    database.close()
+
+
+def test_explicit_min_score_of_zero_is_honoured(db):
+    """None means 'pick a default'; 0.0 means 0.0."""
+    assert db.create_semantic_graph(k=4, min_score=0.0).edges_created > 0

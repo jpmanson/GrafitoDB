@@ -241,3 +241,17 @@ def test_ingested_graph_feeds_the_analysis_apis(db):
     sub = db.semantic_subgraph("vector search finds neighbors", k=1, expand=1)
     assert len(sub) > 1
     assert db.centrality("pagerank", graph=sub.to_networkx(), limit=1)
+
+
+def test_configure_fts_makes_documents_text_searchable(db):
+    db.index_documents(ROWS, label="Doc", configure_fts=True)
+    hits = db.text_search("neighbors", k=3)
+    assert any(hit["entity"].properties.get("id") == "2" for hit in hits)
+
+
+def test_configure_fts_is_off_by_default(db):
+    """It creates an index the caller did not ask for, so it must be opt-in."""
+    db.index_documents(ROWS, label="Doc")
+    assert not [
+        cfg for cfg in db.list_text_indexes() if cfg["label_or_type"] == "Doc"
+    ]

@@ -283,11 +283,22 @@ class CypherExecutor:
         return combined
 
     def _freeze_result(self, value: Any) -> Any:
-        """Convert results to hashable structures for UNION distinct."""
+        """Convert results to hashable structures for UNION and DISTINCT."""
         if isinstance(value, dict):
             return tuple(sorted((k, self._freeze_result(v)) for k, v in value.items()))
         if isinstance(value, list):
             return tuple(self._freeze_result(v) for v in value)
+        # Graph entities are mutable dataclasses and therefore unhashable, but
+        # they have identity: two rows hold the same node iff the ids match.
+        # Without this, count(DISTINCT n) and UNION over nodes raise TypeError.
+        if isinstance(value, (Node, Relationship)):
+            return (type(value).__name__, value.id)
+        if isinstance(value, Path):
+            return (
+                "Path",
+                tuple(node.id for node in value.nodes),
+                tuple(rel.id for rel in value.relationships),
+            )
         return value
 
     def _execute_multi_clause(self, clauses: list, initial_results: list[dict] | None = None) -> list[dict]:

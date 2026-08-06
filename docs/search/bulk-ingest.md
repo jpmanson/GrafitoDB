@@ -91,16 +91,23 @@ db.index_documents(rows, label="Paper", index="papers_vec", batch_size=512)
 
 ## Full-Text
 
-`index_documents()` populates the vector index only. For hybrid search, register
-the FTS index as well — FTS5 indexes existing rows when created, so the order
-does not matter:
+Pass `configure_fts=True` to register a full-text index over `label`/`text_key`
+at the same time, so the documents are reachable by both retrieval paths:
+
+```python
+db.index_documents(rows, label="Paper", configure_fts=True)
+
+db.semantic_search("nearest neighbours", k=10)
+db.text_search("nearest neighbours", k=10)
+```
+
+It is off by default because it creates an index you did not ask for. You can
+also call `create_text_index()` yourself at any point — FTS5 indexes existing
+rows when created, so the order does not matter:
 
 ```python
 db.index_documents(rows, label="Paper")
 db.create_text_index("node", "Paper", ["text"])
-
-db.semantic_search("nearest neighbours", k=10)
-db.text_search("nearest neighbours", k=10)
 ```
 
 ## End to End
