@@ -581,8 +581,18 @@ matter:
 for hit in db.centrality("betweenness", rel_types=["CITES"], directed=False, limit=5):
     print(hit["node"].properties["title"], hit["score"])
 
-for community in db.communities("louvain", rel_types=["CITES"], seed=42):
-    print(community.id, community.size)
+# Communities, optionally named after what distinguishes them
+for community in db.communities("louvain", rel_types=["CITES"], seed=42, label_terms=3):
+    print(f"[{community.label}] — {community.size} documents")
+```
+
+Hybrid retrieval — vector and lexical search fused with Reciprocal Rank Fusion,
+because the two fail differently: vector search misses exact tokens it never
+learned, lexical search misses paraphrase:
+
+```python
+db.hybrid_search("ENOSPC retry policy", k=10)
+db.hybrid_subgraph("ENOSPC retry policy", k=20, expand=1)
 ```
 
 Search results as subgraphs — the hits *and how they connect*, ready to
@@ -595,6 +605,17 @@ print(sub.hops)    # {node_id: distance from nearest hit}
 
 # Rank within the result rather than across the whole database
 db.centrality("pagerank", graph=sub.to_networkx(), limit=10)
+```
+
+Path context — when the answer is what *connects* two concepts, not what is
+nearest either of them:
+
+```python
+sub = db.path_context(["Roman Empire", "Battle of Hastings"], max_hops=3,
+                      exclude_rel_types=["SEMANTIC_SIMILAR"])
+for route in sub.paths:
+    print(" → ".join(db.get_node(n).properties["title"] for n in route))
+# Roman Empire → Saxons → Vikings → Battle of Hastings
 ```
 
 For how these fit together into a retrieval pipeline — ingest, retrieve, expand,
@@ -763,6 +784,14 @@ results = db.execute("""
 `SIMILAR()`/`VECTOR_SCORE()` are predicates, not index seeks — seed the pattern
 with `db.vector.search` and use them to constrain the far end. See
 [Vector search in Cypher](docs/cypher/vector-search.md).
+
+Patterns are also usable as boolean expressions, which is how you ask for the
+absence of a relationship:
+
+```python
+db.execute("MATCH (p:Paper) WHERE NOT (p)-[:CITES]->() RETURN p.title")
+db.execute("MATCH (p:Paper) RETURN p.title, (p)-[:CITES]->(:Paper) AS cites_a_paper")
+```
 
 APOC-style loaders (HTML/XML):
 
