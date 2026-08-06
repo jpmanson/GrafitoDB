@@ -90,12 +90,29 @@ direction, roughly halving the count. Query it with an undirected pattern:
 MATCH (a)-[:SEMANTIC_SIMILAR]-(b)   -- note: no arrow
 ```
 
-`labels` restricts which nodes participate, and `max_edges` caps the build
-outright:
+`labels` restricts which nodes participate, and `max_edges` caps the build:
 
 ```python
 db.create_semantic_graph(k=15, min_score=0.3, labels=["Article"], max_edges=100_000)
 ```
+
+The cap is enforced **between nodes**, so it can overshoot by up to `k-1`.
+That is deliberate: a node cut off half way through its neighbours would still
+look processed — it is the source of an edge — and no later refresh would
+finish it. Because every node a capped build does process is complete, running
+`refresh_semantic_graph()` under the same cap makes progress each time and
+eventually produces the whole graph:
+
+```python
+db.create_semantic_graph(k=15, min_score=0.3, max_edges=50_000)
+while db.refresh_semantic_graph(k=15, min_score=0.3, max_edges=50_000).edges_created:
+    pass   # each pass links another batch of nodes, completely
+```
+
+Loop on `edges_created`, not on `nodes_processed`. A node whose every edge was
+already contributed by its neighbours has no outgoing edge of its own, so it is
+re-searched on each pass and produces nothing — a few percent of the corpus,
+harmless but enough that `nodes_processed` never reaches zero.
 
 ## Provenance and Rebuilding
 
