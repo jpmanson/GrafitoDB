@@ -255,3 +255,39 @@ def test_configure_fts_is_off_by_default(db):
     assert not [
         cfg for cfg in db.list_text_indexes() if cfg["label_or_type"] == "Doc"
     ]
+
+
+def test_failed_ingest_leaves_no_orphan_fts_index(db):
+    """The index was registered for documents that never landed."""
+    with pytest.raises(DatabaseError):
+        db.index_documents(
+            [{"id": "1", "text": "fine"}, "not a dict"],
+            label="Doc",
+            configure_fts=True,
+        )
+    assert not [
+        cfg for cfg in db.list_text_indexes() if cfg["label_or_type"] == "Doc"
+    ]
+
+
+def test_failed_ingest_keeps_a_pre_existing_fts_index(db):
+    """Only an index this call registered may be rolled back."""
+    db.create_text_index("node", "Doc", ["text"])
+    with pytest.raises(DatabaseError):
+        db.index_documents(
+            [{"id": "1", "text": "fine"}, "not a dict"],
+            label="Doc",
+            configure_fts=True,
+        )
+    assert [cfg for cfg in db.list_text_indexes() if cfg["label_or_type"] == "Doc"]
+
+
+def test_ingest_is_incremental_not_transactional(db):
+    """Documented behaviour: rows before the failure stay, and re-running resumes."""
+    with pytest.raises(DatabaseError):
+        db.index_documents([{"id": "1", "text": "fine"}, "not a dict"], label="Doc")
+    assert len(db.match_nodes(labels=["Doc"])) == 1
+
+    report = db.index_documents(ROWS, label="Doc")
+    assert report.nodes_updated == 1  # row "1" is upserted, not duplicated
+    assert len(db.match_nodes(labels=["Doc"])) == 3

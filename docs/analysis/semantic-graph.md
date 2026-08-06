@@ -111,6 +111,10 @@ db.drop_semantic_graph()                           # generated edges only
 db.drop_semantic_graph(index="papers_vec")         # ...from one index only
 ```
 
+`replace=False` appends instead of rebuilding, and deduplicates against what is
+already stored — so it adds the edges a wider `k` discovers without stacking a
+second copy of the ones already there.
+
 !!! note "The rebuild is atomic"
     Neighbours are computed first — the slow part, minutes on a large corpus —
     and the old edges are swapped for the new ones inside a single short
@@ -128,11 +132,20 @@ report = db.refresh_semantic_graph(k=15, min_score=0.3)
 print(report)  # SemanticGraphReport(30 edges, 2 nodes, 100 skipped)
 ```
 
-`refresh_semantic_graph()` only processes nodes that have no *generated* edge for
-that `rel_type` and `index` yet. Hand-made relationships of the same type do not
-count as "already linked", and neither do edges generated from a different vector
-index — otherwise a single manual edge would exclude its endpoints from the
-semantic graph forever.
+`refresh_semantic_graph()` only processes nodes whose neighbourhood has already
+been searched — that is, nodes that are the *source* of a generated edge for this
+`rel_type` and `index`. Three things deliberately do **not** count as done:
+
+- hand-made relationships of the same type;
+- edges generated from a different vector index;
+- edges a node merely *received*, which say nothing about whether its own
+  neighbours were ever computed. A build cut short by `max_edges` leaves exactly
+  such nodes, and counting them would strand them permanently.
+
+Being strict here can re-search a node whose edges were all deduplicated away.
+That costs a lookup and creates nothing: the refresh deduplicates against edges
+already in the database, so running it repeatedly converges instead of
+accumulating.
 
 It will **not** notice that an existing node's neighbourhood changed — new
 documents can be a better match for old ones than what is currently stored.

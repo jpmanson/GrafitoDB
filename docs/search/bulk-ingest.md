@@ -101,14 +101,35 @@ db.semantic_search("nearest neighbours", k=10)
 db.text_search("nearest neighbours", k=10)
 ```
 
-It is off by default because it creates an index you did not ask for. You can
-also call `create_text_index()` yourself at any point — FTS5 indexes existing
-rows when created, so the order does not matter:
+It is off by default because it creates an index you did not ask for. If the
+ingest fails, an index registered by this call is removed again — one you had
+already created is left alone.
+
+You can also call `create_text_index()` yourself, but **do it before loading**:
+it registers the configuration and indexes rows as they are written. Documents
+already in the database need an explicit rebuild to become searchable:
 
 ```python
+db.create_text_index("node", "Paper", ["text"])   # before
 db.index_documents(rows, label="Paper")
+
+# or, if the documents are already loaded
 db.create_text_index("node", "Paper", ["text"])
+db.rebuild_text_index()
 ```
+
+!!! warning "The ingest is not atomic"
+    Rows are written as they are read, so a failure part-way through — a bad
+    row, an embedding provider timing out — leaves everything before it in the
+    database. That is deliberate: the alternative is holding a write
+    transaction open across every embedding call, which on a hosted embedder
+    blocks writers for minutes.
+
+    To resume, re-run with the remaining rows. With `upsert=True` (the default)
+    re-feeding rows that already landed updates them instead of duplicating, so
+    replaying the whole batch is safe. If you need all-or-nothing and your
+    embedder is local and fast, wrap the call in
+    `begin_transaction()`/`rollback()` yourself.
 
 ## End to End
 
