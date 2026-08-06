@@ -567,3 +567,83 @@ def test_directed_mode_also_deduplicates_against_the_database(db):
     first = db.create_semantic_graph(k=2, min_score=0.1, undirected=False)
     db.create_semantic_graph(k=2, min_score=0.1, undirected=False, replace=False)
     assert _generated_count(db) == first.edges_created
+
+
+# --- symmetrize modes ------------------------------------------------------
+
+
+def test_symmetrize_modes_order_by_edge_count(db):
+    """directed >= union >= mutual, by construction."""
+    counts = {}
+    for mode in ("directed", "union", "mutual"):
+        counts[mode] = db.create_semantic_graph(
+            k=3, min_score=0.0, symmetrize=mode
+        ).edges_created
+    assert counts["directed"] >= counts["union"] >= counts["mutual"]
+
+
+def test_mutual_keeps_only_reciprocated_pairs(db):
+    """Every mutual edge must also exist in the union graph."""
+    db.create_semantic_graph(k=2, min_score=0.0, symmetrize="mutual")
+    mutual_pairs = {
+        (min(r["a"], r["b"]), max(r["a"], r["b"]))
+        for r in db.execute(
+            "MATCH (a)-[r:SEMANTIC_SIMILAR]->(b) RETURN id(a) AS a, id(b) AS b"
+        )
+    }
+    db.create_semantic_graph(k=2, min_score=0.0, symmetrize="union")
+    union_pairs = {
+        (min(r["a"], r["b"]), max(r["a"], r["b"]))
+        for r in db.execute(
+            "MATCH (a)-[r:SEMANTIC_SIMILAR]->(b) RETURN id(a) AS a, id(b) AS b"
+        )
+    }
+    assert mutual_pairs <= union_pairs
+
+
+def test_mutual_emits_one_edge_per_pair(db):
+    db.create_semantic_graph(k=3, min_score=0.0, symmetrize="mutual")
+    edges = db.execute(
+        "MATCH (a)-[r:SEMANTIC_SIMILAR]->(b) RETURN id(a) AS a, id(b) AS b"
+    )
+    pairs = {(min(e["a"], e["b"]), max(e["a"], e["b"])) for e in edges}
+    assert len(pairs) == len(edges)
+
+
+def test_undirected_is_shorthand_for_symmetrize(db):
+    assert (
+        db.create_semantic_graph(k=2, min_score=0.0, undirected=True).edges_created
+        == db.create_semantic_graph(k=2, min_score=0.0, symmetrize="union").edges_created
+    )
+    assert (
+        db.create_semantic_graph(k=2, min_score=0.0, undirected=False).edges_created
+        == db.create_semantic_graph(k=2, min_score=0.0, symmetrize="directed").edges_created
+    )
+
+
+def test_explicit_symmetrize_overrides_undirected(db):
+    """A caller who names a mode means it, whatever the older flag says."""
+    explicit = db.create_semantic_graph(
+        k=2, min_score=0.0, undirected=True, symmetrize="directed"
+    ).edges_created
+    directed = db.create_semantic_graph(k=2, min_score=0.0, symmetrize="directed").edges_created
+    assert explicit == directed
+
+
+def test_unknown_symmetrize_mode_is_rejected(db):
+    with pytest.raises(DatabaseError, match="Unknown symmetrize mode"):
+        db.create_semantic_graph(symmetrize="reciprocal")
+
+
+def test_mutual_rebuild_is_idempotent(db):
+    first = db.create_semantic_graph(k=3, min_score=0.0, symmetrize="mutual")
+    second = db.create_semantic_graph(k=3, min_score=0.0, symmetrize="mutual")
+    assert first.edges_created == second.edges_created
+
+
+def test_mutual_refresh_converges(db):
+    db.create_semantic_graph(k=3, min_score=0.0, symmetrize="mutual")
+    settled = _generated_count(db)
+    for _ in range(3):
+        db.refresh_semantic_graph(k=3, min_score=0.0, symmetrize="mutual")
+    assert _generated_count(db) == settled

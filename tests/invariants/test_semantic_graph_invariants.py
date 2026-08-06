@@ -31,6 +31,7 @@ PER_CLUSTER = 5
 K_VALUES = [1, 3, 5]
 MIN_SCORES = [0.0, 0.5]
 DIRECTIONS = [True, False]
+SYMMETRIZE = ["union", "mutual", "directed"]
 
 
 def _corpus(**kwargs):
@@ -340,3 +341,85 @@ def test_a_settled_graph_creates_no_further_edges(corpus):
     corpus.db.create_semantic_graph(k=3, min_score=0.0)
     for _ in range(3):
         assert corpus.db.refresh_semantic_graph(k=3, min_score=0.0).edges_created == 0
+
+
+# --- symmetrize modes -------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", SYMMETRIZE)
+@pytest.mark.parametrize("k", K_VALUES)
+def test_symmetrize_modes_hold_the_same_structural_invariants(corpus, mode, k):
+    corpus.db.create_semantic_graph(k=k, min_score=0.0, symmetrize=mode)
+    edges = generated_edges(corpus.db)
+
+    assert not [e for e in edges if e["source"] == e["target"]]
+    directed = [(e["source"], e["target"]) for e in edges]
+    assert len(directed) == len(set(directed))
+    if mode != "directed":
+        assert len(edges) == len(undirected_pairs(edges))
+
+    out_degree: dict[int, int] = {}
+    for edge in edges:
+        out_degree[edge["source"]] = out_degree.get(edge["source"], 0) + 1
+    assert all(count <= k for count in out_degree.values())
+
+
+@pytest.mark.parametrize("k", K_VALUES)
+def test_mutual_is_a_subset_of_union(corpus, k):
+    """Requiring reciprocity can only remove pairs, never invent them."""
+    corpus.db.create_semantic_graph(k=k, min_score=0.0, symmetrize="mutual")
+    mutual = undirected_pairs(generated_edges(corpus.db))
+    corpus.db.create_semantic_graph(k=k, min_score=0.0, symmetrize="union")
+    union = undirected_pairs(generated_edges(corpus.db))
+    assert mutual <= union
+
+
+@pytest.mark.parametrize("k", K_VALUES)
+def test_union_is_a_subset_of_directed(corpus, k):
+    corpus.db.create_semantic_graph(k=k, min_score=0.0, symmetrize="union")
+    union = undirected_pairs(generated_edges(corpus.db))
+    corpus.db.create_semantic_graph(k=k, min_score=0.0, symmetrize="directed")
+    directed = undirected_pairs(generated_edges(corpus.db))
+    assert union <= directed
+
+
+@pytest.mark.parametrize("mode", SYMMETRIZE)
+def test_every_mode_rebuilds_idempotently(corpus, mode):
+    def build():
+        corpus.db.create_semantic_graph(k=3, min_score=0.0, symmetrize=mode)
+        return sorted((e["source"], e["target"]) for e in generated_edges(corpus.db))
+
+    assert build() == build()
+
+
+@pytest.mark.parametrize("mode", SYMMETRIZE)
+def test_every_mode_converges_on_refresh(corpus, mode):
+    corpus.db.create_semantic_graph(k=3, min_score=0.0, symmetrize=mode)
+    corpus.db.refresh_semantic_graph(k=3, min_score=0.0, symmetrize=mode)
+    settled = sorted((e["source"], e["target"]) for e in generated_edges(corpus.db))
+    for _ in range(3):
+        corpus.db.refresh_semantic_graph(k=3, min_score=0.0, symmetrize=mode)
+    assert sorted((e["source"], e["target"]) for e in generated_edges(corpus.db)) == settled
+
+
+def test_mutual_reduces_cross_cluster_noise():
+    """The reason mutual exists, measured against ground truth.
+
+    Overlapping clusters, where the modes actually differ: with tight clusters
+    neither produces cross-cluster edges at all.
+    """
+    built = _corpus(spread=0.35)
+    try:
+        def cross_fraction(mode: str) -> float:
+            built.db.create_semantic_graph(k=3, min_score=0.0, symmetrize=mode)
+            edges = generated_edges(built.db)
+            crossing = sum(
+                1
+                for edge in edges
+                if built.cluster_of(edge["source"]) != built.cluster_of(edge["target"])
+            )
+            return crossing / len(edges)
+
+        assert cross_fraction("mutual") < cross_fraction("union")
+    finally:
+        built.close()
