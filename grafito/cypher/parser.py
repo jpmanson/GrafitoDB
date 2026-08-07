@@ -1851,6 +1851,16 @@ class Parser:
         items = []
 
         while True:
+            # `RETURN *` — every variable in scope. Checked before parsing an
+            # expression, where a bare `*` is a multiplication operator.
+            if self.current_token().type == TokenType.ASTERISK:
+                self.advance()
+                items.append(ReturnItem(star=True))
+                if self.current_token().type == TokenType.COMMA:
+                    self.advance()
+                    continue
+                break
+
             # Parse return expression with full operator support
             expr = self._parse_expression()
 
@@ -2130,8 +2140,19 @@ class Parser:
         # Parse return items (similar to RETURN)
         items = []
         while True:
-            # Parse expression
-            expr = self._parse_primary_expression()
+            # `WITH *` — every variable in scope, as RETURN accepts.
+            if self.current_token().type == TokenType.ASTERISK:
+                self.advance()
+                items.append(ReturnItem(star=True))
+                if self.current_token().type == TokenType.COMMA:
+                    self.advance()
+                    continue
+                break
+
+            # Full expressions, as RETURN accepts: WITH only read primary
+            # expressions, so `WITH n.age * 2 AS doubled` was a syntax error
+            # while the identical RETURN item parsed.
+            expr = self._parse_expression()
 
             # Check for AS alias
             alias = None

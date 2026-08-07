@@ -191,6 +191,67 @@ WHERE cityCount > 10
 RETURN city, cityCount
 ```
 
+### WITH Scope
+
+A `WITH` clause projects, then filters — so its own `WHERE` sees the aliases
+that clause defines:
+
+```cypher
+MATCH (p:Person)
+WITH p, p.age * 2 AS doubled
+WHERE doubled > 50
+RETURN p.name, doubled
+```
+
+`WITH` accepts the same expressions `RETURN` does: arithmetic, comparisons,
+function calls, patterns.
+
+The rows the predicate sees also keep the bindings that came *into* the clause,
+so filtering on a variable the `WITH` did not carry forward works:
+
+```cypher
+MATCH (p:Person)-[r:KNOWS]->(other)
+WITH p
+WHERE r.weight > 5        // `r` is not projected, but still visible
+RETURN p.name
+```
+
+Standard Cypher drops those from scope and would reject the second query. This
+is deliberately more permissive.
+
+### Returning Everything
+
+`*` stands for every variable currently bound:
+
+```cypher
+MATCH (p:Person)-[r:KNOWS]->(other)
+RETURN *                          -- p, r and other
+
+MATCH (p:Person)-[r:KNOWS]->(other)
+WITH *                            -- carry all three forward
+WHERE r.weight > 5
+RETURN p.name
+```
+
+It combines with named items, which is the usual way to add something without
+listing what you already have:
+
+```cypher
+MATCH (p:Person)
+WITH *, p.age * 2 AS doubled
+WHERE doubled > 50
+RETURN p.name, doubled
+```
+
+`*` means *variables*, not the columns an earlier stage produced: after
+`WITH p, p.age AS age`, a following `WITH *` carries `p` and `age`, and nothing
+named `p.name`.
+
+!!! note "`*` with an aggregate groups by everything in scope"
+    `WITH *, count(m) AS friends` groups by every bound variable, `m` included —
+    so it produces one row per `(n, m)` pair, not one row per `n`. When you want
+    a count per `n`, name the grouping key: `WITH n, count(m) AS friends`.
+
 ## Advanced Return Patterns
 
 ### Conditional Values

@@ -324,9 +324,12 @@ class ReturnItem(ASTNode):
     Can be:
     - Variable: n
     - Property access: n.name
+    - ``*``, standing for every variable currently in scope, in which case
+      ``star`` is set and ``expression`` is None
     """
-    expression: Expression
+    expression: Optional[Expression] = None
     alias: Optional[str] = None  # For future: RETURN n.name AS name
+    star: bool = False
 
 
 @dataclass

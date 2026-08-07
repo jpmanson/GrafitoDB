@@ -137,13 +137,7 @@ def test_usable_as_a_returned_value(db):
 
 
 def test_usable_in_with(db):
-    """Projecting through WITH.
-
-    Note: filtering on the projected alias inside the same WITH
-    (``WITH ... AS h WHERE h``) is unsupported for *any* expression, not just
-    patterns — ``WITH n, n.id AS x WHERE x = 'a'`` fails the same way. Filter in
-    a later clause instead.
-    """
+    """Projecting through WITH."""
     rows = db.execute("""
         MATCH (n:Doc)
         WITH n, (n)-->() AS has_out
