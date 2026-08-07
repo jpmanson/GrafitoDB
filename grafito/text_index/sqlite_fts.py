@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from ..exceptions import DatabaseError
 from .base import TextIndex
 
 
@@ -78,22 +79,29 @@ class SQLiteFTSIndex(TextIndex):
             
         Returns:
             List of (id, score) tuples, ordered by relevance.
+
+        Raises:
+            DatabaseError: If the query is not valid FTS5 syntax.
         """
         if not query or not query.strip():
             return []
-        
-        cursor = self.conn.execute(
-            """
-            SELECT entity_id, bm25(fts_index) AS score
-            FROM fts_index
-            WHERE label_type = ? AND fts_index MATCH ?
-            ORDER BY score ASC
-            LIMIT ?
-            """,
-            (self.name, query, k),
-        )
-        
-        return [(int(row[0]), float(row[1])) for row in cursor.fetchall()]
+
+        try:
+            cursor = self.conn.execute(
+                """
+                SELECT entity_id, bm25(fts_index) AS score
+                FROM fts_index
+                WHERE label_type = ? AND fts_index MATCH ?
+                ORDER BY score ASC
+                LIMIT ?
+                """,
+                (self.name, query, k),
+            )
+            rows = cursor.fetchall()
+        except sqlite3.Error as exc:
+            raise DatabaseError(f"Failed to search text index: {exc}", exc) from exc
+
+        return [(int(row[0]), float(row[1])) for row in rows]
 
     def save(self, path: str) -> None:
         """Save is a no-op for SQLite FTS (data is in the database)."""

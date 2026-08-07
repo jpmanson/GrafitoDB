@@ -217,6 +217,23 @@ def test_text_subgraph_seeds_from_fts(chain):
     assert sub.hops[chain.node_ids["C"]] == 0
 
 
+@pytest.mark.parametrize("query", ["gamma?", "gamma, retrieval", "gamma & retrieval"])
+def test_text_subgraph_tolerates_natural_language_punctuation(chain, query):
+    """FTS5 would reject these outright; seeding retries them as literal terms."""
+    sub = chain.text_subgraph(query, k=2, expand=0)
+    assert "C" in _names(sub)
+
+
+def test_text_subgraph_still_raises_when_the_retry_cannot_help(chain):
+    """Tolerating punctuation must not turn real failures into empty graphs."""
+    # Nothing to quote as a term: the FTS syntax error stands.
+    with pytest.raises(DatabaseError, match="Failed to search text index"):
+        chain.text_subgraph("?!", k=2)
+    # And validation errors survive the retry rather than being swallowed.
+    with pytest.raises(DatabaseError, match="k must be"):
+        chain.text_subgraph("gamma?", k=0)
+
+
 def test_empty_search_yields_an_empty_subgraph(chain):
     sub = chain.subgraph([], expand=2)
     assert sub.is_empty()

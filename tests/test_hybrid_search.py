@@ -168,6 +168,41 @@ def test_without_a_vector_index_the_text_side_carries_it():
     database.close()
 
 
+@pytest.mark.parametrize(
+    "punctuated,plain",
+    [
+        ("graph databases?", "graph databases"),
+        ("graph & databases", "graph databases"),
+        ("what are graph databases, exactly?", "what are graph databases exactly"),
+    ],
+)
+def test_punctuation_does_not_change_the_ranking(db, punctuated, plain):
+    """FTS5 parses '?' and ',' as syntax; a question must rank like a bare query."""
+    assert _ids(db.hybrid_search(punctuated, k=3)) == _ids(db.hybrid_search(plain, k=3))
+
+
+def test_the_lexical_side_survives_punctuation():
+    """With no vector index there is nowhere else for these hits to come from."""
+    database = GrafitoDatabase(':memory:')
+    database.create_text_index("node", "Doc", ["text"])
+    for row in DOCS:
+        database.create_node(labels=["Doc"], properties=row)
+
+    assert "d1" in _ids(database.hybrid_search("graph databases?", k=2))
+    database.close()
+
+
+def test_a_query_of_pure_punctuation_finds_nothing():
+    """Nothing to quote as a term, and no vector index to fall back on."""
+    database = GrafitoDatabase(':memory:')
+    database.create_text_index("node", "Doc", ["text"])
+    for row in DOCS:
+        database.create_node(labels=["Doc"], properties=row)
+
+    assert database.hybrid_search("?!", k=2) == []
+    database.close()
+
+
 def test_with_neither_index_it_returns_nothing():
     database = GrafitoDatabase(':memory:')
     database.create_node(labels=["Doc"], properties={"id": "d1", "text": "graph"})

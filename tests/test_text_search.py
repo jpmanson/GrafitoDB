@@ -3,6 +3,8 @@ import sqlite3
 import pytest
 
 from grafito import GrafitoDatabase
+from grafito.exceptions import DatabaseError
+from grafito.text_index.sqlite_fts import SQLiteFTSIndex
 
 
 def _fts5_available() -> bool:
@@ -77,3 +79,34 @@ def test_text_search_rebuild_index(db):
     results = db.text_search("Graph", labels=["Doc"])
     assert len(results) == 1
     assert results[0]["entity"].id == node.id
+
+
+@pytest.mark.parametrize("query", ["graph databases?", "graph, databases", '"unbalanced'])
+def test_text_search_reports_invalid_fts_syntax_as_a_database_error(db, query):
+    """text_search takes FTS5 syntax, so bad syntax fails — but as our error type.
+
+    Free-text callers want :meth:`hybrid_search`, which retries these as literals.
+    """
+    db.create_text_index("node", "Doc", ["title"])
+    db.create_node(labels=["Doc"], properties={"title": "Graph Databases"})
+
+    with pytest.raises(DatabaseError, match="Failed to search text index"):
+        db.text_search(query, labels=["Doc"])
+
+
+def test_text_search_still_honours_fts_operators(db):
+    """The wrapping must not swallow the query language the docs promise."""
+    db.create_text_index("node", "Doc", ["title"])
+    db.create_node(labels=["Doc"], properties={"title": "Graph Databases"})
+
+    assert len(db.text_search("graph AND databases", labels=["Doc"])) == 1
+    assert len(db.text_search("graph OR nothing", labels=["Doc"])) == 1
+    assert len(db.text_search("dat*", labels=["Doc"])) == 1
+
+
+def test_custom_fts_backend_reports_invalid_syntax_as_a_database_error(db):
+    index = SQLiteFTSIndex(db.conn, "custom")
+    index.add([1], ["graph databases"])
+
+    with pytest.raises(DatabaseError, match="Failed to search text index"):
+        index.search("graph databases?", k=2)

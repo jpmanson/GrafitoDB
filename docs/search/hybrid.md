@@ -7,6 +7,13 @@ Combining full-text search (BM25) with vector search for better results.
     use `DocumentIngestor.hybrid_search()` (RRF fusion, ownership/generation
     filters). Manual recipes below still apply to ad-hoc indexes.
 
+!!! warning "Recipes below pass the raw query to `text_search`"
+    That method takes [FTS5 syntax](fulltext.md#query-syntax), so a user-typed
+    question raises `DatabaseError` on its punctuation. `db.hybrid_search()`
+    handles this for you by retrying as literal terms; in your own recipe,
+    quote the tokens (`' '.join(f'"{t}"' for t in re.findall(r'\w+', query))`)
+    before calling `text_search`.
+
 ## Why Hybrid Search?
 
 | Search Type | Strengths | Weaknesses |

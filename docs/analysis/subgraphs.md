@@ -91,6 +91,10 @@ arguments:
 sub = db.text_subgraph("attention mechanism", k=20, expand=1)
 ```
 
+Unlike [`text_search()`](../search/fulltext.md#query-syntax), it accepts
+user-typed questions: a query FTS5 cannot parse is retried as literal terms
+instead of raising.
+
 `hybrid_subgraph()` seeds from both at once, fused with Reciprocal Rank Fusion:
 
 ```python
