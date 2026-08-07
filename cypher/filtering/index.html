@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -1484,6 +1484,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#what-the-pattern-can-contain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Pattern Can Contain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#exists" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1495,10 +1506,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#filtering-on-patterns" class="md-nav__link">
+  <a href="#as-a-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Filtering on Patterns
+        As a Value
       
     </span>
   </a>
@@ -3701,6 +3712,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#what-the-pattern-can-contain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Pattern Can Contain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#exists" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3712,10 +3734,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#filtering-on-patterns" class="md-nav__link">
+  <a href="#as-a-value" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Filtering on Patterns
+        As a Value
       
     </span>
   </a>
@@ -4149,58 +4171,104 @@ condition (see <a href="../overview/#query-parameters">Query Parameters</a>):</p
 <div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;min_age&quot;</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span> <span class="s2">&quot;names&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Alice&quot;</span><span class="p">,</span> <span class="s2">&quot;Bob&quot;</span><span class="p">]})</span>
 </span></code></pre></div>
 <h2 id="pattern-filtering">Pattern Filtering</h2>
-<h3 id="exists">EXISTS</h3>
+<p>A pattern can be used directly as a truth value: it is true when it matches at
+least once, holding fixed whatever variables are already bound.</p>
 <div class="language-cypher highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1">// Persons who know someone</span>
 </span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">((</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">())</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">()</span>
 </span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
 </span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>
-</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="c1">// Persons who work at a company</span>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="c1">// ...and the reason this exists: persons who know nobody</span>
 </span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">((</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">WORKS_AT</span><span class="o">]-&gt;</span><span class="p">(:</span><span class="n">Company</span><span class="p">))</span>
+</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="k">WHERE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">()</span>
 </span><span id="__span-22-9"><a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
 </span></code></pre></div>
-<h3 id="filtering-on-patterns">Filtering on Patterns</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1">// Persons who know someone over 30</span>
-</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">((</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">({</span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">}))</span>
-</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
+<p>Matching stops at the first hit, so a node with thousands of neighbours costs
+the same as one with a single edge — unlike counting them.</p>
+<h3 id="what-the-pattern-can-contain">What the Pattern Can Contain</h3>
+<p>Anything <code>MATCH</code> accepts: types, labels, direction, inline properties, and
+variable-length paths.</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">WORKS_AT</span><span class="o">]-&gt;</span><span class="p">(:</span><span class="n">Company</span><span class="p">)</span><span class="w">          </span><span class="c1">// label on the far node</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="w"> </span><span class="p">{</span><span class="n">since</span><span class="p">:</span><span class="w"> </span><span class="m">2020</span><span class="p">}</span><span class="o">]-&gt;</span><span class="p">()</span><span class="w">       </span><span class="c1">// property on the relationship</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">--&gt;</span><span class="p">({</span><span class="n">age</span><span class="p">:</span><span class="w"> </span><span class="m">30</span><span class="p">})</span><span class="w">                    </span><span class="c1">// property on the far node</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">()</span><span class="o">-[</span><span class="p">:</span><span class="n">REPORTS_TO</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="w">                </span><span class="c1">// incoming</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="err">--</span><span class="p">()</span><span class="w">                              </span><span class="c1">// either direction</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">*</span><span class="m">1</span><span class="p">..</span><span class="m">3</span><span class="o">]-&gt;</span><span class="p">(:</span><span class="n">Company</span><span class="p">)</span><span class="w">              </span><span class="c1">// within three hops</span>
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">--&gt;</span><span class="p">()</span><span class="o">--&gt;</span><span class="p">(:</span><span class="n">Company</span><span class="p">)</span><span class="w">                </span><span class="c1">// multi-hop</span>
 </span></code></pre></div>
+<p>Variables already bound by the surrounding query keep their values, so a pattern
+over two of them asks about those specific nodes:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="n">c</span><span class="p">:</span><span class="n">Company</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Acme&#39;</span><span class="p">})</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="k">WHERE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">WORKS_AT</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="w">          </span><span class="c1">// everyone who does not work at Acme</span>
+</span></code></pre></div>
+<h3 id="exists">EXISTS</h3>
+<p><code>EXISTS()</code> over a pattern means the same thing, and reads better when combined
+with other predicates:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">((</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">())</span><span class="w"> </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">age</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">30</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
+</span></code></pre></div>
+<p>Note that <code>EXISTS()</code> is overloaded: given a property it tests for presence
+(see <a href="#property-existence">Property Existence</a>), given a pattern it tests for a
+match.</p>
+<h3 id="as-a-value">As a Value</h3>
+<p>A pattern predicate is an ordinary boolean expression, so it can be returned or
+projected:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">()</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">is_connected</span>
+</span></code></pre></div>
+<p>To <em>count</em> matches rather than test for one, use a
+<a href="../collections/">pattern comprehension</a>:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="o">[</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="n">f</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">friends</span>
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Filtering on a WITH alias</p>
+<p><code>WITH n, (n)--&gt;() AS connected WHERE connected</code> does not work — and not
+because of patterns: referring to a <code>WITH</code> alias inside that same clause's
+<code>WHERE</code> is unsupported for any expression. Filter in a following clause:</p>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="k">WITH</span><span class="w"> </span><span class="n">n</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">()</span>
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">n</span><span class="p">.</span><span class="n">name</span>
+</span></code></pre></div>
+</div>
 <h2 id="property-existence">Property Existence</h2>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1">// Using EXISTS for property (alternate to IS NOT NULL)</span>
-</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">email</span><span class="p">)</span>
-</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
-</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>
-</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="c1">// Combined with value check</span>
-</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
-</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">age</span><span class="p">)</span><span class="w"> </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">age</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">25</span>
-</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1">// Using EXISTS for property (alternate to IS NOT NULL)</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">email</span><span class="p">)</span>
+</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
+</span><span id="__span-29-5"><a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>
+</span><span id="__span-29-6"><a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="c1">// Combined with value check</span>
+</span><span id="__span-29-7"><a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Person</span><span class="p">)</span>
+</span><span id="__span-29-8"><a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">EXISTS</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">age</span><span class="p">)</span><span class="w"> </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">age</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">25</span>
+</span><span id="__span-29-9"><a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span>
 </span></code></pre></div>
 <h2 id="examples-by-use-case">Examples by Use Case</h2>
 <h3 id="user-management">User Management</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1">// Active users with verified email</span>
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">u</span><span class="p">:</span><span class="n">User</span><span class="p">)</span>
-</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
-</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">emailVerified</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
-</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">createdAt</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="n">date</span><span class="p">(</span><span class="s">&#39;2024-01-01&#39;</span><span class="p">)</span>
-</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">email</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="c1">// Active users with verified email</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">u</span><span class="p">:</span><span class="n">User</span><span class="p">)</span>
+</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
+</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">emailVerified</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
+</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">createdAt</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="n">date</span><span class="p">(</span><span class="s">&#39;2024-01-01&#39;</span><span class="p">)</span>
+</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">u</span><span class="p">.</span><span class="n">email</span>
 </span></code></pre></div>
 <h3 id="product-search">Product Search</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1">// Available products in category</span>
-</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Product</span><span class="p">)</span>
-</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">category</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;electronics&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;computers&#39;</span><span class="o">]</span>
-</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">stock</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">0</span>
-</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">price</span><span class="w"> </span><span class="p">&gt;=</span><span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">price</span><span class="w"> </span><span class="p">&lt;=</span><span class="w"> </span><span class="m">500</span><span class="p">)</span>
-</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">price</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1">// Available products in category</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">:</span><span class="n">Product</span><span class="p">)</span>
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">category</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="o">[</span><span class="s">&#39;electronics&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;computers&#39;</span><span class="o">]</span>
+</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">stock</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="m">0</span>
+</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">price</span><span class="w"> </span><span class="p">&gt;=</span><span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="n">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">price</span><span class="w"> </span><span class="p">&lt;=</span><span class="w"> </span><span class="m">500</span><span class="p">)</span>
+</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">price</span>
 </span></code></pre></div>
 <h3 id="social-network">Social Network</h3>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c1">// Active friends in same city</span>
-</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">me</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">friend</span><span class="p">)</span>
-</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
-</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">city</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">me</span><span class="p">.</span><span class="n">city</span>
-</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">me</span><span class="p">.</span><span class="n">name</span>
-</span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">name</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="c1">// Active friends in same city</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">me</span><span class="p">:</span><span class="n">Person</span><span class="w"> </span><span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Alice&#39;</span><span class="p">})</span><span class="o">-[</span><span class="p">:</span><span class="n">KNOWS</span><span class="o">]-&gt;</span><span class="p">(</span><span class="n">friend</span><span class="p">)</span>
+</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="k">true</span>
+</span><span id="__span-32-4"><a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">city</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">me</span><span class="p">.</span><span class="n">city</span>
+</span><span id="__span-32-5"><a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="w">  </span><span class="n">AND</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="n">me</span><span class="p">.</span><span class="n">name</span>
+</span><span id="__span-32-6"><a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">friend</span><span class="p">.</span><span class="n">name</span>
 </span></code></pre></div>
 
 

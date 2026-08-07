@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -1947,6 +1947,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#how-two-concepts-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How two concepts connect
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3304,6 +3315,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#how-two-concepts-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How two concepts connect
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3445,8 +3467,12 @@ when you need to.</p>
 <td>Constrain the far end of a pattern by similarity</td>
 </tr>
 <tr>
+<td><code>db.hybrid_search()</code></td>
+<td>Vector + lexical fused with RRF. Usually the right default: the two modes fail differently</td>
+</tr>
+<tr>
 <td><code>DocumentIngestor.hybrid_search()</code></td>
-<td>Vector + lexical fused with RRF (<code>grafito.document.hybrid.rrf_fuse</code>)</td>
+<td>The same fusion at passage level, with ownership filters</td>
 </tr>
 <tr>
 <td><code>OKFBundle.search()</code></td>
@@ -3471,12 +3497,20 @@ pre-filter. Both endpoints of a path can be seeded semantically:</p>
 </thead>
 <tbody>
 <tr>
-<td><a href="../../analysis/subgraphs/"><code>db.semantic_subgraph()</code></a></td>
-<td>Hits plus their neighbourhood, with <code>hops</code>/<code>scores</code> provenance</td>
+<td><a href="../../analysis/subgraphs/"><code>db.hybrid_subgraph()</code></a></td>
+<td>Fused hits plus their neighbourhood, with <code>hops</code>/<code>scores</code> provenance</td>
+</tr>
+<tr>
+<td><code>db.semantic_subgraph()</code> / <code>db.text_subgraph()</code></td>
+<td>The same, seeded by one retrieval mode</td>
 </tr>
 <tr>
 <td><code>db.subgraph()</code></td>
-<td>Same, from any seeds — including your own fused hits</td>
+<td>The same, from any seeds — including a fusion of your own</td>
+</tr>
+<tr>
+<td><a href="../../analysis/subgraphs/#context-from-routes-not-rankings"><code>db.path_context()</code></a></td>
+<td>The routes <em>between</em> concepts, when the answer is what connects them</td>
 </tr>
 <tr>
 <td><code>DocumentIngestor.expand()</code></td>
@@ -3599,7 +3633,7 @@ for the agent when the query genuinely needs several retrieval rounds.</p>
 <tbody>
 <tr>
 <td><a href="../../analysis/graph-algorithms/"><code>db.communities()</code></a></td>
-<td>Thematic clusters</td>
+<td>Thematic clusters, optionally labelled with <code>label_terms</code></td>
 </tr>
 <tr>
 <td><code>db.centrality()</code></td>
@@ -3644,16 +3678,32 @@ want to keep, then pack the union.</p>
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">prompt</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">pack</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="thematic-map-of-a-corpus">Thematic map of a corpus</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">symmetrize</span><span class="o">=</span><span class="s2">&quot;mutual&quot;</span><span class="p">)</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                        <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">nodes</span><span class="p">[:</span><span class="mi">3</span><span class="p">]])</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                        <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">label_terms</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">] — </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> documents&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+<p><code>symmetrize="mutual"</code> keeps only reciprocated neighbours, which cuts the
+cross-cluster edges that blur communities — at the cost of needing a larger <code>k</code>.</p>
+<h3 id="how-two-concepts-connect">How two concepts connect</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">sub</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">path_context</span><span class="p">(</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="p">[</span><span class="s2">&quot;retry policy&quot;</span><span class="p">,</span> <span class="s2">&quot;payment provider outage&quot;</span><span class="p">],</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">max_hops</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">paths</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot; → &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">route</span><span class="p">))</span>
+</span></code></pre></div>
+<p>An empty result means they are not connected within <code>max_hops</code> — which is an
+answer, and one a top-k search would have hidden behind plausible-looking hits.</p>
 <h2 id="what-is-missing">What Is Missing</h2>
-<p>There is <strong>no retrieval evaluation harness</strong> in GrafitoDB. Every knob on this
-page — <code>expand</code> depth, reranker choice, <code>min_score</code>, RRF weights, whether
-graph-aware reranking helps at all — changes retrieval quality in ways that are
-not predictable from first principles, and nothing here measures that.</p>
+<p>Retrieval quality is still unmeasured. There is an
+<a href="https://github.com/jpmanson/GrafitoDB/tree/main/tests/invariants">invariant harness</a>
+covering the <em>structural</em> properties — that a rebuild is atomic, that a refresh
+converges, that no node is stranded — and it has caught real defects. But the
+knobs on this page (<code>expand</code> depth, reranker choice, <code>min_score</code>, RRF weights,
+<code>symmetrize</code>, whether graph-aware reranking helps at all) change retrieval
+<em>quality</em> in ways nothing here measures.</p>
 <p>Build a small labelled set of queries and expected documents for your corpus
 before tuning. Without one you are guessing, and the guesses tend to favour
 whatever is most elaborate rather than what works.</p>

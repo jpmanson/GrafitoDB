@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.7.2
+          v0.8.0
         </li>
       </ul>
     
@@ -1940,6 +1940,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Controlling the Edge Count">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mutual-k-nn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mutual k-NN
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3041,6 +3058,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Controlling the Edge Count">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mutual-k-nn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mutual k-NN
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3182,23 +3216,126 @@ negated distances (<code>&lt;= 0</code>), so any positive threshold would build 
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>                  <span class="c1"># DatabaseError on an l2 index</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=-</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># explicit, and meaningful</span>
 </span></code></pre></div>
-<p><code>undirected=True</code> (the default) emits one edge per pair instead of one per
-direction, roughly halving the count. Query it with an undirected pattern:</p>
+<p><code>symmetrize</code> decides how each node's k-nearest list becomes edges:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Keeps a pair when</th>
+<th>Relative size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"union"</code> (default)</td>
+<td>either node chose the other</td>
+<td>baseline</td>
+</tr>
+<tr>
+<td><code>"mutual"</code></td>
+<td><strong>both</strong> nodes chose the other</td>
+<td>much smaller</td>
+</tr>
+<tr>
+<td><code>"directed"</code></td>
+<td>one edge per node per neighbour</td>
+<td>~2× union</td>
+</tr>
+</tbody>
+</table>
+<p><code>union</code> and <code>mutual</code> emit one edge per pair, so query them with an undirected
+pattern:</p>
 <div class="language-cypher highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">MATCH</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">-[</span><span class="p">:</span><span class="n">SEMANTIC_SIMILAR</span><span class="o">]-</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="w">   </span><span class="err">--</span><span class="w"> </span><span class="n">note</span><span class="p">:</span><span class="w"> </span><span class="n">no</span><span class="w"> </span><span class="n">arrow</span>
 </span></code></pre></div>
-<p><code>labels</code> restricts which nodes participate, and <code>max_edges</code> caps the build
-outright:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Article&quot;</span><span class="p">],</span> <span class="n">max_edges</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)</span>
+<p>(<code>undirected=True/False</code> is the older shorthand for <code>union</code>/<code>directed</code> and still
+works; an explicit <code>symmetrize</code> wins.)</p>
+<h3 id="mutual-k-nn">Mutual k-NN</h3>
+<p>Reciprocity removes exactly the edges that do the most damage to clustering. A
+node sitting at the edge of a cluster gets pulled into distant nodes' neighbour
+lists without them appearing in its own — those one-sided links are what glue
+unrelated groups together.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">symmetrize</span><span class="o">=</span><span class="s2">&quot;mutual&quot;</span><span class="p">)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span> <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">It trades coverage for precision — raise <code>k</code> with it</p>
+<p>Measured on synthetic clusters with deliberate overlap, three planted
+clusters of six nodes:</p>
+<table>
+<thead>
+<tr>
+<th><code>k</code></th>
+<th>mode</th>
+<th>edges</th>
+<th>crossing clusters</th>
+<th>communities found</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>union</td>
+<td>40</td>
+<td>40%</td>
+<td>3</td>
+</tr>
+<tr>
+<td>3</td>
+<td>mutual</td>
+<td>14</td>
+<td><strong>14%</strong></td>
+<td><strong>8</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>union</td>
+<td>59</td>
+<td>44%</td>
+<td>3</td>
+</tr>
+<tr>
+<td>5</td>
+<td>mutual</td>
+<td>31</td>
+<td>39%</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<p>At <code>k=3</code>, <code>mutual</code> cuts cross-cluster edges from 40% to 14% — and shatters
+the three clusters into eight fragments, because too few pairs survive to
+keep each cluster connected. At <code>k=5</code> the fragmentation is gone, and so is
+most of the advantage.</p>
+<p>So <code>mutual</code> is not a free improvement: it needs a larger <code>k</code> than you would
+use with <code>union</code>, and the right value depends on your data. This is what the
+numbers looked like on one synthetic corpus — measure it on yours.</p>
+</div>
+<p><code>labels</code> restricts which nodes participate, and <code>max_edges</code> caps the build:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Article&quot;</span><span class="p">],</span> <span class="n">max_edges</span><span class="o">=</span><span class="mi">100_000</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The cap is enforced <strong>between nodes</strong>, so it can overshoot by up to <code>k-1</code>.
+That is deliberate: a node cut off half way through its neighbours would still
+look processed — it is the source of an edge — and no later refresh would
+finish it. Because every node a capped build does process is complete, running
+<code>refresh_semantic_graph()</code> under the same cap makes progress each time and
+eventually produces the whole graph:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_edges</span><span class="o">=</span><span class="mi">50_000</span><span class="p">)</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">while</span> <span class="n">db</span><span class="o">.</span><span class="n">refresh_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_edges</span><span class="o">=</span><span class="mi">50_000</span><span class="p">)</span><span class="o">.</span><span class="n">edges_created</span><span class="p">:</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="k">pass</span>   <span class="c1"># each pass links another batch of nodes, completely</span>
+</span></code></pre></div>
+<p>Loop on <code>edges_created</code>, not on <code>nodes_processed</code>. A node whose every edge was
+already contributed by its neighbours has no outgoing edge of its own, so it is
+re-searched on each pass and produces nothing — a few percent of the corpus,
+harmless but enough that <code>nodes_processed</code> never reaches zero.</p>
 <h2 id="provenance-and-rebuilding">Provenance and Rebuilding</h2>
 <p>Every generated edge carries <code>score</code>, <code>index</code>, <code>generated_by</code>, and
 <code>generated_at</code>. Those last two are what make rebuilds safe: <code>replace=True</code> (the
 default) deletes only edges this method created <strong>from the same index</strong>, so both
 a hand-made <code>SEMANTIC_SIMILAR</code> relationship and edges generated from a different
 vector index survive a rebuild.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>      <span class="c1"># idempotent: re-running replaces</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">()</span>                           <span class="c1"># generated edges only</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;papers_vec&quot;</span><span class="p">)</span>         <span class="c1"># ...from one index only</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>      <span class="c1"># idempotent: re-running replaces</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">()</span>                           <span class="c1"># generated edges only</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">db</span><span class="o">.</span><span class="n">drop_semantic_graph</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;papers_vec&quot;</span><span class="p">)</span>         <span class="c1"># ...from one index only</span>
 </span></code></pre></div>
 <p><code>replace=False</code> appends instead of rebuilding, and deduplicates against what is
 already stored — so it adds the edges a wider <code>k</code> discovers without stacking a
@@ -3213,9 +3350,9 @@ missing.</p>
 </div>
 <h2 id="incremental-updates">Incremental Updates</h2>
 <p>After adding documents, link the new ones without rebuilding everything:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">new_rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Doc&quot;</span><span class="p">)</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">refresh_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># SemanticGraphReport(30 edges, 2 nodes, 100 skipped)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">db</span><span class="o">.</span><span class="n">index_documents</span><span class="p">(</span><span class="n">new_rows</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Doc&quot;</span><span class="p">)</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">report</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">refresh_semantic_graph</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">min_score</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>  <span class="c1"># SemanticGraphReport(30 edges, 2 nodes, 100 skipped)</span>
 </span></code></pre></div>
 <p><code>refresh_semantic_graph()</code> only processes nodes whose neighbourhood has already
 been searched — that is, nodes that are the <em>source</em> of a generated edge for this
@@ -3237,15 +3374,15 @@ Only a full rebuild fixes that, so schedule one periodically if your corpus
 keeps growing.</p>
 <h2 id="keeping-analysis-honest">Keeping Analysis Honest</h2>
 <p>Once these edges exist, every graph analysis needs to say whether it wants them:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Structure of the domain</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">db</span><span class="o">.</span><span class="n">centrality</span><span class="p">(</span><span class="s2">&quot;pagerank&quot;</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Structure of the embedding space</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span> <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Structure of the domain</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">db</span><span class="o">.</span><span class="n">centrality</span><span class="p">(</span><span class="s2">&quot;pagerank&quot;</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Structure of the embedding space</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="n">db</span><span class="o">.</span><span class="n">communities</span><span class="p">(</span><span class="s2">&quot;louvain&quot;</span><span class="p">,</span> <span class="n">rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">],</span> <span class="n">weight_property</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>The same applies to <a href="../subgraphs/">subgraph expansion</a> — a single hop through
 similarity edges reaches a large part of the database:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">db</span><span class="o">.</span><span class="n">semantic_subgraph</span><span class="p">(</span><span class="s2">&quot;agents&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">db</span><span class="o">.</span><span class="n">semantic_subgraph</span><span class="p">(</span><span class="s2">&quot;agents&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">exclude_rel_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SEMANTIC_SIMILAR&quot;</span><span class="p">])</span>
 </span></code></pre></div>
 <h2 id="api-reference">API Reference</h2>
 
