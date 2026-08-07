@@ -27,12 +27,75 @@ the wrong one is the most common way to make this harder than it is.
 | Level | Use when | Entry point |
 | --- | --- | --- |
 | **Graph** | Your data is already a graph, or you want full control of retrieval and expansion | [`semantic_subgraph()`](../analysis/subgraphs.md) |
-| **Documents** | You have files or long text to chunk, retrieve at passage level, and cite | `DocumentIngestor` |
+| **Documents** | You have files or long text to chunk, retrieve at passage level, and cite | [`DocumentIngestor`](../search/document-chunking.md) |
 | **OKF** | You want a governed knowledge base: provenance, trust levels, supersession, review workflow | [`OKFBundle`](../integrations/okf.md) |
 
 They stack rather than compete — OKF is built on documents, documents on the
 graph — but you should pick one as your primary interface and drop down only
 when you need to.
+
+### Graph
+
+You hold the nodes and edges; GrafitoDB supplies retrieval and expansion over
+them. Nothing is written on your behalf, so the labels, properties and
+relationship types stay exactly what you designed — and everything else on this
+page (`semantic_search`, `hybrid_subgraph`, `communities`, Cypher vector search)
+works directly on them.
+
+Pick this level when the entities *are* the unit of retrieval: papers, tickets,
+people, products. The cost is that chunking, reading order, ids that survive
+re-ingest and citation offsets are yours to build if the corpus is long text.
+
+### Documents
+
+[`DocumentIngestor`](../search/document-chunking.md) turns text into a managed
+passage graph and gives back the four verbs a passage-level RAG needs:
+
+| Verb | What you get |
+| --- | --- |
+| `ingest(text, document_key=…)` | `Document` → `DocumentVersion` → `Chunk` nodes, plus a `Section` tree (`HAS_SECTION`) when the text is markdown-shaped and `hierarchy` is on. Embeds in one batched call if `embed_index` is set |
+| `search()` / `hybrid_search()` | Top-k over *this* helper's passages only — filtered to the managed nodes, the active generation and `embed_role=passage`, so an unrelated `Chunk` label in the same database cannot leak in |
+| `expand(hit.node, window=1)` | The neighbouring passages by reading order (`global_seq`), optionally the section path above them (`include_ancestors=True`) |
+| `pack(ctx, max_tokens=…)` | A budgeted string plus `PackedSegment`s carrying `node_id`, `char_start`/`char_end` and `section_path` — the offsets a citation needs |
+
+What you are really buying is the bookkeeping around those verbs:
+
+- **Ownership.** Every node it writes carries `managed_by="grafito.document"`,
+  `owner_document_id`, `generation` and `role`. Deletes and rebuilds are scoped
+  to those markers, so the helper never touches nodes it did not create. A
+  pre-existing node passed as `parent_id=` is attached, never owned or deleted —
+  that is how an OKF concept gets passages hung off it.
+- **Idempotent re-ingest.** `ingest()` fingerprints the text (plus the embed
+  flag and the view set). Unchanged input returns `IngestResult(skipped=True)`
+  without re-embedding. Changed input builds the new generation as `BUILDING`,
+  flips it to `ACTIVE`, then garbage-collects the previous one — searches never
+  observe a half-written document.
+- **Reading order as structure.** `global_seq` on each passage, and by default a
+  `Chunk_i -[:NEXT_PASSAGE]-> Chunk_{i+1}` chain for Cypher and visualisation.
+  `expand()` windows by `global_seq`, not by those edges.
+- **A navigable table of contents.** `toc(document_key)` returns titles, levels
+  and `node_key`s without bodies; `load_sections()` fetches the bodies for the
+  keys you chose; `tree_select()` lets a model do the choosing. This is the
+  cheap path when the document is long but well-structured — no embedding of the
+  whole thing required.
+
+Chunker choice, multi-view indexing, enrichment and the overlap-dedup rules
+behind `pack()` are all on the [Document → Graph
+Chunking](../search/document-chunking.md) page; that page is the reference, this
+one is the map.
+
+Drop down to the graph level when you want a traversal the four verbs do not
+express — the passage nodes are ordinary nodes, and `db.subgraph()`,
+`db.path_context()` and Cypher all reach them.
+
+### OKF
+
+Everything at the document level, plus governance: frontmatter, citations,
+layers, trust levels, supersession and a review workflow. Filters like
+`min_trust` hold through *expansion*, not just retrieval, which is the part that
+is tedious to rebuild by hand. It is the heaviest level, and the right one only
+when the corpus needs to be curated rather than merely indexed — see
+[OKF](../integrations/okf.md).
 
 ## The Pipeline
 
@@ -41,8 +104,8 @@ when you need to.
 | Tool | For |
 | --- | --- |
 | [`db.index_documents()`](../search/bulk-ingest.md) | Row-shaped data: HuggingFace datasets, DataFrames, JSONL. Nodes, edges and batched embeddings in one call |
-| `DocumentIngestor.ingest()` | Long text that needs chunking, with a section tree and stable ids across re-ingests |
-| Chunkers | `fixed`, `recursive`, `markdown`, `semantic`, plus a `chonkie` adapter |
+| [`DocumentIngestor.ingest()`](../search/document-chunking.md) | Long text that needs chunking, with a section tree and stable ids across re-ingests |
+| [Chunkers](../search/document-chunking.md#choosing-a-chunker) | `fixed`, `recursive`, `markdown`, `semantic`, plus a `chonkie` adapter |
 | `OKFBundle.add_concept()` | Governed concepts with frontmatter, citations and layers |
 
 Register an FTS index alongside the vector index if you want hybrid retrieval —
