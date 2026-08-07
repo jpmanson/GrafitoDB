@@ -8,7 +8,9 @@ Differences from LangChain that matter for Grafito:
 
 - Always returns :class:`~grafito.document.types.ChunkSpec` with **exact**
   ``char_start`` / ``char_end`` (required for pack overlap merge).
-- Does **not** strip whitespace by default (stripping breaks offsets).
+- Does **not** strip whitespace inside a chunk (stripping breaks offsets), but
+  drops pieces that are *entirely* whitespace, so a whitespace-only text yields
+  no specs at all.
 - Length is measured with ``length_function`` (default ``len``); pass a token
   counter for token budgets without depending on tiktoken.
 """
@@ -461,11 +463,19 @@ class RecursiveChunker:
         piece strings) maps to successive occurrences instead of collapsing onto
         the same span (which would drop the tail). With overlap a chunk may still
         start before the previous chunk *ends* — just not before it *starts*.
+
+        Empty and whitespace-only pieces produce no spec, but still advance the
+        floor: skipping them silently would let the next piece match an earlier
+        occurrence and leave real characters uncovered.
         """
         specs: list[ChunkSpec] = []
         floor = 0  # next search never starts before the previous chunk's start + 1
         for ord_i, piece in enumerate(pieces):
-            if not piece:
+            if not piece or not piece.strip():
+                if piece:
+                    skipped = text.find(piece, floor)
+                    if skipped >= 0:
+                        floor = skipped + 1
                 continue
             idx = text.find(piece, floor)
             if idx < 0:

@@ -120,6 +120,22 @@ def test_recursive_chunker_empty_and_short():
     assert specs[0].strategy == "recursive"
 
 
+def test_recursive_chunker_drops_whitespace_only_pieces_after_splitting():
+    c = RecursiveChunker(max_size=5, overlap=0)
+    specs = c.split("alpha\n\n---\n\nbeta")
+    assert specs
+    assert all(s.text.strip() for s in specs)
+    # skipped whitespace pieces must still advance the floor, so no real
+    # character is left uncovered by an earlier re-match
+    covered = {i for s in specs for i in range(s.char_start, s.char_end)}
+    text = "alpha\n\n---\n\nbeta"
+    assert all(i in covered for i, ch in enumerate(text) if not ch.isspace())
+
+
+def test_recursive_chunker_whitespace_only_text_yields_no_specs():
+    assert RecursiveChunker(max_size=5, overlap=0).split("  \n\n \t ") == []
+
+
 def test_recursive_chunker_prefers_paragraphs():
     text = (
         "First paragraph about authentication and sessions.\n\n"
