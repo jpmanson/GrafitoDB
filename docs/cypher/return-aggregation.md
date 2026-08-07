@@ -219,6 +219,19 @@ RETURN p.name
 Standard Cypher drops those from scope and would reject the second query. This
 is deliberately more permissive.
 
+`ORDER BY`, `SKIP` and `LIMIT` attach to whichever clause they follow. Written
+after a `WITH` they sort what that clause projects; written after the trailing
+`RETURN` they sort its output, and can name either its columns or the names the
+`WITH` carried:
+
+```cypher
+MATCH (p:Person)
+WITH p, p.age AS age
+ORDER BY age DESC LIMIT 10        -- the WITH's: top ten by age
+RETURN p.name AS name
+ORDER BY name                      -- the RETURN's: those ten, alphabetical
+```
+
 ### Returning Everything
 
 `*` stands for every variable currently bound:

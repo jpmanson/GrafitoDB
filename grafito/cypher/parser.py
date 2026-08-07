@@ -2182,18 +2182,34 @@ class Parser:
         skip_clause = None
         limit_clause = None
 
+        return_order_by_clause = None
+        return_skip_clause = None
+        return_limit_clause = None
+
         while self.current_token().type in (TokenType.WHERE, TokenType.ORDER,
                                             TokenType.SKIP, TokenType.LIMIT, TokenType.RETURN):
             if self.current_token().type == TokenType.WHERE:
                 where_clause = self._parse_where()
-            elif self.current_token().type == TokenType.ORDER:
-                order_by_clause = self._parse_order_by()
-            elif self.current_token().type == TokenType.SKIP:
-                skip_clause = self._parse_skip()
-            elif self.current_token().type == TokenType.LIMIT:
-                limit_clause = self._parse_limit()
             elif self.current_token().type == TokenType.RETURN:
                 return_clause = self._parse_return()
+            # Once a RETURN has been seen, these modify its projection rather
+            # than the WITH's, and must run after it so that aliases the RETURN
+            # introduces are in scope.
+            elif self.current_token().type == TokenType.ORDER:
+                if return_clause is not None:
+                    return_order_by_clause = self._parse_order_by()
+                else:
+                    order_by_clause = self._parse_order_by()
+            elif self.current_token().type == TokenType.SKIP:
+                if return_clause is not None:
+                    return_skip_clause = self._parse_skip()
+                else:
+                    skip_clause = self._parse_skip()
+            elif self.current_token().type == TokenType.LIMIT:
+                if return_clause is not None:
+                    return_limit_clause = self._parse_limit()
+                else:
+                    limit_clause = self._parse_limit()
 
         return WithClause(
             items=items,
@@ -2202,5 +2218,8 @@ class Parser:
             order_by_clause=order_by_clause,
             skip_clause=skip_clause,
             limit_clause=limit_clause,
-            distinct=distinct
+            distinct=distinct,
+            return_order_by_clause=return_order_by_clause,
+            return_skip_clause=return_skip_clause,
+            return_limit_clause=return_limit_clause,
         )

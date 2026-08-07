@@ -296,10 +296,76 @@ def test_multiplication_still_parses(db):
     rows = db.execute("MATCH (n:P) RETURN n.age * 2 AS r ORDER BY r")
     assert [row["r"] for row in rows] == [40, 60, 80]
 
-    # Ordered by the WITH alias, not the RETURN alias: after a WITH, ORDER BY
-    # is applied before the final projection, so a name introduced by that
-    # RETURN is not yet in scope. Separate pre-existing defect.
     rows = db.execute(
-        "MATCH (n:P) WITH n.age * 2 AS doubled RETURN doubled AS r ORDER BY doubled"
+        "MATCH (n:P) WITH n.age * 2 AS doubled RETURN doubled AS r ORDER BY r"
     )
     assert [row["r"] for row in rows] == [40, 60, 80]
+
+
+# --- ORDER BY / SKIP / LIMIT after a trailing RETURN ------------------------
+
+
+def test_order_by_a_return_alias_after_a_with(db):
+    """These modifiers belong to the RETURN, so its aliases must be in scope."""
+    rows = db.execute("MATCH (n:P) WITH n.age AS d RETURN d AS r ORDER BY r")
+    assert [row["r"] for row in rows] == [20, 30, 40]
+
+
+def test_order_by_a_with_alias_after_a_return(db):
+    """...and the WITH's own names stay usable, projected or not."""
+    rows = db.execute("MATCH (n:P) WITH n.age AS d RETURN d AS r ORDER BY d")
+    assert [row["r"] for row in rows] == [20, 30, 40]
+
+
+def test_order_by_a_variable_the_return_does_not_project(db):
+    rows = db.execute(
+        "MATCH (n:P) WITH n, n.age AS d RETURN n.name AS r ORDER BY d DESC"
+    )
+    assert [row["r"] for row in rows] == ["carol", "alice", "bob"]
+
+
+def test_order_by_descending_after_a_return(db):
+    rows = db.execute("MATCH (n:P) WITH n.age AS d RETURN d AS r ORDER BY r DESC")
+    assert [row["r"] for row in rows] == [40, 30, 20]
+
+
+def test_limit_after_a_return(db):
+    rows = db.execute("MATCH (n:P) WITH n.age AS d RETURN d AS r ORDER BY r LIMIT 2")
+    assert [row["r"] for row in rows] == [20, 30]
+
+
+def test_skip_after_a_return(db):
+    rows = db.execute("MATCH (n:P) WITH n.age AS d RETURN d AS r ORDER BY r SKIP 1")
+    assert [row["r"] for row in rows] == [30, 40]
+
+
+def test_the_with_keeps_its_own_order_by(db):
+    """A WITH's ORDER BY still runs before the projection it belongs to."""
+    rows = db.execute(
+        "MATCH (n:P) WITH n.age AS d ORDER BY d DESC LIMIT 2 RETURN d AS r"
+    )
+    assert [row["r"] for row in rows] == [40, 30]
+
+
+def test_both_clauses_can_sort(db):
+    """The WITH sorts and slices; the RETURN then sorts what survived."""
+    rows = db.execute(
+        "MATCH (n:P) WITH n.age AS d ORDER BY d DESC LIMIT 2 RETURN d AS r ORDER BY r"
+    )
+    assert [row["r"] for row in rows] == [30, 40]
+
+
+def test_aggregating_return_after_a_with(db):
+    """Aggregation collapses rows, so sorting has only the output to work with."""
+    rows = db.execute("MATCH (n:P) WITH n RETURN count(n) AS r")
+    assert rows == [{"r": 3}]
+
+
+def test_ordering_an_aggregating_return_after_a_with(db):
+    rows = db.execute("""
+        MATCH (n:P)
+        WITH n
+        RETURN n.age AS r, count(n) AS c
+        ORDER BY r DESC
+    """)
+    assert [row["r"] for row in rows] == [40, 30, 20]

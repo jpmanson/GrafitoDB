@@ -3511,7 +3511,35 @@ class CypherExecutor:
             projected_results = projected_results[:clause.limit_clause.count]
 
         if clause.return_clause:
-            projected_results = self._apply_normal_return(projected_results, clause.return_clause)
+            source_rows = projected_results
+            projected_results = self._apply_return(projected_results, clause.return_clause)
+
+            # Written after the RETURN, so these sort and slice its projection.
+            # Sorting keys are resolved against the RETURN's output *and* the
+            # rows that fed it, because `ORDER BY` may name either a column the
+            # RETURN introduced or a variable the WITH carried but did not
+            # project. Pairing them up only holds when the projection is
+            # row-for-row; an aggregating RETURN collapses rows, and there the
+            # output is all there is to sort by.
+            if clause.return_order_by_clause:
+                if len(source_rows) == len(projected_results):
+                    merged = [
+                        {**source, **projected}
+                        for source, projected in zip(source_rows, projected_results)
+                    ]
+                    order = self._apply_order_by(
+                        [{**row, "__row": index} for index, row in enumerate(merged)],
+                        clause.return_order_by_clause,
+                    )
+                    projected_results = [projected_results[row["__row"]] for row in order]
+                else:
+                    projected_results = self._apply_order_by(
+                        projected_results, clause.return_order_by_clause
+                    )
+            if clause.return_skip_clause:
+                projected_results = projected_results[clause.return_skip_clause.count:]
+            if clause.return_limit_clause:
+                projected_results = projected_results[:clause.return_limit_clause.count]
 
         return projected_results
 
