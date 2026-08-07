@@ -213,6 +213,20 @@ def test_save_pyvis_html():
                 pass
 
 
+def test_pyvis_preserves_edge_width():
+    pytest.importorskip("pyvis")
+    from grafito.integrations import to_pyvis
+
+    db = _make_sample_db()
+    graph = db.to_networkx()
+    for _, _, _, attrs in graph.edges(keys=True, data=True):
+        attrs["width"] = 4.5
+        attrs["title"] = "cos=0.70"
+    net = to_pyvis(graph, notebook=False)
+    assert net.edges[0]["width"] == 4.5
+    assert net.edges[0]["title"] == "cos=0.70"
+
+
 def test_export_graph_d2():
     from grafito.integrations import export_graph
     import os

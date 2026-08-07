@@ -161,9 +161,13 @@ All live in `grafito.okf.rerank` except `rrf_fuse` (`grafito.document.hybrid`).
 Rerankers plug into `OKFBundle.context(rerank=...)`, `semantic_search(reranker=...)`
 and `CALL db.vector.search(..., {reranker: 'name'})`.
 
-Graph-aware reranking is worth trying but not worth assuming: a node with a
-middling vector score that everything else in the result set points at is often
-the right answer — and often noise. Measure it (see [below](#what-is-missing)).
+Retrieve wide and rerank down — ten candidates, keep three — is the shape that
+held up best in the one evaluation there is: same evidence recall as expansion
+strategies at roughly a quarter of the context. Graph-aware reranking is a
+different bet, worth trying but not worth assuming: a node with a middling
+vector score that everything else in the result set points at is often the right
+answer — and often noise. Nothing has measured it yet (see
+[below](#what-is-missing)).
 
 ### 5. Pack
 
@@ -269,14 +273,43 @@ answer, and one a top-k search would have hidden behind plausible-looking hits.
 
 ## What Is Missing
 
-Retrieval quality is still unmeasured. There is an
-[invariant harness](https://github.com/jpmanson/GrafitoDB/tree/main/tests/invariants)
-covering the *structural* properties — that a rebuild is atomic, that a refresh
-converges, that no node is stranded — and it has caught real defects. But the
-knobs on this page (`expand` depth, reranker choice, `min_score`, RRF weights,
-`symmetrize`, whether graph-aware reranking helps at all) change retrieval
-*quality* in ways nothing here measures.
+Two things are checked, at very different levels of confidence.
 
-Build a small labelled set of queries and expected documents for your corpus
-before tuning. Without one you are guessing, and the guesses tend to favour
-whatever is most elaborate rather than what works.
+**Structure is under test.** An
+[invariant harness](https://github.com/jpmanson/GrafitoDB/tree/main/tests/invariants)
+covers the properties that must hold regardless of corpus — that a rebuild is
+atomic, that a refresh converges, that no node is stranded. It runs in CI and it
+has caught real defects.
+
+**Retrieval quality has one data point.**
+[`examples/semantic/evaluate_pdf_graphrag.py`](https://github.com/jpmanson/GrafitoDB/blob/main/examples/semantic/evaluate_pdf_graphrag.py)
+compares ten retrieval strategies over one PDF (94 chunks, 40 sections, 6
+hand-labelled queries) on evidence-term recall and cross-encoder relevance, with
+context size as the cost side of the trade —
+[results here](https://github.com/jpmanson/GrafitoDB/blob/main/examples/semantic/eval_outputs/pdf_graphrag_eval.md).
+Two findings worth carrying over as priors:
+
+- **Expansion buys recall, not ranking.** Widening `semantic_near_top1` to
+  `top3` lifted term recall from 0.92 to 0.97 — and tripled the context, from
+  ~3.9k to ~7.9k characters, with mean relevance falling as the extra passages
+  diluted the good ones. Semantic edges make similarity traversable and
+  explainable; they do not sharpen top-k on their own.
+- **Reranking gets the same recall for a quarter of the budget.**
+  `rerank_vector10_top3` — retrieve ten, rerank, keep three — matched that 0.97
+  at ~2.4k characters and the best mean relevance of any strategy. If you only
+  adopt one thing from the Rerank stage, adopt this shape.
+
+What that evaluation does *not* establish: anything beyond a single
+well-structured document; whether graph-aware reranking (`db.centrality` over
+the retrieved subgraph) helps, which is still untested; expansion past one hop;
+RRF weights; the `k`/`min_score`/`symmetrize` settings of the semantic graph,
+which were fixed at `k=3, min_score=0.45` rather than swept; anything at the OKF
+level, where filters govern expansion; and answer quality, since it scores
+retrieved context and never generates. Its `section_hit` metric came back 1.00
+for every strategy — saturated, and so useless for discriminating between them.
+Nothing here runs in CI.
+
+So: build a small labelled set of queries and expected documents for your own
+corpus before tuning. Six queries on someone else's PDF are a sanity check, not
+a benchmark. Without your own set you are guessing, and the guesses tend to
+favour whatever is most elaborate rather than what works.

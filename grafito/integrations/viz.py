@@ -251,7 +251,14 @@ def to_pyvis(
         net.add_node(node_id, **node_kwargs)
     for source, target, key, attrs in graph.edges(keys=True, data=True):
         rel_type = attrs.get("type", "RELATED_TO")
-        net.add_edge(source, target, label=rel_type)
+        edge_kwargs: dict[str, Any] = {"label": rel_type}
+        # Forward common vis.js edge styling attributes when callers annotate
+        # the NetworkX graph before rendering. This lets semantic graphs map
+        # similarity scores to visual weight without a custom renderer.
+        for attr in ("width", "value", "color", "title", "dashes", "arrows"):
+            if attr in attrs:
+                edge_kwargs[attr] = attrs[attr]
+        net.add_edge(source, target, **edge_kwargs)
     return net
 
 
