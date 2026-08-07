@@ -186,3 +186,120 @@ def test_expression_alias_is_filterable_without_parentheses(db):
         "MATCH (n:P) WITH n, n.age * 2 AS doubled WHERE doubled > 50 RETURN n.name AS r"
     )
     assert _names(rows) == ["alice", "carol"]
+
+
+# --- WITH * and RETURN * ----------------------------------------------------
+
+
+def test_with_star_carries_every_variable(db):
+    rows = db.execute("MATCH (n:P) WITH * RETURN n.name AS r")
+    assert _names(rows) == ["alice", "bob", "carol"]
+
+
+def test_with_star_carries_all_of_a_multi_variable_match(db):
+    rows = db.execute("""
+        MATCH (n:P)-[rel:KNOWS]->(m:P)
+        WITH *
+        RETURN n.name AS r, m.name AS other, rel.weight AS weight
+    """)
+    assert sorted(
+        (row["r"], row["other"], row["weight"]) for row in rows
+    ) == [("alice", "bob", 9), ("alice", "carol", 1)]
+
+
+def test_with_star_plus_an_alias(db):
+    rows = db.execute(
+        "MATCH (n:P) WITH *, n.age AS age WHERE age > 25 RETURN n.name AS r, age"
+    )
+    assert [(row["r"], row["age"]) for row in sorted(rows, key=lambda x: x["r"])] == [
+        ("alice", 30),
+        ("carol", 40),
+    ]
+
+
+def test_with_star_then_where(db):
+    rows = db.execute("MATCH (n:P) WITH * WHERE n.age > 25 RETURN n.name AS r")
+    assert _names(rows) == ["alice", "carol"]
+
+
+def test_with_distinct_star(db):
+    rows = db.execute("MATCH (n:P)-[:KNOWS]->() WITH DISTINCT * RETURN n.name AS r")
+    assert _names(rows) == ["alice"]
+
+
+def test_with_star_then_order_and_limit(db):
+    rows = db.execute(
+        "MATCH (n:P) WITH * ORDER BY n.age DESC LIMIT 2 RETURN n.name AS r"
+    )
+    assert [row["r"] for row in rows] == ["carol", "alice"]
+
+
+def test_chained_with_star(db):
+    rows = db.execute("MATCH (n:P) WITH * WITH * WHERE n.age > 25 RETURN n.name AS r")
+    assert _names(rows) == ["alice", "carol"]
+
+
+def test_return_star(db):
+    rows = db.execute("MATCH (n:P) WHERE n.name = 'alice' RETURN *")
+    assert list(rows[0]) == ["n"]
+    assert rows[0]["n"].properties["name"] == "alice"
+
+
+def test_return_star_with_several_variables(db):
+    rows = db.execute("MATCH (n:P)-[rel:KNOWS]->(m:P) WHERE m.name = 'bob' RETURN *")
+    assert sorted(rows[0]) == ["m", "n", "rel"]
+
+
+def test_star_does_not_carry_projected_columns(db):
+    """`*` means variables, not the result columns an earlier stage produced."""
+    rows = db.execute("MATCH (n:P) WITH n, n.age AS age WITH * RETURN *")
+    assert sorted(rows[0]) == ["age", "n"]
+
+
+def test_star_after_an_aggregating_with(db):
+    rows = db.execute("""
+        MATCH (n:P)-[:KNOWS]->(m)
+        WITH n, count(m) AS friends
+        WITH *
+        WHERE friends > 1
+        RETURN n.name AS r
+    """)
+    assert _names(rows) == ["alice"]
+
+
+def test_star_alongside_an_aggregate_groups_by_every_variable(db):
+    """`*` contributes every bound variable to the implicit GROUP BY.
+
+    `m` is in scope, so grouping is per (n, m) — two rows of one — not the
+    single row of two that `WITH n, count(m)` produces.
+    """
+    with_star = db.execute("""
+        MATCH (n:P)-[:KNOWS]->(m)
+        WITH *, count(m) AS friends
+        RETURN n.name AS r, friends
+    """)
+    assert sorted((row["r"], row["friends"]) for row in with_star) == [
+        ("alice", 1),
+        ("alice", 1),
+    ]
+
+    without_star = db.execute("""
+        MATCH (n:P)-[:KNOWS]->(m)
+        WITH n, count(m) AS friends
+        RETURN n.name AS r, friends
+    """)
+    assert [(row["r"], row["friends"]) for row in without_star] == [("alice", 2)]
+
+
+def test_multiplication_still_parses(db):
+    """`*` is also the multiplication operator; the star form must not shadow it."""
+    rows = db.execute("MATCH (n:P) RETURN n.age * 2 AS r ORDER BY r")
+    assert [row["r"] for row in rows] == [40, 60, 80]
+
+    # Ordered by the WITH alias, not the RETURN alias: after a WITH, ORDER BY
+    # is applied before the final projection, so a name introduced by that
+    # RETURN is not yet in scope. Separate pre-existing defect.
+    rows = db.execute(
+        "MATCH (n:P) WITH n.age * 2 AS doubled RETURN doubled AS r ORDER BY doubled"
+    )
+    assert [row["r"] for row in rows] == [40, 60, 80]

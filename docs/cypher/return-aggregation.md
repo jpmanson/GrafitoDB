@@ -219,6 +219,39 @@ RETURN p.name
 Standard Cypher drops those from scope and would reject the second query. This
 is deliberately more permissive.
 
+### Returning Everything
+
+`*` stands for every variable currently bound:
+
+```cypher
+MATCH (p:Person)-[r:KNOWS]->(other)
+RETURN *                          -- p, r and other
+
+MATCH (p:Person)-[r:KNOWS]->(other)
+WITH *                            -- carry all three forward
+WHERE r.weight > 5
+RETURN p.name
+```
+
+It combines with named items, which is the usual way to add something without
+listing what you already have:
+
+```cypher
+MATCH (p:Person)
+WITH *, p.age * 2 AS doubled
+WHERE doubled > 50
+RETURN p.name, doubled
+```
+
+`*` means *variables*, not the columns an earlier stage produced: after
+`WITH p, p.age AS age`, a following `WITH *` carries `p` and `age`, and nothing
+named `p.name`.
+
+!!! note "`*` with an aggregate groups by everything in scope"
+    `WITH *, count(m) AS friends` groups by every bound variable, `m` included —
+    so it produces one row per `(n, m)` pair, not one row per `n`. When you want
+    a count per `n`, name the grouping key: `WITH n, count(m) AS friends`.
+
 ## Advanced Return Patterns
 
 ### Conditional Values

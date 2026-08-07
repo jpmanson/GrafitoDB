@@ -2812,6 +2812,20 @@ class CypherExecutor:
                 return f"{func_name}({distinct_prefix}{argument.variable}.{argument.property})"
         return func_name
 
+    @staticmethod
+    def _expand_star(row: dict) -> dict:
+        """Everything `*` stands for: the variables currently bound.
+
+        Keys produced by an earlier projection (``n.name``, ``count(*)``) are
+        left out — those are result columns, not variables a later clause can
+        refer to, and carrying them forward would let `*` grow with every stage.
+        """
+        return {
+            name: value
+            for name, value in row.items()
+            if name.isidentifier()
+        }
+
     def _apply_normal_return(self, matches: list[dict], return_clause: ReturnClause) -> list[dict]:
         """Apply non-aggregated RETURN projection."""
         results = []
@@ -2820,6 +2834,9 @@ class CypherExecutor:
             result = {}
 
             for item in return_clause.items:
+                if item.star:
+                    result.update(self._expand_star(match))
+                    continue
                 value = self._evaluate_return_expression(match, item.expression)
                 result[self._return_item_key(item)] = value
 
@@ -2864,9 +2881,17 @@ class CypherExecutor:
             One row per distinct grouping key (preserving first-seen order), or a
             single row when there are no grouping items.
         """
-        grouping_items = [item for item in items if not isinstance(item.expression, FunctionCall)]
+        grouping_items = [
+            item
+            for item in items
+            if not item.star and not isinstance(item.expression, FunctionCall)
+        ]
+        # `*` groups by every variable in scope, as if each had been listed.
+        star_names: list[str] = []
+        if any(item.star for item in items) and matches:
+            star_names = list(self._expand_star(matches[0]))
 
-        if not grouping_items:
+        if not grouping_items and not star_names:
             return [build_row(matches)]
 
         groups: dict[Any, list[dict]] = {}
@@ -2875,6 +2900,8 @@ class CypherExecutor:
             group_key = tuple(
                 self._freeze_result(self._evaluate_return_expression(match, item.expression))
                 for item in grouping_items
+            ) + tuple(
+                self._freeze_result(match.get(name)) for name in star_names
             )
             if group_key not in groups:
                 groups[group_key] = []
@@ -3393,6 +3420,9 @@ class CypherExecutor:
                 representative = group_rows[0] if group_rows else {}
                 result = {}
                 for item in clause.items:
+                    if item.star:
+                        result.update(self._expand_star(representative))
+                        continue
                     if isinstance(item.expression, FunctionCall):
                         value = self._calculate_aggregation(
                             item.expression.function_name,
@@ -3433,6 +3463,9 @@ class CypherExecutor:
             for match in input_results:
                 result = {}
                 for item in clause.items:
+                    if item.star:
+                        result.update(self._expand_star(match))
+                        continue
                     evaluator = self._make_evaluator(match)
 
 
