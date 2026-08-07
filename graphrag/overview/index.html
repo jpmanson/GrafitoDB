@@ -1795,6 +1795,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pick a Level">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#okf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OKF
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3163,6 +3202,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Pick a Level">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#okf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OKF
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3399,7 +3477,7 @@ the wrong one is the most common way to make this harder than it is.</p>
 <tr>
 <td><strong>Documents</strong></td>
 <td>You have files or long text to chunk, retrieve at passage level, and cite</td>
-<td><code>DocumentIngestor</code></td>
+<td><a href="../../search/document-chunking/"><code>DocumentIngestor</code></a></td>
 </tr>
 <tr>
 <td><strong>OKF</strong></td>
@@ -3411,6 +3489,79 @@ the wrong one is the most common way to make this harder than it is.</p>
 <p>They stack rather than compete — OKF is built on documents, documents on the
 graph — but you should pick one as your primary interface and drop down only
 when you need to.</p>
+<h3 id="graph">Graph</h3>
+<p>You hold the nodes and edges; GrafitoDB supplies retrieval and expansion over
+them. Nothing is written on your behalf, so the labels, properties and
+relationship types stay exactly what you designed — and everything else on this
+page (<code>semantic_search</code>, <code>hybrid_subgraph</code>, <code>communities</code>, Cypher vector search)
+works directly on them.</p>
+<p>Pick this level when the entities <em>are</em> the unit of retrieval: papers, tickets,
+people, products. The cost is that chunking, reading order, ids that survive
+re-ingest and citation offsets are yours to build if the corpus is long text.</p>
+<h3 id="documents">Documents</h3>
+<p><a href="../../search/document-chunking/"><code>DocumentIngestor</code></a> turns text into a managed
+passage graph and gives back the four verbs a passage-level RAG needs:</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ingest(text, document_key=…)</code></td>
+<td><code>Document</code> → <code>DocumentVersion</code> → <code>Chunk</code> nodes, plus a <code>Section</code> tree (<code>HAS_SECTION</code>) when the text is markdown-shaped and <code>hierarchy</code> is on. Embeds in one batched call if <code>embed_index</code> is set</td>
+</tr>
+<tr>
+<td><code>search()</code> / <code>hybrid_search()</code></td>
+<td>Top-k over <em>this</em> helper's passages only — filtered to the managed nodes, the active generation and <code>embed_role=passage</code>, so an unrelated <code>Chunk</code> label in the same database cannot leak in</td>
+</tr>
+<tr>
+<td><code>expand(hit.node, window=1)</code></td>
+<td>The neighbouring passages by reading order (<code>global_seq</code>), optionally the section path above them (<code>include_ancestors=True</code>)</td>
+</tr>
+<tr>
+<td><code>pack(ctx, max_tokens=…)</code></td>
+<td>A budgeted string plus <code>PackedSegment</code>s carrying <code>node_id</code>, <code>char_start</code>/<code>char_end</code> and <code>section_path</code> — the offsets a citation needs</td>
+</tr>
+</tbody>
+</table>
+<p>What you are really buying is the bookkeeping around those verbs:</p>
+<ul>
+<li><strong>Ownership.</strong> Every node it writes carries <code>managed_by="grafito.document"</code>,
+  <code>owner_document_id</code>, <code>generation</code> and <code>role</code>. Deletes and rebuilds are scoped
+  to those markers, so the helper never touches nodes it did not create. A
+  pre-existing node passed as <code>parent_id=</code> is attached, never owned or deleted —
+  that is how an OKF concept gets passages hung off it.</li>
+<li><strong>Idempotent re-ingest.</strong> <code>ingest()</code> fingerprints the text (plus the embed
+  flag and the view set). Unchanged input returns <code>IngestResult(skipped=True)</code>
+  without re-embedding. Changed input builds the new generation as <code>BUILDING</code>,
+  flips it to <code>ACTIVE</code>, then garbage-collects the previous one — searches never
+  observe a half-written document.</li>
+<li><strong>Reading order as structure.</strong> <code>global_seq</code> on each passage, and by default a
+  <code>Chunk_i -[:NEXT_PASSAGE]-&gt; Chunk_{i+1}</code> chain for Cypher and visualisation.
+  <code>expand()</code> windows by <code>global_seq</code>, not by those edges.</li>
+<li><strong>A navigable table of contents.</strong> <code>toc(document_key)</code> returns titles, levels
+  and <code>node_key</code>s without bodies; <code>load_sections()</code> fetches the bodies for the
+  keys you chose; <code>tree_select()</code> lets a model do the choosing. This is the
+  cheap path when the document is long but well-structured — no embedding of the
+  whole thing required.</li>
+</ul>
+<p>Chunker choice, multi-view indexing, enrichment and the overlap-dedup rules
+behind <code>pack()</code> are all on the <a href="../../search/document-chunking/">Document → Graph
+Chunking</a> page; that page is the reference, this
+one is the map.</p>
+<p>Drop down to the graph level when you want a traversal the four verbs do not
+express — the passage nodes are ordinary nodes, and <code>db.subgraph()</code>,
+<code>db.path_context()</code> and Cypher all reach them.</p>
+<h3 id="okf">OKF</h3>
+<p>Everything at the document level, plus governance: frontmatter, citations,
+layers, trust levels, supersession and a review workflow. Filters like
+<code>min_trust</code> hold through <em>expansion</em>, not just retrieval, which is the part that
+is tedious to rebuild by hand. It is the heaviest level, and the right one only
+when the corpus needs to be curated rather than merely indexed — see
+<a href="../../integrations/okf/">OKF</a>.</p>
 <h2 id="the-pipeline">The Pipeline</h2>
 <h3 id="1-ingest">1. Ingest</h3>
 <table>
@@ -3426,11 +3577,11 @@ when you need to.</p>
 <td>Row-shaped data: HuggingFace datasets, DataFrames, JSONL. Nodes, edges and batched embeddings in one call</td>
 </tr>
 <tr>
-<td><code>DocumentIngestor.ingest()</code></td>
+<td><a href="../../search/document-chunking/"><code>DocumentIngestor.ingest()</code></a></td>
 <td>Long text that needs chunking, with a section tree and stable ids across re-ingests</td>
 </tr>
 <tr>
-<td>Chunkers</td>
+<td><a href="../../search/document-chunking/#choosing-a-chunker">Chunkers</a></td>
 <td><code>fixed</code>, <code>recursive</code>, <code>markdown</code>, <code>semantic</code>, plus a <code>chonkie</code> adapter</td>
 </tr>
 <tr>
