@@ -3709,9 +3709,13 @@ database; <code>exclude_rel_types</code> and <code>max_nodes</code> are not opti
 <p>All live in <code>grafito.okf.rerank</code> except <code>rrf_fuse</code> (<code>grafito.document.hybrid</code>).
 Rerankers plug into <code>OKFBundle.context(rerank=...)</code>, <code>semantic_search(reranker=...)</code>
 and <code>CALL db.vector.search(..., {reranker: 'name'})</code>.</p>
-<p>Graph-aware reranking is worth trying but not worth assuming: a node with a
-middling vector score that everything else in the result set points at is often
-the right answer — and often noise. Measure it (see <a href="#what-is-missing">below</a>).</p>
+<p>Retrieve wide and rerank down — ten candidates, keep three — is the shape that
+held up best in the one evaluation there is: same evidence recall as expansion
+strategies at roughly a quarter of the context. Graph-aware reranking is a
+different bet, worth trying but not worth assuming: a node with a middling
+vector score that everything else in the result set points at is often the right
+answer — and often noise. Nothing has measured it yet (see
+<a href="#what-is-missing">below</a>).</p>
 <h3 id="5-pack">5. Pack</h3>
 <table>
 <thead>
@@ -3848,16 +3852,43 @@ cross-cluster edges that blur communities — at the cost of needing a larger <c
 <p>An empty result means they are not connected within <code>max_hops</code> — which is an
 answer, and one a top-k search would have hidden behind plausible-looking hits.</p>
 <h2 id="what-is-missing">What Is Missing</h2>
-<p>Retrieval quality is still unmeasured. There is an
+<p>Two things are checked, at very different levels of confidence.</p>
+<p><strong>Structure is under test.</strong> An
 <a href="https://github.com/jpmanson/GrafitoDB/tree/main/tests/invariants">invariant harness</a>
-covering the <em>structural</em> properties — that a rebuild is atomic, that a refresh
-converges, that no node is stranded — and it has caught real defects. But the
-knobs on this page (<code>expand</code> depth, reranker choice, <code>min_score</code>, RRF weights,
-<code>symmetrize</code>, whether graph-aware reranking helps at all) change retrieval
-<em>quality</em> in ways nothing here measures.</p>
-<p>Build a small labelled set of queries and expected documents for your corpus
-before tuning. Without one you are guessing, and the guesses tend to favour
-whatever is most elaborate rather than what works.</p>
+covers the properties that must hold regardless of corpus — that a rebuild is
+atomic, that a refresh converges, that no node is stranded. It runs in CI and it
+has caught real defects.</p>
+<p><strong>Retrieval quality has one data point.</strong>
+<a href="https://github.com/jpmanson/GrafitoDB/blob/main/examples/semantic/evaluate_pdf_graphrag.py"><code>examples/semantic/evaluate_pdf_graphrag.py</code></a>
+compares ten retrieval strategies over one PDF (94 chunks, 40 sections, 6
+hand-labelled queries) on evidence-term recall and cross-encoder relevance, with
+context size as the cost side of the trade —
+<a href="https://github.com/jpmanson/GrafitoDB/blob/main/examples/semantic/eval_outputs/pdf_graphrag_eval.md">results here</a>.
+Two findings worth carrying over as priors:</p>
+<ul>
+<li><strong>Expansion buys recall, not ranking.</strong> Widening <code>semantic_near_top1</code> to
+  <code>top3</code> lifted term recall from 0.92 to 0.97 — and tripled the context, from
+  ~3.9k to ~7.9k characters, with mean relevance falling as the extra passages
+  diluted the good ones. Semantic edges make similarity traversable and
+  explainable; they do not sharpen top-k on their own.</li>
+<li><strong>Reranking gets the same recall for a quarter of the budget.</strong>
+  <code>rerank_vector10_top3</code> — retrieve ten, rerank, keep three — matched that 0.97
+  at ~2.4k characters and the best mean relevance of any strategy. If you only
+  adopt one thing from the Rerank stage, adopt this shape.</li>
+</ul>
+<p>What that evaluation does <em>not</em> establish: anything beyond a single
+well-structured document; whether graph-aware reranking (<code>db.centrality</code> over
+the retrieved subgraph) helps, which is still untested; expansion past one hop;
+RRF weights; the <code>k</code>/<code>min_score</code>/<code>symmetrize</code> settings of the semantic graph,
+which were fixed at <code>k=3, min_score=0.45</code> rather than swept; anything at the OKF
+level, where filters govern expansion; and answer quality, since it scores
+retrieved context and never generates. Its <code>section_hit</code> metric came back 1.00
+for every strategy — saturated, and so useless for discriminating between them.
+Nothing here runs in CI.</p>
+<p>So: build a small labelled set of queries and expected documents for your own
+corpus before tuning. Six queries on someone else's PDF are a sanity check, not
+a benchmark. Without your own set you are guessing, and the guesses tend to
+favour whatever is most elaborate rather than what works.</p>
 
 
 
