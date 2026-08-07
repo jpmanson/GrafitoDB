@@ -419,17 +419,15 @@ MATCH (p:Person)
 RETURN p.name, size([(p)-[:KNOWS]->(f) | f]) AS friends
 ```
 
-!!! note "Filtering on a WITH alias"
-    `WITH n, (n)-->() AS connected WHERE connected` does not work — and not
-    because of patterns: referring to a `WITH` alias inside that same clause's
-    `WHERE` is unsupported for any expression. Filter in a following clause:
+A `WITH` clause's own `WHERE` sees the aliases that clause projects, so a
+predicate can be named and then filtered on:
 
-    ```cypher
-    MATCH (n:Person)
-    WITH n
-    WHERE (n)-[:KNOWS]->()
-    RETURN n.name
-    ```
+```cypher
+MATCH (n:Person)
+WITH n, (n)-[:KNOWS]->() AS connected
+WHERE connected
+RETURN n.name
+```
 
 ## Property Existence
 

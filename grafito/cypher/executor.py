@@ -3381,11 +3381,12 @@ class CypherExecutor:
             for item in clause.items
         )
 
-        # Without aggregation, WHERE filters the input rows (so it can reference
-        # any bound variable). With aggregation it behaves like HAVING and runs
-        # after grouping (so it can reference aggregate aliases) — see below.
-        if clause.where_clause and not has_aggregation:
-            input_results = self._filter_rows(input_results, clause.where_clause.condition)
+        # WHERE always runs after projection, so the clause's own aliases are in
+        # scope — `WITH n, n.age AS age WHERE age > 25` is ordinary Cypher. The
+        # rows it sees also keep the incoming bindings, so filtering on a
+        # variable the WITH did not carry forward keeps working; Cypher proper
+        # drops those from scope, but tightening that would break queries for no
+        # gain. Aggregating clauses filter after grouping, as HAVING.
 
         if has_aggregation:
             def build_with_row(group_rows: list[dict]) -> dict:
@@ -3434,6 +3435,7 @@ class CypherExecutor:
                 for item in clause.items:
                     evaluator = self._make_evaluator(match)
 
+
                     if isinstance(item.expression, (PropertyAccess, PropertyLookup)):
                         value = evaluator.evaluate(item.expression)
                     elif isinstance(item.expression, Variable):
@@ -3451,6 +3453,15 @@ class CypherExecutor:
                         result[item.expression.name] = value
                     else:
                         result[str(item.expression)] = value
+
+                if clause.where_clause is not None:
+                    # Projected names shadow incoming ones: `WITH n AS person`
+                    # must make the predicate see the renamed binding.
+                    scope = {**match, **result}
+                    if not self._make_evaluator(scope).evaluate(
+                        clause.where_clause.condition
+                    ):
+                        continue
 
                 projected_results.append(result)
 

@@ -2130,8 +2130,10 @@ class Parser:
         # Parse return items (similar to RETURN)
         items = []
         while True:
-            # Parse expression
-            expr = self._parse_primary_expression()
+            # Full expressions, as RETURN accepts: WITH only read primary
+            # expressions, so `WITH n.age * 2 AS doubled` was a syntax error
+            # while the identical RETURN item parsed.
+            expr = self._parse_expression()
 
             # Check for AS alias
             alias = None

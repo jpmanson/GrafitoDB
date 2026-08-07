@@ -191,6 +191,34 @@ WHERE cityCount > 10
 RETURN city, cityCount
 ```
 
+### WITH Scope
+
+A `WITH` clause projects, then filters — so its own `WHERE` sees the aliases
+that clause defines:
+
+```cypher
+MATCH (p:Person)
+WITH p, p.age * 2 AS doubled
+WHERE doubled > 50
+RETURN p.name, doubled
+```
+
+`WITH` accepts the same expressions `RETURN` does: arithmetic, comparisons,
+function calls, patterns.
+
+The rows the predicate sees also keep the bindings that came *into* the clause,
+so filtering on a variable the `WITH` did not carry forward works:
+
+```cypher
+MATCH (p:Person)-[r:KNOWS]->(other)
+WITH p
+WHERE r.weight > 5        // `r` is not projected, but still visible
+RETURN p.name
+```
+
+Standard Cypher drops those from scope and would reject the second query. This
+is deliberately more permissive.
+
 ## Advanced Return Patterns
 
 ### Conditional Values
