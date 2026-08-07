@@ -110,6 +110,52 @@ Two properties worth internalising:
 
 Use `min_size` to drop singletons, which are noise in most datasets.
 
+## Naming the Communities
+
+`label_terms` labels each community with the terms that distinguish it from the
+others, read from a node property:
+
+```python
+for community in db.communities("louvain", seed=42, label_terms=3):
+    print(f"[{community.label}] — {community.size} documents")
+```
+
+```text
+[graph, nodes, databases] — 3 documents
+[search, embeddings, nearest] — 3 documents
+[pasta, carbonara, cooking] — 3 documents
+```
+
+This is the cheap end of topic modelling, and worth being clear about what it is
+not: the clusters come from the *graph*, and the words only describe whatever
+landed in each. A community that mixes two subjects gets a label mixing two
+subjects — the label never fixes a bad partition, it only reports one.
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `label_terms` | Terms per community; `0` skips labelling | `0` |
+| `text_property` | Node property to read text from | `"text"` |
+| `label_scoring` | `"tfidf"` or `"frequency"` | `"tfidf"` |
+| `stopwords` | Words to exclude | `None` |
+
+`tfidf` weights a term by how *concentrated* it is in one community, so words
+common to all of them fall away on their own. `frequency` is a plain count and
+mostly surfaces filler — in the example above it labels two of the three
+communities with `and`. That is why stopword lists are rarely needed with
+`tfidf`, and unavoidable with `frequency`.
+
+To keep the labels, write them back as nodes or properties yourself:
+
+```python
+for community in db.communities("louvain", seed=42, label_terms=4):
+    topic = db.create_node(labels=["Topic"], properties={"name": community.label})
+    for node in community.nodes:
+        db.create_relationship(topic.id, node.id, "HAS_MEMBER")
+```
+
+Community ids are positions in the result, so materialising them is only
+meaningful if the graph is not going to change underneath.
+
 ## Composing with Retrieval
 
 Both methods accept a pre-built NetworkX graph via `graph=`, which is how they

@@ -35,6 +35,9 @@ class Subgraph:
     scores: dict[int, float] = field(default_factory=dict)
     #: Node id -> hop distance from the nearest seed (0 for seeds).
     hops: dict[int, int] = field(default_factory=dict)
+    #: Ordered node ids of each route found, when the subgraph came from
+    #: :meth:`~grafito.GrafitoDatabase.path_context`. Empty otherwise.
+    paths: list[list[int]] = field(default_factory=list)
 
     def node_ids(self) -> list[int]:
         """Ids of every node in the subgraph, in insertion order."""

@@ -77,6 +77,7 @@ RETURN p LIMIT 10
 | [`db.hybrid_subgraph()`](../analysis/subgraphs.md) | Fused hits plus their neighbourhood, with `hops`/`scores` provenance |
 | `db.semantic_subgraph()` / `db.text_subgraph()` | The same, seeded by one retrieval mode |
 | `db.subgraph()` | The same, from any seeds — including a fusion of your own |
+| [`db.path_context()`](../analysis/subgraphs.md#context-from-routes-not-rankings) | The routes *between* concepts, when the answer is what connects them |
 | `DocumentIngestor.expand()` | Passage-level: siblings, parents, and surrounding sections |
 | `OKFBundle.context()` | Expansion governed by filters, so a `min_trust` guarantee holds through links |
 
@@ -132,7 +133,7 @@ for the agent when the query genuinely needs several retrieval rounds.
 
 | Tool | For |
 | --- | --- |
-| [`db.communities()`](../analysis/graph-algorithms.md) | Thematic clusters |
+| [`db.communities()`](../analysis/graph-algorithms.md) | Thematic clusters, optionally labelled with `label_terms` |
 | `db.centrality()` | Which documents are structurally central |
 | [`db.create_semantic_graph()`](../analysis/semantic-graph.md) | Materialise similarity as edges — the prerequisite for clustering by similarity |
 | `export_graph()` | Visualise a subgraph (`grafito.integrations.viz`) |
@@ -179,18 +180,39 @@ prompt = str(pack)
 ### Thematic map of a corpus
 
 ```python
-db.create_semantic_graph(k=15, min_score=0.3)
+db.create_semantic_graph(k=15, min_score=0.3, symmetrize="mutual")
 for c in db.communities("louvain", rel_types=["SEMANTIC_SIMILAR"],
-                        weight_property="score", seed=42):
-    print(c.size, [n.properties["title"] for n in c.nodes[:3]])
+                        weight_property="score", seed=42, label_terms=4):
+    print(f"[{c.label}] — {c.size} documents")
 ```
+
+`symmetrize="mutual"` keeps only reciprocated neighbours, which cuts the
+cross-cluster edges that blur communities — at the cost of needing a larger `k`.
+
+### How two concepts connect
+
+```python
+sub = db.path_context(
+    ["retry policy", "payment provider outage"],
+    max_hops=3,
+    exclude_rel_types=["SEMANTIC_SIMILAR"],
+)
+for route in sub.paths:
+    print(" → ".join(db.get_node(n).properties["title"] for n in route))
+```
+
+An empty result means they are not connected within `max_hops` — which is an
+answer, and one a top-k search would have hidden behind plausible-looking hits.
 
 ## What Is Missing
 
-There is **no retrieval evaluation harness** in GrafitoDB. Every knob on this
-page — `expand` depth, reranker choice, `min_score`, RRF weights, whether
-graph-aware reranking helps at all — changes retrieval quality in ways that are
-not predictable from first principles, and nothing here measures that.
+Retrieval quality is still unmeasured. There is an
+[invariant harness](https://github.com/jpmanson/GrafitoDB/tree/main/tests/invariants)
+covering the *structural* properties — that a rebuild is atomic, that a refresh
+converges, that no node is stranded — and it has caught real defects. But the
+knobs on this page (`expand` depth, reranker choice, `min_score`, RRF weights,
+`symmetrize`, whether graph-aware reranking helps at all) change retrieval
+*quality* in ways nothing here measures.
 
 Build a small labelled set of queries and expected documents for your corpus
 before tuning. Without one you are guessing, and the guesses tend to favour
