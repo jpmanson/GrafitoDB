@@ -178,8 +178,8 @@ def build_corpus() -> tuple[GrafitoDatabase, DocumentIngestor, dict[str, Any]]:
         db,
         chunker=MarkdownChunker(
             max_chars=1100,
-            overlap=120,
-            overflow_chunker=RecursiveChunker(max_size=1100, overlap=120),
+            overlap=0,
+            overflow_chunker=RecursiveChunker(max_size=1100, overlap=0),
         ),
         embed_index="chunks",
         configure_fts=db.has_fts5(),

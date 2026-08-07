@@ -55,3 +55,5 @@ playground
 .DS_Store
 .env
 articles
+
+examples/semantic/agents.pdf
