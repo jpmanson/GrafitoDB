@@ -38,6 +38,25 @@ SYMMETRIZE_MODES = ("union", "mutual", "directed")
 #: Matches txtai's minscore default.
 DEFAULT_SEMANTIC_GRAPH_MIN_SCORE = 0.1
 
+#: Word characters FTS5 keeps; everything else is query syntax to its parser.
+_FTS_TOKEN_RE = re.compile(r"\w+")
+
+
+def _as_fts_literals(query: str) -> str:
+    """Rewrite free text as a conjunction of FTS5 string literals.
+
+    FTS5 parses its MATCH argument as a query language, so a question mark or a
+    comma in a natural-language question is a syntax error rather than a term.
+    Quoting each token turns the whole thing back into plain terms — the same
+    AND-of-terms FTS5 applies to a bare word list, minus the parse failure.
+
+    Returns an empty string when the query holds no word characters at all,
+    which callers should read as "there is no lexical query to run".
+    """
+    tokens = _FTS_TOKEN_RE.findall(query)
+    return " ".join(f'"{token}"' for token in tokens)
+
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .algorithms import Community
     from .ingest_report import IndexReport, SemanticGraphReport
@@ -782,8 +801,14 @@ class GrafitoDatabase:
         Degrades rather than fails: with no text index configured, or no vector
         index, whichever side works is returned on its own.
 
+        Unlike :meth:`text_search`, this takes natural language. A query FTS5
+        cannot parse — a trailing ``?``, a comma, an ``&`` — is retried as plain
+        terms instead of raising, so questions keep their lexical half.
+
         Args:
-            query: The query text, used for both sides.
+            query: The query text, used for both sides. Valid FTS5 operators
+                (``AND``, ``OR``, ``NEAR``, ``term*``) still reach the lexical
+                side; anything FTS5 rejects is re-run as literal terms.
             k: Number of results.
             index: Vector index to search.
             vector_k, text_k: Candidates to draw from each side before fusing.
@@ -833,15 +858,28 @@ class GrafitoDatabase:
             # No vector index, or no embedding function to turn text into one.
             vector_hits = []
 
-        text_hits: list[dict[str, Any]] = []
-        try:
-            text_hits = [
+        def lexical_side(text_query: str) -> list[dict[str, Any]]:
+            return [
                 {"node": row["entity"], "score": row["score"]}
-                for row in self.text_search(query, k=text_k, labels=labels)
+                for row in self.text_search(text_query, k=text_k, labels=labels)
                 if row.get("entity_type") == "node"
             ]
+
+        text_hits: list[dict[str, Any]] = []
+        try:
+            text_hits = lexical_side(query)
         except DatabaseError:
-            text_hits = []
+            # `query` here is natural language, not the FTS5 syntax text_search
+            # documents, so punctuation is a parse error rather than an empty
+            # result. Retry as literals before giving up the lexical half — the
+            # exact terms it contributes are the reason to fuse at all.
+            literals = _as_fts_literals(query)
+            if literals:
+                try:
+                    text_hits = lexical_side(literals)
+                except DatabaseError:
+                    # No FTS index, or no fts5 in this SQLite build.
+                    text_hits = []
 
         if not text_hits:
             return vector_hits[:k]
@@ -1157,7 +1195,10 @@ class GrafitoDatabase:
         subgraph.
 
         Args:
-            query: FTS5 query string.
+            query: FTS5 query string. Unlike :meth:`text_search`, a query FTS5
+                cannot parse is retried as literal terms rather than raising —
+                seeding a subgraph is a retrieval task, and callers reach it
+                with user-typed questions.
             k: Number of seed hits.
             search_labels: Restrict the text search to these labels.
             expand, direction, rel_types, exclude_rel_types, labels, max_nodes,
@@ -1165,8 +1206,22 @@ class GrafitoDatabase:
 
         Returns:
             A :class:`~grafito.subgraph.Subgraph`.
+
+        Raises:
+            DatabaseError: If the query holds no terms to quote, ``k`` is not
+                positive, or FTS5 is unavailable. A query with no matches is an
+                empty subgraph, not an error.
         """
-        hits = self.text_search(query, k=k, labels=search_labels)
+        try:
+            hits = self.text_search(query, k=k, labels=search_labels)
+        except DatabaseError:
+            # The same retry hybrid_search performs. Unlike there, a second
+            # failure propagates: with no vector half to fall back on, returning
+            # an empty subgraph would report "no matches" for a broken search.
+            literals = _as_fts_literals(query)
+            if not literals:
+                raise
+            hits = self.text_search(literals, k=k, labels=search_labels)
         seeds = [
             {"node": hit["entity"], "score": hit["score"]}
             for hit in hits
@@ -2409,7 +2464,17 @@ class GrafitoDatabase:
         labels: list[str] | None = None,
         rel_types: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Search nodes/relationships using FTS5 BM25."""
+        """Search nodes/relationships using FTS5 BM25.
+
+        ``query`` is FTS5 query syntax, not free text: operators like ``AND``,
+        ``OR``, ``NEAR/10`` and ``term*`` work, and punctuation FTS5 reserves
+        raises rather than matching literally. Pass user-typed questions to
+        :meth:`hybrid_search`, which retries unparseable queries as terms.
+
+        Raises:
+            DatabaseError: If the query is empty, ``k`` is not positive, the
+                filters are malformed, or the query is not valid FTS5 syntax.
+        """
         if not query or not query.strip():
             raise DatabaseError("Query cannot be empty")
         if k is None:
@@ -2476,9 +2541,14 @@ class GrafitoDatabase:
             sql += " ORDER BY score ASC LIMIT ?"
             params.append(k)
 
-        cursor = self.conn.execute(sql, params)
+        try:
+            cursor = self.conn.execute(sql, params)
+            rows = cursor.fetchall()
+        except sqlite3.Error as exc:
+            raise DatabaseError(f"Failed to search text index: {exc}", exc) from exc
+
         results = []
-        for row in cursor.fetchall():
+        for row in rows:
             entity_type = row["entity_type"]
             entity_id = int(row["entity_id"])
             score = float(row["score"])

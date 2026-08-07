@@ -106,6 +106,19 @@ for r in results:
 
 ## Query Syntax
 
+!!! warning "`text_search` takes FTS5 syntax, not free text"
+    The query is parsed as a query language, so characters FTS5 reserves are
+    syntax rather than terms — a user-typed question raises `DatabaseError`.
+    Either quote the terms yourself (`'"graph" "databases"'`), or use
+    [`hybrid_search`](hybrid.md), which accepts natural language and retries
+    unparseable queries as literal terms.
+
+```python
+db.text_search('graph databases?')   # DatabaseError: fts5: syntax error near "?"
+db.text_search('cost-benefit')       # DatabaseError: no such column: benefit
+db.text_search('"graph" "databases"')  # works: two literal terms
+```
+
 ### Basic Terms
 
 ```python
