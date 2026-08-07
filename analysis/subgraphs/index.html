@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.1
+          v0.8.2
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.1
+          v0.8.2
         </li>
       </ul>
     
@@ -3308,6 +3308,9 @@ near-full scan.</p>
 arguments:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">sub</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">text_subgraph</span><span class="p">(</span><span class="s2">&quot;attention mechanism&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </span></code></pre></div>
+<p>Unlike <a href="../../search/fulltext/#query-syntax"><code>text_search()</code></a>, it accepts
+user-typed questions: a query FTS5 cannot parse is retried as literal terms
+instead of raising.</p>
 <p><code>hybrid_subgraph()</code> seeds from both at once, fused with Reciprocal Rank Fusion:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">sub</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">hybrid_subgraph</span><span class="p">(</span><span class="s2">&quot;ENOSPC retry policy&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">expand</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </span></code></pre></div>

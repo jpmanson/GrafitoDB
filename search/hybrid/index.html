@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.1
+          v0.8.2
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.1
+          v0.8.2
         </li>
       </ul>
     
@@ -3349,6 +3349,14 @@
 <p>For passage graphs created with <a href="../document-chunking/">Document Chunking</a>,
 use <code>DocumentIngestor.hybrid_search()</code> (RRF fusion, ownership/generation
 filters). Manual recipes below still apply to ad-hoc indexes.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Recipes below pass the raw query to <code>text_search</code></p>
+<p>That method takes <a href="../fulltext/#query-syntax">FTS5 syntax</a>, so a user-typed
+question raises <code>DatabaseError</code> on its punctuation. <code>db.hybrid_search()</code>
+handles this for you by retrying as literal terms; in your own recipe,
+quote the tokens (<code>' '.join(f'"{t}"' for t in re.findall(r'\w+', query))</code>)
+before calling <code>text_search</code>.</p>
 </div>
 <h2 id="why-hybrid-search">Why Hybrid Search?</h2>
 <table>
