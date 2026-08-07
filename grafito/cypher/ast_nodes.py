@@ -374,6 +374,12 @@ class WithClause(ASTNode):
     skip_clause: Optional['SkipClause'] = None
     limit_clause: Optional['LimitClause'] = None
     distinct: bool = False
+    #: ORDER BY / SKIP / LIMIT written *after* the trailing RETURN. They apply
+    #: to its projection, so they are kept apart from the WITH's own — which run
+    #: earlier, when the RETURN's aliases do not exist yet.
+    return_order_by_clause: Optional['OrderByClause'] = None
+    return_skip_clause: Optional['SkipClause'] = None
+    return_limit_clause: Optional['LimitClause'] = None
 
 
 @dataclass
