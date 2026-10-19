@@ -25,6 +25,7 @@ from .ast_nodes import (
     CreateConstraintClause, DropConstraintClause, ShowConstraintsClause,
     ForeachClause
 )
+from .ast_nodes import PARAM_MAP_KEY
 from .evaluator import ExpressionEvaluator
 from .exceptions import CypherExecutionError
 from ..filters import PropertyFilter, PropertyFilterGroup
@@ -152,6 +153,17 @@ class CypherExecutor:
         evaluator = self._make_evaluator(context or {})
         evaluated: dict[str, Any] = {}
         for key, expr in properties.items():
+            if key == PARAM_MAP_KEY:
+                # (n:Label $props): the parameter supplies the whole property map
+                value = evaluator.evaluate(expr)
+                if value is None:
+                    continue
+                if not isinstance(value, dict):
+                    raise CypherExecutionError(
+                        f"Property map parameter must be a map, got {type(value).__name__}"
+                    )
+                evaluated.update(value)
+                continue
             if isinstance(expr, Expression):
                 evaluated[key] = evaluator.evaluate(expr)
             else:
@@ -340,7 +352,16 @@ class CypherExecutor:
                 new_results = self._execute_match(clause, context=results)
                 results = new_results
             elif isinstance(clause, CreateClause):
-                new_results = self._execute_create(clause, context=results if results else None)
+                if i == 0 and not results:
+                    # Leading CREATE: one row whose bindings RETURN/WITH can read
+                    # (CREATE (n {x: 1}) RETURN n.x yields 1, in a single row).
+                    new_results = self._execute_create(clause, context=[{}])
+                elif results:
+                    new_results = self._execute_create(clause, context=results)
+                else:
+                    # A previous clause produced no rows: CREATE runs once per row,
+                    # so it creates nothing (Neo4j semantics).
+                    new_results = []
                 results = new_results
             elif isinstance(clause, MergeClause):
                 # Execute MERGE
@@ -1449,29 +1470,35 @@ class CypherExecutor:
                 results.append(row_result)
             return results
 
+        # Without a preceding clause, all patterns of the CREATE share one set of
+        # bindings, as in Neo4j: CREATE (a), (b), (a)-[:R]->(b) creates two nodes
+        # and one relationship, and the third pattern reuses a and b.
+        bindings: dict[str, Any] = {}
         results = []
         for pattern in clause.patterns:
-            if len(pattern.elements) == 1 and pattern.elements[0].relationship is None:
-                # Simple node creation: CREATE (n:Person)
-                elem = pattern.elements[0]
-                node_pattern = elem.node
-                properties = self._evaluate_properties(node_pattern.properties, None)
-                node = self.db.create_node(
-                    labels=node_pattern.labels,
-                    properties=properties
-                )
-
-                # Build result
-                result = {}
-                if node_pattern.variable:
-                    result[node_pattern.variable] = node.to_dict()
-                results.append(result if result else {'created': node.to_dict()})
-            else:
-                # Pattern with relationships: CREATE (a)-[r]->(b)
-                result = self._create_pattern_with_relationships(pattern)
-                results.append(result)
+            created = self._apply_create_pattern_with_context(pattern, bindings)
+            result = {}
+            for var in self._pattern_variables(pattern):
+                obj = bindings.get(var)
+                result[var] = obj.to_dict() if hasattr(obj, 'to_dict') else obj
+            if not result and created:
+                result = {'created': created[0].to_dict()}
+            results.append(result)
 
         return results
+
+    @staticmethod
+    def _pattern_variables(pattern: Pattern) -> list[str]:
+        """Variables named in a pattern, in order of appearance."""
+        names = []
+        for elem in pattern.elements:
+            if elem.node.variable:
+                names.append(elem.node.variable)
+            if elem.relationship is not None and elem.relationship.variable:
+                names.append(elem.relationship.variable)
+        if pattern.variable:
+            names.append(pattern.variable)
+        return names
 
     def _create_pattern_with_relationships(self, pattern: Pattern, return_dicts: bool = True) -> dict:
         """Create nodes and relationships from a pattern.
@@ -1532,73 +1559,57 @@ class CypherExecutor:
 
         return result
 
-    def _apply_create_pattern_with_context(self, pattern: Pattern, row: dict) -> None:
-        """Create nodes/relationships honoring existing bindings in row."""
-        if len(pattern.elements) == 1 and pattern.elements[0].relationship is None:
-            elem = pattern.elements[0]
-            node_pattern = elem.node
-            if node_pattern.variable and node_pattern.variable in row:
-                return
-            properties = self._evaluate_properties(node_pattern.properties, row)
+    def _apply_create_pattern_with_context(self, pattern: Pattern, row: dict) -> list:
+        """Create nodes/relationships honoring existing bindings in row.
+
+        Handles a single node and chains of any length, e.g. (a)-[:R]->(b)<-[:S]-(c).
+        Bound variables are reused; new ones are added to row. Returns the newly
+        created nodes and relationships, in order.
+        """
+        created: list = []
+
+        def node_for(node_pattern) -> Node:
+            var = node_pattern.variable
+            if var and var in row:
+                bound = self._resolve_bound_node(row.get(var))
+                if bound is not None:
+                    return bound
             node = self.db.create_node(
                 labels=node_pattern.labels,
-                properties=properties
+                properties=self._evaluate_properties(node_pattern.properties, row),
             )
-            if node_pattern.variable:
-                row[node_pattern.variable] = node
-            return
+            created.append(node)
+            if var:
+                row[var] = node
+            return node
 
-        if len(pattern.elements) != 2:
-            raise CypherExecutionError(
-                "Only single-hop relationship patterns supported in CREATE (e.g., (a)-[r]->(b))"
+        elements = pattern.elements
+        nodes = [node_for(elements[0].node)]
+        relationships = []
+        for i, elem in enumerate(elements[:-1]):
+            rel_pattern = elem.relationship
+            if rel_pattern is None:
+                raise CypherExecutionError("Invalid relationship pattern in CREATE")
+            if rel_pattern.min_hops != 1 or rel_pattern.max_hops != 1:
+                raise CypherExecutionError("Variable-length relationships are not supported in CREATE")
+            nxt = node_for(elements[i + 1].node)
+            left, right = nodes[-1], nxt
+            source, target = (right, left) if rel_pattern.direction == 'incoming' else (left, right)
+            relationship = self.db.create_relationship(
+                source_id=source.id,
+                target_id=target.id,
+                rel_type=rel_pattern.rel_type if rel_pattern.rel_type else "RELATED_TO",
+                properties=self._evaluate_properties(rel_pattern.properties, row),
             )
+            created.append(relationship)
+            if rel_pattern.variable:
+                row[rel_pattern.variable] = relationship
+            nodes.append(nxt)
+            relationships.append(relationship)
 
-        source_elem = pattern.elements[0]
-        target_elem = pattern.elements[1]
-        rel_pattern = source_elem.relationship
-
-        if rel_pattern is None:
-            raise CypherExecutionError("Invalid relationship pattern in CREATE")
-        if rel_pattern.min_hops != 1 or rel_pattern.max_hops != 1:
-            raise CypherExecutionError("Variable-length relationships are not supported in CREATE")
-
-        source_node = None
-        if source_elem.node.variable:
-            source_node = self._resolve_bound_node(row.get(source_elem.node.variable))
-        if source_node is None:
-            source_properties = self._evaluate_properties(source_elem.node.properties, row)
-            source_node = self.db.create_node(
-                labels=source_elem.node.labels,
-                properties=source_properties
-            )
-            if source_elem.node.variable:
-                row[source_elem.node.variable] = source_node
-
-        target_node = None
-        if target_elem.node.variable:
-            target_node = self._resolve_bound_node(row.get(target_elem.node.variable))
-        if target_node is None:
-            target_properties = self._evaluate_properties(target_elem.node.properties, row)
-            target_node = self.db.create_node(
-                labels=target_elem.node.labels,
-                properties=target_properties
-            )
-            if target_elem.node.variable:
-                row[target_elem.node.variable] = target_node
-
-        rel_type = rel_pattern.rel_type if rel_pattern.rel_type else "RELATED_TO"
-        rel_properties = self._evaluate_properties(rel_pattern.properties, row)
-        relationship = self.db.create_relationship(
-            source_id=source_node.id,
-            target_id=target_node.id,
-            rel_type=rel_type,
-            properties=rel_properties
-        )
-
-        if rel_pattern.variable:
-            row[rel_pattern.variable] = relationship
-        if pattern.variable:
-            row[pattern.variable] = Path(nodes=[source_node, target_node], relationships=[relationship])
+        if pattern.variable and relationships:
+            row[pattern.variable] = Path(nodes=nodes, relationships=relationships)
+        return created
 
     def _resolve_bound_node(self, value: Any) -> Node | None:
         """Resolve a bound node from a context value."""

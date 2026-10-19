@@ -15,6 +15,7 @@ from .ast_nodes import (
     CreateConstraintClause, DropConstraintClause, ShowConstraintsClause,
     ForeachClause
 )
+from .ast_nodes import PARAM_MAP_KEY
 from .exceptions import CypherSyntaxError
 
 
@@ -1027,9 +1028,11 @@ class Parser:
             labels.append(self.current_token().value)
             self.advance()
 
-        # Parse properties if present
+        # Parse properties if present: a literal map or a parameter map ($props)
         if self.current_token().type == TokenType.LBRACE:
             properties = self._parse_properties()
+        elif self.current_token().type == TokenType.PARAMETER:
+            properties = self._parse_parameter_properties()
 
         self.expect(TokenType.RPAREN)
 
@@ -1086,9 +1089,11 @@ class Parser:
             if self.current_token().type == TokenType.ASTERISK:
                 min_hops, max_hops = self._parse_relationship_length()
 
-            # Properties
+            # Properties: a literal map or a parameter map ($props)
             if self.current_token().type == TokenType.LBRACE:
                 properties = self._parse_properties()
+            elif self.current_token().type == TokenType.PARAMETER:
+                properties = self._parse_parameter_properties()
 
             self.expect(TokenType.RBRACKET)
 
@@ -1152,6 +1157,15 @@ class Parser:
             return 1, max_hops
 
         return min_hops, max_hops
+
+    def _parse_parameter_properties(self) -> dict:
+        """Parse a parameter used as the whole property map: (n:Label $props).
+
+        Stored under PARAM_MAP_KEY; the executor expands it to the parameter's dict.
+        """
+        token = self.current_token()
+        self.advance()
+        return {PARAM_MAP_KEY: Parameter(name=token.value)}
 
     def _parse_properties(self) -> dict:
         """Parse property map: {key: value, key2: value2}."""

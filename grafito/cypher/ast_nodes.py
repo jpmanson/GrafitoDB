@@ -241,6 +241,11 @@ class CaseExpression(Expression):
 # Patterns
 # ============================================================================
 
+# Key under which a parameter used as a whole property map ($props) is stored
+# in NodePattern/RelationshipPattern.properties.
+PARAM_MAP_KEY = "__param_map__"
+
+
 @dataclass
 class NodePattern(ASTNode):
     """Node pattern: (variable:Label1:Label2 {prop: value}).
