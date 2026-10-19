@@ -275,6 +275,8 @@ class RelationshipPattern(ASTNode):
     rel_type: Optional[str] = None
     properties: dict[str, Expression] = field(default_factory=dict)
     direction: str = 'outgoing'  # 'outgoing', 'incoming', 'both'
+    # Alternative types, [:A|B]. When set, rel_type is None and any listed type matches.
+    rel_types: Optional[list[str]] = None
     min_hops: int = 1
     max_hops: int = 1
 

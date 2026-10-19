@@ -1544,6 +1544,8 @@ class CypherExecutor:
 
         # Create relationship
         # For CREATE, we ignore direction and always create outgoing from source to target
+        if rel_pattern.rel_types:
+            raise CypherExecutionError("CREATE and MERGE need exactly one relationship type, not alternatives")
         rel_type = rel_pattern.rel_type if rel_pattern.rel_type else "RELATED_TO"
         rel_properties = self._evaluate_properties(rel_pattern.properties, None)
         relationship = self.db.create_relationship(
@@ -1597,6 +1599,8 @@ class CypherExecutor:
                 raise CypherExecutionError("Invalid relationship pattern in CREATE")
             if rel_pattern.min_hops != 1 or rel_pattern.max_hops != 1:
                 raise CypherExecutionError("Variable-length relationships are not supported in CREATE")
+            if rel_pattern.rel_types:
+                raise CypherExecutionError("CREATE needs exactly one relationship type, not alternatives")
             nxt = node_for(elements[i + 1].node)
             left, right = nodes[-1], nxt
             source, target = (right, left) if rel_pattern.direction == 'incoming' else (left, right)
@@ -1704,6 +1708,8 @@ class CypherExecutor:
                         properties=target_props
                     )
 
+                if rel_pattern.rel_types:
+                    raise CypherExecutionError("CREATE and MERGE need exactly one relationship type, not alternatives")
                 rel_type = rel_pattern.rel_type if rel_pattern.rel_type else "RELATED_TO"
                 rel_props = self._evaluate_properties(rel_pattern.properties, row_context)
 
@@ -2365,6 +2371,9 @@ class CypherExecutor:
                 )
                 rels = outgoing + incoming
 
+            if rel_pattern.rel_types:
+                rels = [rel for rel in rels if rel.type in rel_pattern.rel_types]
+
             # For each relationship, check target node matches
             for rel in rels:
                 # Determine target node id based on direction
@@ -2727,6 +2736,8 @@ class CypherExecutor:
     ) -> bool:
         """Check if a relationship matches type/properties constraints."""
         if rel_pattern.rel_type and rel.type != rel_pattern.rel_type:
+            return False
+        if rel_pattern.rel_types and rel.type not in rel_pattern.rel_types:
             return False
 
         props = properties if properties is not None else rel_pattern.properties

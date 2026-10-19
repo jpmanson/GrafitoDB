@@ -1060,6 +1060,7 @@ class Parser:
 
         variable = None
         rel_type = None
+        rel_types = None
         properties = {}
         min_hops = 1
         max_hops = 1
@@ -1084,6 +1085,21 @@ class Parser:
                     )
                 rel_type = self.current_token().value
                 self.advance()
+                # Alternatives: [:A|B] or [:A|:B]
+                while self.current_token().type == TokenType.PIPE:
+                    self.advance()
+                    if self.current_token().type == TokenType.COLON:
+                        self.advance()
+                    if not self._is_symbolic_name_token(self.current_token()):
+                        raise CypherSyntaxError(
+                            f"Expected relationship type after '|', got {self.current_token().type.name}",
+                            self.current_token().line,
+                            self.current_token().column
+                        )
+                    rel_types = (rel_types or [rel_type]) + [self.current_token().value]
+                    self.advance()
+                if rel_types:
+                    rel_type = None
 
             # Length (variable-length paths)
             if self.current_token().type == TokenType.ASTERISK:
@@ -1122,6 +1138,7 @@ class Parser:
         return RelationshipPattern(
             variable=variable,
             rel_type=rel_type,
+            rel_types=rel_types,
             properties=properties,
             direction=direction,
             min_hops=min_hops,
