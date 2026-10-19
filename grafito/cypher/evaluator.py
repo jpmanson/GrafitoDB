@@ -206,6 +206,22 @@ class ExpressionEvaluator:
                 return True
             return None
 
+        if operator in ('CONTAINS', 'STARTS WITH', 'ENDS WITH', '=~'):
+            left = self.evaluate(expr.left)
+            right = self.evaluate(expr.right)
+            if not isinstance(left, str) or not isinstance(right, str):
+                return None
+            if operator == 'CONTAINS':
+                return right in left
+            if operator == 'STARTS WITH':
+                return left.startswith(right)
+            if operator == 'ENDS WITH':
+                return left.endswith(right)
+            try:
+                return re.fullmatch(right, left) is not None
+            except re.error as exc:
+                raise CypherExecutionError(f"Invalid regular expression {right!r}: {exc}") from exc
+
         if operator == 'IN':
             left = self.evaluate(expr.left)
             right = self.evaluate(expr.right)

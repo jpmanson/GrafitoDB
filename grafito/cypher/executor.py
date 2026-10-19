@@ -364,8 +364,13 @@ class CypherExecutor:
                     new_results = []
                 results = new_results
             elif isinstance(clause, MergeClause):
-                # Execute MERGE
-                new_results = self._execute_merge(clause, context=results if results else None)
+                # Execute MERGE. A leading MERGE runs as one row so RETURN can read it.
+                if i == 0 and not results:
+                    new_results = self._execute_merge(clause, context=[{}])
+                elif results:
+                    new_results = self._execute_merge(clause, context=results)
+                else:
+                    new_results = []
                 results = new_results
             elif isinstance(clause, WithClause):
                 # Apply WITH transformation to current results
@@ -3129,27 +3134,47 @@ class CypherExecutor:
         Returns:
             List with count of deleted items
         """
-        deleted_nodes = 0
-        deleted_rels = 0
-
+        detach = getattr(delete_clause, 'detach', False)
+        nodes: dict[int, Any] = {}
+        rels: dict[int, Any] = {}
         for match in matches:
             for var_name in delete_clause.variables:
                 if var_name not in match:
                     raise CypherExecutionError(f"Variable '{var_name}' not found for DELETE")
-
                 obj = match[var_name]
-
-                # Check if it's a Node or Relationship
-                if hasattr(obj, 'source_id'):  # It's a Relationship
-                    self.db.delete_relationship(obj.id)
-                    deleted_rels += 1
-                elif hasattr(obj, 'labels'):  # It's a Node
-                    self.db.delete_node(obj.id)
-                    deleted_nodes += 1
+                if obj is None:
+                    continue  # OPTIONAL MATCH produced no binding
+                if hasattr(obj, 'source_id'):
+                    rels[obj.id] = obj
+                elif hasattr(obj, 'labels'):
+                    nodes[obj.id] = obj
                 else:
                     raise CypherExecutionError(
                         f"Variable '{var_name}' is not a node or relationship"
                     )
+
+        # Relationships named in the clause go first, so `DELETE r, n` works
+        # without DETACH when r was the node's only relationship.
+        deleted_rels = sum(1 for rel_id in rels if self.db.delete_relationship(rel_id) is not False)
+
+        attached: dict[int, set[int]] = {}
+        for node_id in nodes:
+            ids = {rel.id for rel in self.db.match_relationships(source_id=node_id)}
+            ids |= {rel.id for rel in self.db.match_relationships(target_id=node_id)}
+            attached[node_id] = ids
+            if ids and not detach:
+                raise CypherExecutionError(
+                    f"Cannot delete node {node_id}: it still has {len(ids)} relationship(s). "
+                    "Delete them first or use DETACH DELETE."
+                )
+
+        deleted_nodes = 0
+        removed_with_nodes: set[int] = set()
+        for node_id in nodes:
+            if self.db.delete_node(node_id):
+                deleted_nodes += 1
+                removed_with_nodes |= attached[node_id]
+        deleted_rels += len(removed_with_nodes)
 
         return [{'deleted_nodes': deleted_nodes, 'deleted_relationships': deleted_rels}]
 

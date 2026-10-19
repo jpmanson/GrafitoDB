@@ -411,8 +411,9 @@ class MatchClause(ASTNode):
 
 @dataclass
 class DeleteClause(ASTNode):
-    """DELETE clause: DELETE variable1, variable2, ..."""
+    """DELETE clause: [DETACH] DELETE variable1, variable2, ..."""
     variables: list[str] = field(default_factory=list)
+    detach: bool = False
 
 
 @dataclass

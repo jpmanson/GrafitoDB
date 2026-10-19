@@ -284,8 +284,13 @@ class Lexer:
                 self.tokens.append(Token(TokenType.PIPE, '|', self.line, start_column))
                 self.advance()
             elif char == '=':
-                self.tokens.append(Token(TokenType.EQ, '=', self.line, start_column))
-                self.advance()
+                if self.peek_char() == '~':
+                    self.tokens.append(Token(TokenType.REGEX_MATCH, '=~', self.line, start_column))
+                    self.advance()
+                    self.advance()
+                else:
+                    self.tokens.append(Token(TokenType.EQ, '=', self.line, start_column))
+                    self.advance()
 
             else:
                 raise CypherSyntaxError(

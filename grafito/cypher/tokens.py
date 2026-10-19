@@ -101,6 +101,7 @@ class TokenType(Enum):
     # Comparison operators
     EQ = auto()           # =
     NEQ = auto()          # !=
+    REGEX_MATCH = auto()  # =~
     LT = auto()           # <
     GT = auto()           # >
     LTE = auto()          # <=

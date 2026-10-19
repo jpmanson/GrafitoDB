@@ -195,7 +195,7 @@ class Parser:
                 actions.append(self._parse_set())
             elif self.current_token().type == TokenType.REMOVE:
                 actions.append(self._parse_remove())
-            elif self.current_token().type == TokenType.DELETE:
+            elif self.current_token().type == TokenType.DELETE or self._is_detach_delete():
                 actions.append(self._parse_delete())
             else:
                 raise CypherSyntaxError(
@@ -934,7 +934,7 @@ class Parser:
         delete_clause = None
         set_clause = None
         remove_clause = None
-        if self.current_token().type == TokenType.DELETE:
+        if self.current_token().type == TokenType.DELETE or self._is_detach_delete():
             delete_clause = self._parse_delete()
         elif self.current_token().type == TokenType.SET:
             set_clause = self._parse_set()
@@ -1321,6 +1321,16 @@ class Parser:
             self.advance()
             operator = 'IS NOT NULL' if is_not else 'IS NULL'
             return UnaryOp(operator=operator, operand=left)
+        # String predicates. CONTAINS/STARTS/ENDS are contextual words, not
+        # reserved keywords, so they still work as property or variable names.
+        string_op = self._string_predicate_operator()
+        if string_op is not None:
+            right = self._parse_additive_expression()
+            return BinaryOp(left=left, operator=string_op, right=right)
+        if token.type == TokenType.REGEX_MATCH:
+            self.advance()
+            right = self._parse_additive_expression()
+            return BinaryOp(left=left, operator='=~', right=right)
         if token.type in (TokenType.EQ, TokenType.NEQ, TokenType.LT,
                           TokenType.GT, TokenType.LTE, TokenType.GTE, TokenType.IN):
             operator = token.value
@@ -1333,6 +1343,26 @@ class Parser:
             return BinaryOp(left=left, operator=operator, right=right)
 
         return left
+
+    def _string_predicate_operator(self) -> str | None:
+        """Consume CONTAINS, STARTS WITH or ENDS WITH if present; return the operator."""
+        token = self.current_token()
+        if token.type != TokenType.IDENTIFIER:
+            return None
+        word = str(token.value).upper()
+        if word == 'CONTAINS':
+            self.advance()
+            return 'CONTAINS'
+        if word in ('STARTS', 'ENDS') and self.peek_token().type == TokenType.WITH:
+            self.advance()
+            self.advance()
+            return f'{word} WITH'
+        return None
+
+    def _is_detach_delete(self) -> bool:
+        token = self.current_token()
+        return (token.type == TokenType.IDENTIFIER and str(token.value).upper() == 'DETACH'
+                and self.peek_token().type == TokenType.DELETE)
 
     def _parse_additive_expression(self) -> Expression:
         """Parse additive expression ('+' and '-')."""
@@ -1901,7 +1931,11 @@ class Parser:
         return ReturnClause(items=items, distinct=distinct)
 
     def _parse_delete(self) -> DeleteClause:
-        """Parse DELETE clause: DELETE n, r, m."""
+        """Parse DELETE clause: [DETACH] DELETE n, r, m."""
+        detach = False
+        if self._is_detach_delete():
+            detach = True
+            self.advance()
         self.expect(TokenType.DELETE)
 
         variables = []
@@ -1922,7 +1956,7 @@ class Parser:
             else:
                 break
 
-        return DeleteClause(variables=variables)
+        return DeleteClause(variables=variables, detach=detach)
 
     def _parse_set(self) -> SetClause:
         """Parse SET clause: SET n.prop1 = value1, n.prop2 = value2."""
