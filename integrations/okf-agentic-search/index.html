@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3334,7 +3334,7 @@ has the measured numbers.</p>
 <p>Before any tool call, the agent already knows the <em>shape</em> of the bundle, not
 its content. <code>run_agent()</code>'s default system prompt embeds <code>kb.layers()</code>:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">layers</span><span class="p">()</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># {&#39;decisions&#39;: 3, &#39;glossary&#39;: 3, &#39;runbooks&#39;: 1}</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># {'decisions': 3, 'glossary': 3, 'runbooks': 1}</span>
 </span></code></pre></div>
 <p>That's it — a count per top-level directory. For a bundle with hundreds of
 concepts this is still a handful of tokens. The system prompt also tells the
@@ -3347,23 +3347,23 @@ when to reach for each one — see <code>DEFAULT_SYSTEM_PROMPT</code> in
 <p><strong><code>browse(layer=None)</code></strong> — the in-memory equivalent of an <code>index.md</code>: child
 subdirectories and the concepts directly in a directory, titles and
 descriptions only.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;runbooks&quot;</span><span class="p">)</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># {&quot;layer&quot;: &quot;runbooks&quot;, &quot;subdirs&quot;: {},</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">#  &quot;concepts&quot;: [{&quot;id&quot;: &quot;runbooks/slow-queries&quot;, &quot;title&quot;: &quot;Triaging a slow graph query&quot;,</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">#                &quot;description&quot;: &quot;Steps to diagnose and mitigate...&quot;, &quot;type&quot;: &quot;Playbook&quot;}]}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">"runbooks"</span><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># {"layer": "runbooks", "subdirs": {},</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">#  "concepts": [{"id": "runbooks/slow-queries", "title": "Triaging a slow graph query",</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">#                "description": "Steps to diagnose and mitigate...", "type": "Playbook"}]}</span>
 </span></code></pre></div>
 <p><strong><code>search(query, k=5)</code></strong> — hybrid (or semantic/text) ranked search. Same
 shape: id, title, description, and a relevance score — never the body.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;slow query&quot;</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># -&gt; [Hit(concept=&lt;Concept &#39;runbooks/slow-queries&#39;&gt;, score=0.83), ...]</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># the tool serializes each hit as: {&quot;id&quot;, &quot;title&quot;, &quot;description&quot;, &quot;score&quot;}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">"slow query"</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># -&gt; [Hit(concept=&lt;Concept 'runbooks/slow-queries'&gt;, score=0.83), ...]</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># the tool serializes each hit as: {"id", "title", "description", "score"}</span>
 </span></code></pre></div>
 <p>Both are cheap regardless of how big the bundle is — the cost is
 <code>O(concepts touched)</code>, not <code>O(bundle size)</code>, and a "concept touched" here
 only costs a title + description, not a body.</p>
 <h3 id="2-read-open-the-only-tool-that-spends-real-budget">2. Read: <code>open</code> (the only tool that spends real budget)</h3>
 <p>Only when a concept looks worth it does the agent call:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">kb</span><span class="p">[</span><span class="s2">&quot;runbooks/slow-queries&quot;</span><span class="p">]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">kb</span><span class="p">[</span><span class="s2">"runbooks/slow-queries"</span><span class="p">]</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># id, type, title, description, tags, body, links (typed, excluding CITES), cites</span>
 </span></code></pre></div>
 <p>This is the single point in the whole toolset where the full markdown body
@@ -3373,8 +3373,8 @@ where the agent actually "reads."</p>
 <p>From an opened concept, the agent can pull in linked concepts — outgoing or
 incoming, optionally restricted to one relationship type (for bundles
 imported with <code>typed_links=True</code>) — without opening them:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">&quot;runbooks/slow-queries&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">links</span><span class="p">()</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># -&gt; [Concept, ...]; the tool serializes each as {&quot;id&quot;, &quot;title&quot;, &quot;description&quot;}</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">kb</span><span class="o">.</span><span class="n">concept</span><span class="p">(</span><span class="s2">"runbooks/slow-queries"</span><span class="p">)</span><span class="o">.</span><span class="n">links</span><span class="p">()</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># -&gt; [Concept, ...]; the tool serializes each as {"id", "title", "description"}</span>
 </span></code></pre></div>
 <p>This is another triage step: the agent discovers <em>what's connected</em> to
 something it already read, at metadata cost, and only <code>open()</code>s the
@@ -3397,13 +3397,13 @@ conversation ends.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">for</span> <span class="n">turn</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_turns</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">message</span> <span class="o">=</span> <span class="n">chat</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">schemas</span><span class="p">)</span>      <span class="c1"># model sees the conversation + tool schemas</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tool_calls&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">tool_calls</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tool_calls"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">tool_calls</span><span class="p">:</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="k">return</span> <span class="n">AgentRun</span><span class="p">(</span><span class="n">answer</span><span class="o">=</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>  <span class="c1"># final answer</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="k">return</span> <span class="n">AgentRun</span><span class="p">(</span><span class="n">answer</span><span class="o">=</span><span class="n">message</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>  <span class="c1"># final answer</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">tool_calls</span><span class="p">:</span>
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">dispatch</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>   <span class="c1"># execute against the bundle</span>
 </span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">recorded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ToolCall</span><span class="p">(</span><span class="n">turn</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="n">_tool_error</span><span class="p">(</span><span class="n">result</span><span class="p">)))</span>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;tool&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"tool"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
 </span></code></pre></div>
 <p>Each iteration, the model decides — based on what it has read <em>so far</em> — what
 to do next: browse another directory, run a different search, open one more
@@ -3418,13 +3418,13 @@ with <code>verbose=True</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Q: A production Cypher query got slow after a data load. What should I do,
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>   step by step?
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  -&gt; search({&quot;query&quot;: &quot;slow query&quot;})
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>  -&gt; search({"query": "slow query"})
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>     5 result(s): decisions/0002-cypher-subset (Implement a Cypher subset),
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>     runbooks/slow-queries (Triaging a slow graph query),
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>     glossary/semantic-search (Semantic search), +2 more
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  -&gt; open({&quot;concept_id&quot;: &quot;runbooks/slow-queries&quot;})
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>  -&gt; open({"concept_id": "runbooks/slow-queries"})
 </span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>     runbooks/slow-queries - Triaging a slow graph query (4 link(s), 2 citation(s))
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  -&gt; remember({&quot;concept_id&quot;: &quot;notes/slow-query-checklist&quot;, ...})
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  -&gt; remember({"concept_id": "notes/slow-query-checklist", ...})
 </span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>     saved notes/slow-query-checklist, linked to [...]
 </span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  [4 turn(s), 3 tool call(s), 6120 tool byte(s), 21400 in (14200 cached) / 512 out]
 </span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
@@ -3463,7 +3463,7 @@ multi-turn tool loop:</p>
    by score, then expanded neighbors — the top hit is never dropped, only
    truncated if it alone exceeds the budget.</li>
 </ol>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="s2">&quot;how do I make a query run faster&quot;</span><span class="p">,</span> <span class="n">budget_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">pack</span> <span class="o">=</span> <span class="n">kb</span><span class="o">.</span><span class="n">context</span><span class="p">(</span><span class="s2">"how do I make a query run faster"</span><span class="p">,</span> <span class="n">budget_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">str</span><span class="p">(</span><span class="n">pack</span><span class="p">)</span>          <span class="c1"># prompt-ready text, guaranteed &lt;= budget_tokens (heuristically)</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">pack</span><span class="o">.</span><span class="n">truncated</span>      <span class="c1"># True if anything was cut to fit</span>
 </span></code></pre></div>
@@ -3515,9 +3515,9 @@ the same re-send. On a 202-concept bundle the gap widened to ~5x, because
 <code>context()</code> is capped by <code>budget_tokens</code> and therefore does not grow with the
 bundle, while the loop keeps paying its prefix every turn.</p>
 <p><code>run.summary()</code> breaks the spend down:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">&quot;input_per_turn&quot;</span><span class="p">]</span>        <span class="c1"># [1121, 1582, 2187, 3071]</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">&quot;resent_input_tokens&quot;</span><span class="p">]</span>   <span class="c1"># 4890 — 61% of the spend was a repeat</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">run</span><span class="o">.</span><span class="n">usage</span><span class="p">[</span><span class="s2">&quot;cached_input_tokens&quot;</span><span class="p">]</span>       <span class="c1"># 0 on this endpoint</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">"input_per_turn"</span><span class="p">]</span>        <span class="c1"># [1121, 1582, 2187, 3071]</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">"resent_input_tokens"</span><span class="p">]</span>   <span class="c1"># 4890 — 61% of the spend was a repeat</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">run</span><span class="o">.</span><span class="n">usage</span><span class="p">[</span><span class="s2">"cached_input_tokens"</span><span class="p">]</span>       <span class="c1"># 0 on this endpoint</span>
 </span></code></pre></div>
 <p><strong>So the agentic path is not the cheap one.</strong> What it buys is the ability to
 <em>write</em> (<code>remember</code>, which <code>context()</code> cannot do), to decide what to read
@@ -3534,7 +3534,7 @@ exploration across a multi-turn conversation.</p>
   is charged once per model call. Trimming six tools to the two an agent
   actually needs took it from ~29% of the run's spend to ~9%:</li>
 </ul>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;search&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">BundleTools</span><span class="p">(</span><span class="n">kb</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s2">"search"</span><span class="p">,</span> <span class="s2">"open"</span><span class="p">])</span>
 </span></code></pre></div>
 <p>Rule of thumb: reach for <code>context()</code> to <em>answer</em> a question, and
 <code>run_agent()</code> when the agent has to <em>act</em> — write back to the bundle,

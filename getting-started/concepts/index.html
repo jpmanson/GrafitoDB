@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3580,8 +3580,8 @@
 <p>Nodes can have multiple labels, similar to how an object can implement multiple interfaces:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Alice is both a Person and an Employee</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">alice</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Person&#39;</span><span class="p">,</span> <span class="s1">&#39;Employee&#39;</span><span class="p">],</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Alice&#39;</span><span class="p">}</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">'Person'</span><span class="p">,</span> <span class="s1">'Employee'</span><span class="p">],</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">'name'</span><span class="p">:</span> <span class="s1">'Alice'</span><span class="p">}</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>Common use cases for multiple labels:
@@ -3591,13 +3591,13 @@
 <h3 id="properties">Properties</h3>
 <p>Properties are JSON-serializable key-value pairs:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">node</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_node</span><span class="p">(</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Person&#39;</span><span class="p">],</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">'Person'</span><span class="p">],</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;Alice&#39;</span><span class="p">,</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="s1">&#39;age&#39;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="s1">&#39;active&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s1">&#39;tags&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;developer&#39;</span><span class="p">,</span> <span class="s1">&#39;python&#39;</span><span class="p">],</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;joined&#39;</span><span class="p">:</span> <span class="s1">&#39;2024-01-15&#39;</span><span class="p">}</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'Alice'</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="s1">'age'</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="s1">'active'</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="s1">'tags'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'developer'</span><span class="p">,</span> <span class="s1">'python'</span><span class="p">],</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="s1">'metadata'</span><span class="p">:</span> <span class="p">{</span><span class="s1">'joined'</span><span class="p">:</span> <span class="s1">'2024-01-15'</span><span class="p">}</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="p">}</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3619,24 +3619,24 @@
 <h3 id="direction">Direction</h3>
 <p>Relationships have a direction (from source to target):</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Alice KNOWS Bob (direction matters)</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">bob</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;KNOWS&#39;</span><span class="p">)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">bob</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">'KNOWS'</span><span class="p">)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Bob is not necessarily knowing Alice in this model</span>
 </span></code></pre></div>
 <h3 id="type">Type</h3>
 <p>Relationship types describe the nature of the connection:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;WORKS_AT&#39;</span><span class="p">)</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">bob</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;KNOWS&#39;</span><span class="p">)</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;MANAGES&#39;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">'WORKS_AT'</span><span class="p">)</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">bob</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">'KNOWS'</span><span class="p">)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">project</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">'MANAGES'</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="properties_1">Properties</h3>
 <p>Like nodes, relationships can have properties:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_relationship</span><span class="p">(</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;WORKS_AT&#39;</span><span class="p">,</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">company</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">'WORKS_AT'</span><span class="p">,</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="s1">&#39;since&#39;</span><span class="p">:</span> <span class="mi">2020</span><span class="p">,</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="s1">&#39;Senior Engineer&#39;</span><span class="p">,</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="s1">&#39;department&#39;</span><span class="p">:</span> <span class="s1">&#39;Engineering&#39;</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="s1">'since'</span><span class="p">:</span> <span class="mi">2020</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="s1">'position'</span><span class="p">:</span> <span class="s1">'Senior Engineer'</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="s1">'department'</span><span class="p">:</span> <span class="s1">'Engineering'</span>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">}</span>
 </span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3669,13 +3669,13 @@
 <h3 id="direction_1">Direction</h3>
 <p>When traversing, you can specify direction:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Outgoing: Alice → ?</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">outgoing</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;outgoing&#39;</span><span class="p">)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">outgoing</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">'outgoing'</span><span class="p">)</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Incoming: ? → Alice</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">incoming</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;incoming&#39;</span><span class="p">)</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">incoming</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">'incoming'</span><span class="p">)</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
 </span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Both directions</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">all_neighbors</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">all_neighbors</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_neighbors</span><span class="p">(</span><span class="n">alice</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">'both'</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="path-finding">Path Finding</h3>
 <p>Find paths between nodes:</p>
@@ -3689,21 +3689,21 @@
 <h3 id="property-indexes">Property Indexes</h3>
 <p>Speed up queries on frequently accessed properties:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Create index on Person.name</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_node_index</span><span class="p">(</span><span class="s1">&#39;Person&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">)</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_node_index</span><span class="p">(</span><span class="s1">'Person'</span><span class="p">,</span> <span class="s1">'name'</span><span class="p">)</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
 </span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Or via Cypher</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX FOR (n:Person) ON (n.name)&quot;</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE INDEX FOR (n:Person) ON (n.name)"</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="constraints">Constraints</h3>
 <p>Enforce data integrity:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Unique constraint</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE CONSTRAINT FOR (n:User) REQUIRE n.email IS UNIQUE&quot;</span><span class="p">)</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE CONSTRAINT FOR (n:User) REQUIRE n.email IS UNIQUE"</span><span class="p">)</span>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
 </span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Type constraint</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE CONSTRAINT FOR (n:Person) REQUIRE n.age IS INTEGER&quot;</span><span class="p">)</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE CONSTRAINT FOR (n:Person) REQUIRE n.age IS INTEGER"</span><span class="p">)</span>
 </span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
 </span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># Existence constraint</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE CONSTRAINT FOR (n:Person) REQUIRE n.name IS NOT NULL&quot;</span><span class="p">)</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE CONSTRAINT FOR (n:Person) REQUIRE n.name IS NOT NULL"</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="storage-model">Storage Model</h2>
 <p>GrafitoDB uses a normalized SQLite schema:</p>

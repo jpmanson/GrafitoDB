@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3079,7 +3079,7 @@ They accept local file paths or HTTP(S) URLs and return rows with a <code>value<
 <li>Nested children using their tag names; repeated tags become lists.</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">xml</span><span class="p">(</span><span class="s">&#39;data/books.xml&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;/catalog/book&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">xml</span><span class="p">(</span><span class="s">'data/books.xml'</span><span class="p">,</span><span class="w"> </span><span class="s">'/catalog/book'</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="err">_</span><span class="n">attributes</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="n">title</span><span class="p">.</span><span class="err">_</span><span class="n">text</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">title</span>
 </span></code></pre></div>
 <h2 id="apocloadxmlparams">apoc.load.xmlParams</h2>
@@ -3105,10 +3105,10 @@ They accept local file paths or HTTP(S) URLs and return rows with a <code>value<
 </ul>
 <p><strong>Example</strong></p>
 <div class="language-cypher highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">xmlParams</span><span class="p">(</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s">&#39;https://example.com/feed.xml&#39;</span><span class="p">,</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="s">&#39;/feed/entry&#39;</span><span class="p">,</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s">'https://example.com/feed.xml'</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="s">'/feed/entry'</span><span class="p">,</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="p">{</span><span class="k">limit</span><span class="p">:</span><span class="w"> </span><span class="m">10</span><span class="p">},</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="p">{</span><span class="n">Accept</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;application/xml&#39;</span><span class="p">},</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="p">{</span><span class="n">Accept</span><span class="p">:</span><span class="w"> </span><span class="s">'application/xml'</span><span class="p">},</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="p">{</span><span class="n">timeout</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="p">}</span>
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="n">title</span><span class="p">.</span><span class="err">_</span><span class="n">text</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">title</span>
@@ -3135,8 +3135,8 @@ They accept local file paths or HTTP(S) URLs and return rows with a <code>value<
 of <code>{text: ...}</code> entries for matched nodes.</p>
 <p><strong>Example</strong></p>
 <div class="language-cypher highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">html</span><span class="p">(</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="s">&#39;https://example.com&#39;</span><span class="p">,</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="p">{</span><span class="n">titles</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;article h2&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">links</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;article a.link&#39;</span><span class="p">}</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="s">'https://example.com'</span><span class="p">,</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="p">{</span><span class="n">titles</span><span class="p">:</span><span class="w"> </span><span class="s">'article h2'</span><span class="p">,</span><span class="w"> </span><span class="n">links</span><span class="p">:</span><span class="w"> </span><span class="s">'article a.link'</span><span class="p">}</span>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="n">titles</span>
 </span></code></pre></div>

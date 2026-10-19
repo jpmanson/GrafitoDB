@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3420,8 +3420,8 @@ returns <code>(1 - cos(x)) / 2</code>.</p>
 <a href="../string-functions/#type-conversion-casting">String Functions</a> for details.
 For element-wise list casting, <code>toIntegerList()</code> / <code>toFloatList()</code> turn each
 convertible element and leave non-convertible ones as <code>null</code>.</p>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">toInteger</span><span class="p">(</span><span class="s">&#39;42&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">r</span><span class="w">          </span><span class="c1">// 42</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">toIntegerList</span><span class="p">(</span><span class="o">[</span><span class="s">&#39;1&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;2&#39;</span><span class="p">,</span><span class="w"> </span><span class="s">&#39;x&#39;</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">r</span><span class="w">  </span><span class="c1">// [1, 2, null]</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">toInteger</span><span class="p">(</span><span class="s">'42'</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">r</span><span class="w">          </span><span class="c1">// 42</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">toIntegerList</span><span class="p">(</span><span class="o">[</span><span class="s">'1'</span><span class="p">,</span><span class="w"> </span><span class="s">'2'</span><span class="p">,</span><span class="w"> </span><span class="s">'x'</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">r</span><span class="w">  </span><span class="c1">// [1, 2, null]</span>
 </span></code></pre></div>
 <h2 id="null-propagation">Null Propagation</h2>
 <p>Every numeric function returns <code>null</code> when any argument is <code>null</code>, so they

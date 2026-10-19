@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3088,9 +3088,9 @@
 <p>You can open a database and run Cypher queries:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito</span><span class="w"> </span><span class="kn">import</span> <span class="n">GrafitoDatabase</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">&quot;northwind.db&quot;</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">GrafitoDatabase</span><span class="p">(</span><span class="s2">"northwind.db"</span><span class="p">)</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;MATCH (p:Product) RETURN p.productName AS name LIMIT 5&quot;</span><span class="p">)</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"MATCH (p:Product) RETURN p.productName AS name LIMIT 5"</span><span class="p">)</span>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
 </span></code></pre></div>
 

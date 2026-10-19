@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3114,7 +3114,7 @@
 <li>If the JSON is an array, returns one row per element.</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">json</span><span class="p">(</span><span class="s">&#39;data/users.json&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">json</span><span class="p">(</span><span class="s">'data/users.json'</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">.</span><span class="n">email</span>
 </span></code></pre></div>
 <h2 id="apocloadjsonarray">apoc.load.jsonArray</h2>
@@ -3144,9 +3144,9 @@
 </ul>
 <p><strong>Example</strong></p>
 <div class="language-cypher highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">load</span><span class="p">.</span><span class="n">jsonParams</span><span class="p">(</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="s">&#39;https://api.example.com/users&#39;</span><span class="p">,</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="s">'https://api.example.com/users'</span><span class="p">,</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="p">{</span><span class="k">limit</span><span class="p">:</span><span class="w"> </span><span class="m">10</span><span class="p">},</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="p">{</span><span class="n">Accept</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;application/json&#39;</span><span class="p">},</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="p">{</span><span class="n">Accept</span><span class="p">:</span><span class="w"> </span><span class="s">'application/json'</span><span class="p">},</span>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="p">{</span><span class="n">timeout</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="p">,</span><span class="w"> </span><span class="n">retry</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="p">}</span>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">value</span>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">value</span>
@@ -3154,7 +3154,7 @@
 <h2 id="caching-http-get-only">Caching (HTTP GET only)</h2>
 <p>If <code>GRAFITO_APOC_CACHE_DIR</code> is set and the request is a simple GET (no payload,
 headers, or auth), GrafitoDB caches the response body on disk and reuses it.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRAFITO_APOC_CACHE_DIR</span><span class="o">=</span><span class="s2">&quot;/tmp/grafito-apoc-cache&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRAFITO_APOC_CACHE_DIR</span><span class="o">=</span><span class="s2">"/tmp/grafito-apoc-cache"</span>
 </span></code></pre></div>
 <h2 id="apocimportjson">apoc.import.json</h2>
 <p>Import nodes and relationships from JSON or JSONL.</p>
@@ -3186,13 +3186,13 @@ headers, or auth), GrafitoDB caches the response body on disk and reuses it.</p>
 <li><code>startField</code> or <code>endField</code> is present</li>
 </ul>
 <p><strong>Node entry example</strong></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;u1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;labels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ada&quot;</span><span class="p">}}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"u1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"labels"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"User"</span><span class="p">],</span><span class="w"> </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ada"</span><span class="p">}}</span>
 </span></code></pre></div>
 <p><strong>Relationship entry example</strong></p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;relationship&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FOLLOWS&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;u1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;end&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;u2&quot;</span><span class="p">}</span>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"relationship"</span><span class="p">,</span><span class="w"> </span><span class="nt">"label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"FOLLOWS"</span><span class="p">,</span><span class="w"> </span><span class="nt">"start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"u1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"end"</span><span class="p">:</span><span class="w"> </span><span class="s2">"u2"</span><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Example import</strong></p>
-<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">import</span><span class="p">.</span><span class="n">json</span><span class="p">(</span><span class="s">&#39;data/graph.json&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">nodes</span><span class="p">,</span><span class="w"> </span><span class="n">relationships</span>
+<div class="language-cypher highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">CALL</span><span class="w"> </span><span class="n">apoc</span><span class="p">.</span><span class="n">import</span><span class="p">.</span><span class="n">json</span><span class="p">(</span><span class="s">'data/graph.json'</span><span class="p">)</span><span class="w"> </span><span class="k">YIELD</span><span class="w"> </span><span class="n">nodes</span><span class="p">,</span><span class="w"> </span><span class="n">relationships</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">RETURN</span><span class="w"> </span><span class="n">nodes</span><span class="p">,</span><span class="w"> </span><span class="n">relationships</span>
 </span></code></pre></div>
 <h2 id="notes">Notes</h2>

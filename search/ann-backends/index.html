@@ -206,7 +206,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -531,7 +531,7 @@
     
       <ul class="md-source__facts">
         <li class="md-source__fact md-source__fact--version">
-          v0.8.4
+          v0.8.5
         </li>
       </ul>
     
@@ -3753,38 +3753,38 @@
 <h3 id="methods">Methods</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Flat (exact search)</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;flat&#39;</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;l2&#39;</span><span class="p">}</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'flat'</span><span class="p">,</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'l2'</span><span class="p">}</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># IVF (inverted file index)</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;ivf_flat&#39;</span><span class="p">,</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;nlist&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;nprobe&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'ivf_flat'</span><span class="p">,</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'nlist'</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">'nprobe'</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
 </span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="p">)</span>
 </span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
 </span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># HNSW (hierarchical navigable small world)</span>
 </span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span>
-</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;hnsw&#39;</span><span class="p">,</span>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;hnsw_m&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s1">&#39;ef_construction&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">}</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'hnsw'</span><span class="p">,</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'hnsw_m'</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s1">'ef_construction'</span><span class="p">:</span> <span class="mi">200</span><span class="p">}</span>
 </span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="persistence">Persistence</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;flat&#39;</span><span class="p">,</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;index_path&#39;</span><span class="p">:</span> <span class="s1">&#39;indexes/docs.faiss&#39;</span><span class="p">}</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'flat'</span><span class="p">,</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'index_path'</span><span class="p">:</span> <span class="s1">'indexes/docs.faiss'</span><span class="p">}</span>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="annoy">Annoy</h2>
@@ -3799,14 +3799,14 @@
 <li>Static indexes (rebuild to add vectors)</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">,</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">,</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">,</span>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;angular&#39;</span><span class="p">,</span>  <span class="c1"># or &#39;euclidean&#39;, &#39;manhattan&#39;</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="s1">&#39;n_trees&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>        <span class="c1"># More trees = more accurate, slower build</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="s1">&#39;index_path&#39;</span><span class="p">:</span> <span class="s1">&#39;indexes/docs.annoy&#39;</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'angular'</span><span class="p">,</span>  <span class="c1"># or 'euclidean', 'manhattan'</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="s1">'n_trees'</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>        <span class="c1"># More trees = more accurate, slower build</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="s1">'index_path'</span><span class="p">:</span> <span class="s1">'indexes/docs.annoy'</span>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="p">}</span>
 </span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3822,21 +3822,21 @@
 <li>Auto-build control</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;leann&#39;</span><span class="p">,</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;leann&#39;</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'leann'</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'leann'</span><span class="p">,</span>
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;l2&#39;</span><span class="p">,</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="s1">&#39;auto_build&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># Disable auto-build</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="s1">&#39;index_path&#39;</span><span class="p">:</span> <span class="s1">&#39;indexes/docs.leann&#39;</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'l2'</span><span class="p">,</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="s1">'auto_build'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># Disable auto-build</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="s1">'index_path'</span><span class="p">:</span> <span class="s1">'indexes/docs.leann'</span>
 </span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="p">}</span>
 </span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">)</span>
 </span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
 </span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="c1"># Add embeddings...</span>
 </span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
 </span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="c1"># Manual rebuild</span>
-</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="n">db</span><span class="o">.</span><span class="n">rebuild_vector_index</span><span class="p">(</span><span class="s1">&#39;docs&#39;</span><span class="p">)</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="n">db</span><span class="o">.</span><span class="n">rebuild_vector_index</span><span class="p">(</span><span class="s1">'docs'</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="hnswlib">HNSWlib</h2>
 <p>Hierarchical Navigable Small World implementation.</p>
@@ -3850,15 +3850,15 @@
 <li>Soft deletes (need rebuild to purge)</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;hnswlib&#39;</span><span class="p">,</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;hnswlib&#39;</span><span class="p">,</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'hnswlib'</span><span class="p">,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'hnswlib'</span><span class="p">,</span>
 </span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;l2&#39;</span><span class="p">,</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="s1">&#39;ef_construction&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="s1">&#39;ef&#39;</span><span class="p">:</span> <span class="mi">50</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'l2'</span><span class="p">,</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        <span class="s1">'M'</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="s1">'ef_construction'</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        <span class="s1">'ef'</span><span class="p">:</span> <span class="mi">50</span>
 </span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="p">}</span>
 </span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3878,15 +3878,15 @@
 <li>Native persistence</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;usearch&#39;</span><span class="p">,</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;usearch&#39;</span><span class="p">,</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'usearch'</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'usearch'</span><span class="p">,</span>
 </span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;cos&#39;</span><span class="p">,</span>
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        <span class="s1">&#39;connectivity&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        <span class="s1">&#39;expansion_add&#39;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        <span class="s1">&#39;expansion_search&#39;</span><span class="p">:</span> <span class="mi">64</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'cos'</span><span class="p">,</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        <span class="s1">'connectivity'</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        <span class="s1">'expansion_add'</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        <span class="s1">'expansion_search'</span><span class="p">:</span> <span class="mi">64</span>
 </span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="p">}</span>
 </span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3902,15 +3902,15 @@
 <li>EFIL (Enhanced Forward Index Layout)</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;voyager&#39;</span><span class="p">,</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;voyager&#39;</span><span class="p">,</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'voyager'</span><span class="p">,</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'voyager'</span><span class="p">,</span>
 </span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="s1">&#39;space&#39;</span><span class="p">:</span> <span class="s1">&#39;cosine&#39;</span><span class="p">,</span>  <span class="c1"># or &#39;l2&#39;, &#39;ip&#39;</span>
-</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        <span class="s1">&#39;ef_construction&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
-</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        <span class="s1">&#39;index_path&#39;</span><span class="p">:</span> <span class="s1">&#39;indexes/docs.voyager&#39;</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>        <span class="s1">'space'</span><span class="p">:</span> <span class="s1">'cosine'</span><span class="p">,</span>  <span class="c1"># or 'l2', 'ip'</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        <span class="s1">'M'</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>        <span class="s1">'ef_construction'</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>        <span class="s1">'index_path'</span><span class="p">:</span> <span class="s1">'indexes/docs.voyager'</span>
 </span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    <span class="p">}</span>
 </span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3918,11 +3918,11 @@
 <p>Built-in exact search for small datasets.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># No extra installation needed</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span>
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;docs&#39;</span><span class="p">,</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">name</span><span class="o">=</span><span class="s1">'docs'</span><span class="p">,</span>
 </span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">384</span><span class="p">,</span>
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;bruteforce&#39;</span><span class="p">,</span>
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bruteforce&#39;</span><span class="p">,</span>
-</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;metric&#39;</span><span class="p">:</span> <span class="s1">&#39;l2&#39;</span><span class="p">}</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">backend</span><span class="o">=</span><span class="s1">'bruteforce'</span><span class="p">,</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">method</span><span class="o">=</span><span class="s1">'bruteforce'</span><span class="p">,</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'metric'</span><span class="p">:</span> <span class="s1">'l2'</span><span class="p">}</span>
 </span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>Use for:
@@ -4003,36 +4003,36 @@
 <h2 id="choosing-a-backend">Choosing a Backend</h2>
 <h3 id="small-dataset-10k-vectors">Small Dataset (&lt; 10K vectors)</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Brute force or FAISS flat</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;bruteforce&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bruteforce&#39;</span><span class="p">)</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'bruteforce'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'bruteforce'</span><span class="p">)</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1"># or</span>
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;flat&#39;</span><span class="p">)</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'flat'</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="medium-dataset-10k-100k">Medium Dataset (10K - 100K)</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># FAISS IVF or HNSW</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;ivf_flat&#39;</span><span class="p">)</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'ivf_flat'</span><span class="p">)</span>
 </span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># or</span>
-</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;hnsw&#39;</span><span class="p">)</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'hnsw'</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="large-dataset-100k">Large Dataset (&gt; 100K)</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Annoy (memory-mapped) or Voyager</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">)</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">)</span>
 </span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># or</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;voyager&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;voyager&#39;</span><span class="p">)</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'voyager'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'voyager'</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="read-heavy-workloads">Read-Heavy Workloads</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Annoy with memory mapping</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;annoy&#39;</span><span class="p">,</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>                       <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;index_path&#39;</span><span class="p">:</span> <span class="s1">&#39;shared.annoy&#39;</span><span class="p">})</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'annoy'</span><span class="p">,</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>                       <span class="n">options</span><span class="o">=</span><span class="p">{</span><span class="s1">'index_path'</span><span class="p">:</span> <span class="s1">'shared.annoy'</span><span class="p">})</span>
 </span></code></pre></div>
 <h3 id="write-heavy-workloads">Write-Heavy Workloads</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># FAISS HNSW or HNSWlib</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;faiss&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;hnsw&#39;</span><span class="p">)</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">db</span><span class="o">.</span><span class="n">create_vector_index</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'faiss'</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'hnsw'</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="checking-available-backends">Checking Available Backends</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">grafito.integrations</span><span class="w"> </span><span class="kn">import</span> <span class="n">available_vector_backends</span>
 </span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
 </span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">available_vector_backends</span><span class="p">())</span>
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># [&#39;bruteforce&#39;, &#39;faiss&#39;, &#39;annoy&#39;, &#39;leann&#39;, &#39;hnswlib&#39;, &#39;usearch&#39;, &#39;voyager&#39;]</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># ['bruteforce', 'faiss', 'annoy', 'leann', 'hnswlib', 'usearch', 'voyager']</span>
 </span></code></pre></div>
 
 
