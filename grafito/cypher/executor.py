@@ -2482,6 +2482,13 @@ class CypherExecutor:
                         if bound_next is None or bound_next.id != next_node.id:
                             continue
                     new_bindings = bindings.copy()
+                    segment_rels = rel_value if isinstance(rel_value, list) else [rel_value]
+                    # Relationship uniqueness, as in Neo4j: one MATCH pattern never
+                    # traverses the same relationship twice, so (a)-[:R]->(x)<-[:R]-(b)
+                    # does not return b = a through the same edge.
+                    used_ids = {rel.id for rel in rel_path}
+                    if any(rel.id in used_ids for rel in segment_rels):
+                        continue
                     if rel_pattern.variable:
                         new_bindings[rel_pattern.variable] = rel_value
                     if next_node_pattern.variable:
