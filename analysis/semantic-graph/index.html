@@ -3421,67 +3421,67 @@ that is too permissive.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>grafito/ingest_report.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="nd">@dataclass</span>
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">class</span><span class="w"> </span><span class="nc">SemanticGraphReport</span><span class="p">:</span>
-</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="w">    </span><span class="sd">"""What :meth:`~grafito.GrafitoDatabase.create_semantic_graph` materialised.</span>
-</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    ``edges_created`` is the number worth watching: it grows as ``k`` times the</span>
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a><span class="sd">    node count, and those edges live in the same table as the domain's own. A</span>
-</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    build that produced far more edges than expected is usually a ``min_score``</span>
-</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">    that is too permissive.</span>
-</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    """</span>
-</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a>
-</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="n">edges_created</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="n">edges_removed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1">#: Nodes whose neighbourhood was computed.</span>
-</span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">nodes_processed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1">#: Nodes skipped because `approximate` found them already linked.</span>
-</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="n">nodes_skipped</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="c1">#: True when `max_edges` stopped the build before every node was processed.</span>
-</span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">truncated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a>
-</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-0-67"><a id="__codelineno-0-67" name="__codelineno-0-67"></a>        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_created</span><span class="si">}</span><span class="s2"> edges"</span><span class="p">,</span>
-</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_processed</span><span class="si">}</span><span class="s2"> nodes"</span><span class="p">,</span>
-</span><span id="__span-0-70"><a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="p">]</span>
-</span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="p">:</span>
-</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="si">}</span><span class="s2"> replaced"</span><span class="p">)</span>
-</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="p">:</span>
-</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="si">}</span><span class="s2"> skipped"</span><span class="p">)</span>
-</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">truncated</span><span class="p">:</span>
-</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"truncated"</span><span class="p">)</span>
-</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">"SemanticGraphReport(</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-53">53</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-54">54</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-55">55</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-59">59</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-60">60</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-61">61</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-62">62</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-63">63</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-65">65</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-66">66</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-67">67</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-68">68</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-69">69</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-70">70</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-73">73</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-74">74</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-75">75</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-76">76</a></span>
+<span class="normal"><a href="#grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-77">77</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-47"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-47" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-47"></a><span class="nd">@dataclass</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-48"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-48" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-48"></a><span class="k">class</span><span class="w"> </span><span class="nc">SemanticGraphReport</span><span class="p">:</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-49"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-49" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-49"></a><span class="w">    </span><span class="sd">"""What :meth:`~grafito.GrafitoDatabase.create_semantic_graph` materialised.</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-50"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-50" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-50"></a>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-51"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-51" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-51"></a><span class="sd">    ``edges_created`` is the number worth watching: it grows as ``k`` times the</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-52"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-52" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-52"></a><span class="sd">    node count, and those edges live in the same table as the domain's own. A</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-53"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-53" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-53"></a><span class="sd">    build that produced far more edges than expected is usually a ``min_score``</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-54"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-54" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-54"></a><span class="sd">    that is too permissive.</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-55"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-55" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-55"></a><span class="sd">    """</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-56"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-56" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-56"></a>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-57"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-57" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-57"></a>    <span class="n">edges_created</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-58"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-58" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-58"></a>    <span class="n">edges_removed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-59"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-59" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-59"></a>    <span class="c1">#: Nodes whose neighbourhood was computed.</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-60"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-60" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-60"></a>    <span class="n">nodes_processed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-61"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-61" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-61"></a>    <span class="c1">#: Nodes skipped because `approximate` found them already linked.</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-62"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-62" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-62"></a>    <span class="n">nodes_skipped</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-63"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-63" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-63"></a>    <span class="c1">#: True when `max_edges` stopped the build before every node was processed.</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-64"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-64" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-64"></a>    <span class="n">truncated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-65"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-65" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-65"></a>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-66"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-66" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-66"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-67"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-67" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-67"></a>        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-68"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-68" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-68"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_created</span><span class="si">}</span><span class="s2"> edges"</span><span class="p">,</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-69"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-69" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-69"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_processed</span><span class="si">}</span><span class="s2"> nodes"</span><span class="p">,</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-70"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-70" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-70"></a>        <span class="p">]</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-71"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-71" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-71"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="p">:</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-72"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-72" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-72"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">edges_removed</span><span class="si">}</span><span class="s2"> replaced"</span><span class="p">)</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-73"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-73" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-73"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="p">:</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-74"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-74" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-74"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_skipped</span><span class="si">}</span><span class="s2"> skipped"</span><span class="p">)</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-75"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-75" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-75"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">truncated</span><span class="p">:</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-76"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-76" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-76"></a>            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"truncated"</span><span class="p">)</span>
+</span><span id="grafito.ingest_report.SemanticGraphReport--source--__span-0-77"><a id="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-77" name="grafito.ingest_report.SemanticGraphReport--source--__codelineno-0-77"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">"SemanticGraphReport(</span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
