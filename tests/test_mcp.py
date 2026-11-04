@@ -382,6 +382,21 @@ def test_build_tools_adds_graph_tier_when_enabled():
         tools.close()
 
 
+def test_build_tools_rejects_tag_with_graph_or_document_tier():
+    with pytest.raises(ValueError, match="tag"):
+        build_tools(BUNDLE, tag="x", enable_graph=True)
+    with pytest.raises(ValueError, match="tag"):
+        build_tools(BUNDLE, tag="x", document_index="passages")
+
+
+def test_cli_rejects_tag_with_enable_graph(capsys):
+    from grafito.mcp.cli import main
+
+    with pytest.raises(SystemExit):
+        main(["--bundle", BUNDLE, "--tag", "x", "--enable-graph"])
+    assert "--tag cannot be combined" in capsys.readouterr().err
+
+
 def test_graph_tier_is_off_by_default():
     tools = build_tools(BUNDLE)
     try:

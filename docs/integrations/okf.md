@@ -1415,7 +1415,7 @@ implemented: these tiers cannot mutate the graph even when asked.
 | `--name NAME` | both | `grafito` | Server name reported to the client |
 | `--embed NAME` / `--embed-config JSON` | `--bundle` | none | Embedder for semantic `search`/`context` (else text mode) |
 | `--rerank NAME` / `--rerank-config JSON` | `--bundle` | none | Reranker for `context` grounding (`lexical` is dep-free) |
-| `--tag TAG` | `--bundle` | none | Scope every tool to concepts with this tag |
+| `--tag TAG` | `--bundle` | none | Scope every tool to concepts with this tag (incompatible with `--enable-graph` / `--document-index`, which are not tag-scoped) |
 | `--budget-tokens N` | `--bundle` | `2000` | Token budget for `context` output |
 | `--enable-graph` | `--bundle` | off | Add the escalón 2-3 graph tiers over the bundle's graph |
 | `--enable-writes` | `--bundle` | off | Expose `remember` and persist writes to the bundle |

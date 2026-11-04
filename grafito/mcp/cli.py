@@ -132,6 +132,12 @@ def resolve_reranker(name: str | None, config: dict | None = None) -> "Reranker 
     return rerankers[name](**(config or {}))
 
 
+_TAG_UNSCOPED_MSG = (
+    "tag cannot be combined with enable_graph/document_index: the graph and "
+    "passage tiers read the whole database and would bypass the tag scope"
+)
+
+
 def build_tools(
     bundle_path: str,
     *,
@@ -183,6 +189,8 @@ def build_tools(
     separate embedder is needed here. It is built **inside this factory** so it
     shares the bundle's owning thread — ``kb.db`` is thread-bound.
     """
+    if tag is not None and (enable_graph or document_index is not None):
+        raise ValueError(_TAG_UNSCOPED_MSG)
     exclude = None if enable_writes else ["remember"]
 
     def factory() -> ToolRegistry:
@@ -292,7 +300,8 @@ def main(argv: list[str] | None = None) -> None:
         "(no OKF); the --bundle-only flags below do not apply.",
     )
     parser.add_argument("--name", default="grafito", help="Server name reported to the client.")
-    parser.add_argument("--tag", default=None, help="Scope every tool to concepts with this tag.")
+    parser.add_argument("--tag", default=None, help="Scope every tool to concepts with this tag. Incompatible with "
+        "--enable-graph and --document-index (those tiers are not tag-scoped).")
     parser.add_argument(
         "--budget-tokens",
         type=int,
@@ -400,6 +409,11 @@ def main(argv: list[str] | None = None) -> None:
         # document would silently not persist. Refuse rather than mislead.
         if args.enable_document_writes:
             parser.error("--enable-document-writes applies to --db, not --bundle")
+        if args.tag is not None and (args.enable_graph or args.document_index is not None):
+            parser.error(
+                "--tag cannot be combined with --enable-graph or --document-index: "
+                "those tiers read the whole graph and would bypass the tag scope"
+            )
         embed_config = json.loads(args.embed_config) if args.embed_config else None
         rerank_config = json.loads(args.rerank_config) if args.rerank_config else None
         tools = build_tools(
