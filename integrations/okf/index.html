@@ -5376,6 +5376,14 @@ path, cheaper than a client running its own exploration loop, and the tool that
 sets this apart from a raw graph server. The graph tiers hang on the underlying
 <code>GrafitoDatabase</code>, not on the bundle — which is why <code>--db</code> can serve a graph
 that is not an OKF bundle at all, exposing only those tiers with no OKF in play.</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>--tag</code> does not scope the graph or passage tiers</p>
+<p>The graph tiers (<code>--enable-graph</code>) and the passage tier (<code>--document-index</code>)
+read the whole database, so they would bypass a <code>--tag</code> scope. Combining
+them is rejected at startup (<code>grafito-mcp</code> exits with an error, and
+<code>build_tools</code> raises <code>ValueError</code>). To scope a client to part of a bundle,
+use <code>--tag</code> with the bundle tiers only.</p>
+</div>
 <h3 id="writes-persist-to-the-bundle">Writes persist to the bundle</h3>
 <p>With <code>--enable-writes</code>, <code>remember</code> is exposed <strong>and</strong> each saved note is written
 back to the bundle directory (markdown + regenerated <code>log.md</code>) as it happens —
