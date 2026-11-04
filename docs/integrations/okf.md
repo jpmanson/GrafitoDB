@@ -1393,6 +1393,13 @@ sets this apart from a raw graph server. The graph tiers hang on the underlying
 `GrafitoDatabase`, not on the bundle — which is why `--db` can serve a graph
 that is not an OKF bundle at all, exposing only those tiers with no OKF in play.
 
+!!! warning "`--tag` does not scope the graph or passage tiers"
+    The graph tiers (`--enable-graph`) and the passage tier (`--document-index`)
+    read the whole database, so they would bypass a `--tag` scope. Combining
+    them is rejected at startup (`grafito-mcp` exits with an error, and
+    `build_tools` raises `ValueError`). To scope a client to part of a bundle,
+    use `--tag` with the bundle tiers only.
+
 ### Writes persist to the bundle
 
 With `--enable-writes`, `remember` is exposed **and** each saved note is written
